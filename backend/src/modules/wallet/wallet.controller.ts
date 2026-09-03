@@ -75,15 +75,22 @@ router.post('/withdraw', requireAuth, async (req: AuthRequest, res: Response): P
 
     // Atomic balance check & deduction (Viewer Earnings)
     const updatedUser = await User.findOneAndUpdate(
-      { _id: req.user!._id, balance: { $gte: amount } },
+      {
+        _id: req.user!._id,
+        $or: [
+          { viewerBalance: { $gte: amount } },
+          { viewerBalance: { $exists: false }, balance: { $gte: amount } },
+        ],
+      },
       { $inc: { viewerBalance: -amount, totalWithdrawn: amount, balance: -amount } },
       { new: true }
     );
 
     if (!updatedUser) {
+      const avail = req.user!.viewerBalance !== undefined ? req.user!.viewerBalance : req.user!.balance;
       res.status(400).json({
         success: false,
-        error: `Insufficient balance ($${req.user!.balance.toFixed(2)}) for withdrawal of $${amount.toFixed(2)}`,
+        error: `Insufficient viewer balance ($${avail.toFixed(4)} available) for withdrawal of $${amount.toFixed(2)}`,
       });
       return;
     }

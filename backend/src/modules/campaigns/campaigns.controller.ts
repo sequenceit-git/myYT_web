@@ -68,15 +68,22 @@ router.post('/', requireAuth, async (req: AuthRequest, res: Response): Promise<v
 
     // Atomic balance deduction (Creator Ad Budget)
     const updatedUser = await User.findOneAndUpdate(
-      { _id: req.user!._id, balance: { $gte: totalCost } },
+      {
+        _id: req.user!._id,
+        $or: [
+          { creatorBalance: { $gte: totalCost } },
+          { creatorBalance: { $exists: false }, balance: { $gte: totalCost } },
+        ],
+      },
       { $inc: { creatorBalance: -totalCost, balance: -totalCost, totalSpent: totalCost } },
       { new: true }
     );
 
     if (!updatedUser) {
+      const avail = req.user!.creatorBalance !== undefined ? req.user!.creatorBalance : req.user!.balance;
       res.status(400).json({
         success: false,
-        error: `Insufficient balance ($${req.user!.balance.toFixed(2)}). Total required is $${totalCost.toFixed(2)}. Please deposit first.`,
+        error: `Insufficient creator budget ($${avail.toFixed(2)}). Total required is $${totalCost.toFixed(2)}. Please deposit first.`,
       });
       return;
     }

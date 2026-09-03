@@ -50,6 +50,19 @@ export const Header: React.FC<HeaderProps> = ({
   const showBuyViews = user ? isCreatorMode : !isViewerMode;
   const showWatchApp = user ? isViewerMode : !isCreatorMode;
 
+  // Contextual Profile Balance:
+  // Viewer Profile -> show viewer earnings
+  // Creator Profile -> show creator ad budget
+  const viewerBal = user?.viewerBalance !== undefined
+    ? user.viewerBalance
+    : Math.max(0, (user?.totalEarned || 0) - (user?.totalWithdrawn || 0));
+  const creatorBal = user?.creatorBalance !== undefined
+    ? user.creatorBalance
+    : (user?.balance || 0);
+
+  const activeProfileBalance = isCreatorMode ? creatorBal : viewerBal;
+  const activeProfileLabel = isCreatorMode ? 'Budget' : 'Earned';
+
   return (
     <header
       className="glass-card"
@@ -239,7 +252,7 @@ export const Header: React.FC<HeaderProps> = ({
 
               {/* Balance */}
               <div
-                onClick={() => navigate(user.role === 'campaigner' ? '/creator' : '/viewer')}
+                onClick={() => navigate(isCreatorMode ? '/creator' : '/viewer')}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -250,10 +263,11 @@ export const Header: React.FC<HeaderProps> = ({
                   border: '1px solid rgba(14, 165, 233, 0.28)',
                   cursor: 'pointer',
                 }}
+                title={`Active Profile: ${isCreatorMode ? 'Creator Ad Budget' : 'Viewer Earnings'}`}
               >
                 <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--primary-neon)' }} className="pulse-neon" />
                 <span className="font-mono" style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--primary-neon)' }}>
-                  ${user.balance.toFixed(2)} <span style={{ fontSize: '0.65rem', color: 'var(--on-surface-variant)' }}>USD</span>
+                  ${activeProfileBalance.toFixed(2)} <span style={{ fontSize: '0.65rem', color: 'var(--on-surface-variant)' }}>{activeProfileLabel}</span>
                 </span>
               </div>
 
@@ -312,7 +326,7 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="mobile-only" style={{ alignItems: 'center', gap: 8 }}>
           {user && (
             <div
-              onClick={() => navigate(user.role === 'campaigner' ? '/creator' : '/viewer')}
+              onClick={() => navigate(isCreatorMode ? '/creator' : '/viewer')}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -322,10 +336,11 @@ export const Header: React.FC<HeaderProps> = ({
                 borderRadius: 8,
                 border: '1px solid rgba(14, 165, 233, 0.28)',
               }}
+              title={`Active Profile: ${isCreatorMode ? 'Creator Ad Budget' : 'Viewer Earnings'}`}
             >
               <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--primary-neon)' }} className="pulse-neon" />
               <span className="font-mono" style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--primary-neon)' }}>
-                ${user.balance.toFixed(2)}
+                ${activeProfileBalance.toFixed(2)}
               </span>
             </div>
           )}

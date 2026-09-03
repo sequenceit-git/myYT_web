@@ -81,6 +81,9 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<CreatorTab>('overview');
 
+  // Creator Profile Balance (Ad Budget)
+  const creatorBal = user?.creatorBalance !== undefined ? user.creatorBalance : (user?.balance || 0);
+
   // Deposit State
   const [depositAmount, setDepositAmount] = useState<number>(5);
   const [depositGateway, setDepositGateway] = useState<string>('faucetpay');
@@ -270,7 +273,7 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
               Ad Budget
             </div>
             <div className="font-mono" style={{ fontSize: '1.55rem', fontWeight: 800, color: 'var(--primary-neon)', marginTop: 2 }}>
-              ${(user?.creatorBalance !== undefined ? user.creatorBalance : (user?.balance || 0)).toFixed(2)} <span style={{ fontSize: '0.8rem', color: '#64748b' }}>USD</span>
+              ${creatorBal.toFixed(2)} <span style={{ fontSize: '0.8rem', color: '#64748b' }}>USD</span>
             </div>
           </div>
         </aside>
@@ -346,7 +349,7 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                     <CreditCard size={18} color="var(--primary-neon)" />
                   </div>
                   <div className="font-mono" style={{ fontSize: '2.3rem', fontWeight: 800, color: 'var(--primary-neon)', marginTop: 6, lineHeight: 1 }}>
-                    ${(user?.balance || 0).toFixed(2)}
+                    ${creatorBal.toFixed(2)}
                   </div>
                   <button
                     onClick={() => setActiveTab('deposit')}
@@ -590,7 +593,7 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                     DEPOSIT AD BUDGET
                   </h3>
                   <span style={{ fontSize: '0.88rem', color: '#64748b' }}>
-                    Current Balance: <strong className="font-mono" style={{ color: 'var(--primary-neon)' }}>${(user?.balance || 0).toFixed(2)} USD</strong>
+                    Current Balance: <strong className="font-mono" style={{ color: 'var(--primary-neon)' }}>${creatorBal.toFixed(2)} USD</strong>
                   </span>
                 </div>
                 <span className="badge-pill badge-neon" style={{ fontSize: '0.74rem', padding: '4px 12px' }}>

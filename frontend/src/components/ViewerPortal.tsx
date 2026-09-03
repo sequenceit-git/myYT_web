@@ -208,17 +208,19 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
     setMsg(null);
 
     if (!user) {
-      if (onOpenAuth) onOpenAuth('signin');
+      setMsg({ type: 'error', text: 'Please sign in to withdraw earnings.' });
       return;
     }
+
+    const currentViewerBal = user.viewerBalance !== undefined ? user.viewerBalance : Math.max(0, (user.totalEarned || 0) - (user.totalWithdrawn || 0));
 
     if (withdrawAmount < 5.0) {
       setMsg({ type: 'error', text: 'Minimum withdrawal is $5.00 USD (≈ ৳610 BDT).' });
       return;
     }
 
-    if (user.balance < withdrawAmount) {
-      setMsg({ type: 'error', text: `Insufficient balance ($${user.balance.toFixed(4)} available).` });
+    if (currentViewerBal < withdrawAmount) {
+      setMsg({ type: 'error', text: `Insufficient viewer balance ($${currentViewerBal.toFixed(4)} available).` });
       return;
     }
 
@@ -440,11 +442,11 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                 {/* 1. Cash Balance */}
                 <div className="glass-card" style={{ padding: '16px', border: '1.5px solid rgba(14, 165, 233, 0.35)', borderRadius: 14 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span className="font-mono" style={{ fontSize: '0.68rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 600 }}>Available Cash</span>
+                    <span className="font-mono" style={{ fontSize: '0.68rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 600 }}>Available Earnings</span>
                     <Wallet size={15} color="var(--primary-neon)" />
                   </div>
                   <div className="font-mono" style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--primary-neon)', marginTop: 4 }}>
-                    ${user.balance.toFixed(4)}
+                    ${viewerBal.toFixed(4)}
                   </div>
                   <div className="font-mono" style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 600, marginTop: 2 }}>
                     ≈ ৳{approxBDT} BDT
@@ -655,7 +657,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                     WITHDRAW FUNDS
                   </h3>
                   <span style={{ fontSize: '0.88rem', color: '#64748b' }}>
-                    Available: <strong className="font-mono" style={{ color: 'var(--primary-neon)' }}>${user.balance.toFixed(4)} USD</strong> (≈ ৳{approxBDT} BDT)
+                    Available: <strong className="font-mono" style={{ color: 'var(--primary-neon)' }}>${viewerBal.toFixed(4)} USD</strong> (≈ ৳{approxBDT} BDT)
                   </span>
                 </div>
                 <span className="badge-pill badge-cyan" style={{ fontSize: '0.74rem', padding: '4px 12px' }}>
@@ -755,7 +757,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                         Amount (USD):
                       </label>
                       <span className="font-mono" style={{ fontSize: '0.76rem', color: 'var(--primary-neon)' }}>
-                        Max: ${user.balance.toFixed(4)}
+                        Max: ${viewerBal.toFixed(4)}
                       </span>
                     </div>
 
@@ -763,7 +765,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                       type="number"
                       step="0.01"
                       min="5.00"
-                      max={user.balance}
+                      max={viewerBal}
                       value={withdrawAmount}
                       onChange={(e) => setWithdrawAmount(parseFloat(e.target.value) || 0)}
                       className="input-field"
@@ -793,7 +795,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                       ))}
                       <button
                         type="button"
-                        onClick={() => setWithdrawAmount(parseFloat(user.balance.toFixed(4)))}
+                        onClick={() => setWithdrawAmount(parseFloat(viewerBal.toFixed(4)))}
                         className="btn btn-ghost"
                         style={{
                           padding: '4px 10px',
@@ -861,7 +863,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
 
                 <button
                   type="submit"
-                  disabled={loading || user.balance < 5.0}
+                  disabled={loading || viewerBal < 5.0}
                   className="btn btn-neon glow-neon"
                   style={{ padding: '13px', fontSize: '0.96rem', borderRadius: 12, marginTop: 4 }}
                 >

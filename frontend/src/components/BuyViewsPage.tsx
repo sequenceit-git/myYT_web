@@ -66,10 +66,11 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
       return;
     }
 
-    if (user.balance < calculatedCost) {
+    const creatorBal = user.creatorBalance !== undefined ? user.creatorBalance : user.balance;
+    if (creatorBal < calculatedCost) {
       setFeedback({
         type: 'error',
-        message: `Insufficient balance ($${user.balance.toFixed(2)}). Total cost is $${calculatedCost.toFixed(2)}. Go to your Creator Dashboard to deposit funds.`,
+        message: `Insufficient Creator Budget ($${creatorBal.toFixed(2)}). Total cost is $${calculatedCost.toFixed(2)}. Go to your Creator Dashboard to deposit funds.`,
       });
       return;
     }
@@ -143,7 +144,7 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
             
             {user && (
               <div className="font-mono" style={{ fontSize: '0.78rem', color: 'var(--on-surface-variant)' }}>
-                Balance: <strong style={{ color: 'var(--primary-neon)' }}>${user.balance.toFixed(2)} USD</strong>
+                Ad Budget: <strong style={{ color: 'var(--primary-neon)' }}>${(user.creatorBalance !== undefined ? user.creatorBalance : user.balance).toFixed(2)} USD</strong>
               </div>
             )}
           </div>

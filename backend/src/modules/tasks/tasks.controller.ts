@@ -201,6 +201,8 @@ router.post('/:id/complete', requireAuth, async (req: AuthRequest, res: Response
       data: {
         rewardAmount,
         newBalance: updatedUser?.balance || 0,
+        viewerBalance: updatedUser?.viewerBalance || 0,
+        creatorBalance: updatedUser?.creatorBalance || 0,
         totalEarned: updatedUser?.totalEarned || 0,
         actualDurationSec: task.actualDurationSec,
         message: `Task successfully verified! +$${rewardAmount.toFixed(4)} USD credited directly to your wallet.`,
