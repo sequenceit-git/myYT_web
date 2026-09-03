@@ -89,18 +89,8 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </Link>
 
-        {/* Desktop Navigation (Inline Pills) */}
-        <nav
-          className="desktop-only"
-          style={{
-            alignItems: 'center',
-            gap: 4,
-            background: '#161616',
-            padding: '2px 4px',
-            borderRadius: 9999,
-            border: '1px solid var(--glass-stroke)',
-          }}
-        >
+        {/* Desktop Navigation (Inline Pills - Hidden on Mobile/Tablet) */}
+        <nav className="nav-desktop-pills">
           <Link
             to="/"
             className="btn"
@@ -159,8 +149,8 @@ export const Header: React.FC<HeaderProps> = ({
           </Link>
         </nav>
 
-        {/* Desktop Right Actions (Auth / Avatar / Balance) */}
-        <div className="desktop-only" style={{ alignItems: 'center', gap: 8 }}>
+        {/* Desktop Right Actions (Auth / Avatar / Balance - Hidden on Mobile/Tablet) */}
+        <div className="nav-desktop-actions">
           {user ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               {/* Balance */}
@@ -234,8 +224,8 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
 
-        {/* Mobile Header Right Controls: 3-Bar Hamburger Menu Toggle */}
-        <div className="mobile-only" style={{ alignItems: 'center', gap: 8 }}>
+        {/* Mobile Header Controls: 3-Bar (☰) Hamburger Menu Button */}
+        <div className="nav-mobile-toggle">
           {user && (
             <div
               onClick={() => navigate(user.role === 'campaigner' ? '/creator' : '/viewer')}
@@ -259,11 +249,11 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             style={{
-              background: '#1c1c1c',
+              background: '#181818',
               border: '1px solid var(--glass-stroke)',
               color: '#ffffff',
               borderRadius: 8,
-              padding: '7px 8px',
+              padding: '8px 10px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -279,9 +269,8 @@ export const Header: React.FC<HeaderProps> = ({
       {/* 3-Bar Mobile Dropdown Menu (Home, Buy Views, Watch App) */}
       {mobileMenuOpen && (
         <div
-          className="mobile-only"
+          className="nav-mobile-dropdown"
           style={{
-            flexDirection: 'column',
             gap: 8,
             padding: '14px 0 6px 0',
             marginTop: 10,
