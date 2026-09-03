@@ -9,6 +9,8 @@ export interface IUser extends Document {
   role: 'campaigner' | 'viewer' | 'admin';
   status: 'active' | 'suspended' | 'banned';
   balance: number; // In USD Cash Funds
+  viewerBalance: number; // In USD Watch Earnings available for cashout
+  creatorBalance: number; // In USD Ad Budget deposited for buying views
   credits: number; // Watch Reward Credits (e.g. 10s = 10 Credits)
   totalCreditsEarned: number;
   totalEarned: number;
@@ -30,6 +32,8 @@ const UserSchema = new Schema<IUser>(
     role: { type: String, enum: ['campaigner', 'viewer', 'admin'], default: 'viewer' },
     status: { type: String, enum: ['active', 'suspended', 'banned'], default: 'active' },
     balance: { type: Number, default: 0, min: 0 },
+    viewerBalance: { type: Number, default: 0, min: 0 },
+    creatorBalance: { type: Number, default: 0, min: 0 },
     credits: { type: Number, default: 0, min: 0 },
     totalCreditsEarned: { type: Number, default: 0 },
     totalEarned: { type: Number, default: 0 },

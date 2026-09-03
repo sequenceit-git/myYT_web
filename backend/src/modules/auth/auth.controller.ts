@@ -215,6 +215,9 @@ router.post('/google', async (req: Request, res: Response): Promise<void> => {
 // Me
 router.get('/me', requireAuth, async (req: AuthRequest, res: Response): Promise<void> => {
   const u = req.user!;
+  const viewerBal = u.viewerBalance !== undefined ? u.viewerBalance : Math.max(0, (u.totalEarned || 0) - (u.totalWithdrawn || 0));
+  const creatorBal = u.creatorBalance !== undefined ? u.creatorBalance : (u.balance || 0);
+
   res.json({
     success: true,
     data: {
@@ -223,6 +226,8 @@ router.get('/me', requireAuth, async (req: AuthRequest, res: Response): Promise<
       name: u.name,
       role: u.role,
       balance: u.balance,
+      viewerBalance: viewerBal,
+      creatorBalance: creatorBal,
       credits: u.credits || 0,
       totalCreditsEarned: u.totalCreditsEarned || 0,
       totalEarned: u.totalEarned,
@@ -252,6 +257,8 @@ router.post('/switch-profile', requireAuth, async (req: AuthRequest, res: Respon
     }
 
     const tokens = generateTokens(user._id.toString(), user.role);
+    const viewerBal = user.viewerBalance !== undefined ? user.viewerBalance : Math.max(0, (user.totalEarned || 0) - (user.totalWithdrawn || 0));
+    const creatorBal = user.creatorBalance !== undefined ? user.creatorBalance : (user.balance || 0);
 
     res.json({
       success: true,
@@ -262,6 +269,8 @@ router.post('/switch-profile', requireAuth, async (req: AuthRequest, res: Respon
           name: user.name,
           role: user.role,
           balance: user.balance,
+          viewerBalance: viewerBal,
+          creatorBalance: creatorBal,
           credits: user.credits || 0,
           totalCreditsEarned: user.totalCreditsEarned || 0,
           totalEarned: user.totalEarned,

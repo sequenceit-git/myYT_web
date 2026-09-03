@@ -263,8 +263,9 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
     );
   }
 
+  const viewerBal = user.viewerBalance !== undefined ? user.viewerBalance : Math.max(0, (user.totalEarned || 0) - (user.totalWithdrawn || 0));
   const bdtRate = 122;
-  const approxBDT = (user.balance * bdtRate).toFixed(0);
+  const approxBDT = (viewerBal * bdtRate).toFixed(0);
   const selectedConfig = PAYOUT_METHODS.find((m) => m.id === withdrawMethod) || PAYOUT_METHODS[0];
 
   return (
@@ -363,10 +364,10 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
           {/* Balance Display */}
           <div style={{ background: '#f0f9ff', padding: '14px 16px', borderRadius: 14, border: '1px solid rgba(14, 165, 233, 0.22)', marginTop: 'auto' }}>
             <div className="font-mono" style={{ fontSize: '0.78rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>
-              Available Cash
+              Available Earnings
             </div>
             <div className="font-mono" style={{ fontSize: '1.55rem', fontWeight: 800, color: 'var(--primary-neon)', marginTop: 2 }}>
-              ${user.balance.toFixed(4)} <span style={{ fontSize: '0.8rem', color: '#64748b' }}>USD</span>
+              ${viewerBal.toFixed(4)} <span style={{ fontSize: '0.8rem', color: '#64748b' }}>USD</span>
             </div>
             <div className="font-mono" style={{ fontSize: '0.85rem', color: '#059669', fontWeight: 600, marginTop: 2 }}>
               ≈ ৳{approxBDT} BDT

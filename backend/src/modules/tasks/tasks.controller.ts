@@ -160,7 +160,7 @@ router.post('/:id/complete', requireAuth, async (req: AuthRequest, res: Response
     // Atomic direct USD balance and totalEarned increment to viewer
     const updatedUser = await User.findByIdAndUpdate(
       req.user!._id,
-      { $inc: { balance: rewardAmount, totalEarned: rewardAmount } },
+      { $inc: { viewerBalance: rewardAmount, balance: rewardAmount, totalEarned: rewardAmount } },
       { new: true }
     );
 

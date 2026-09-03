@@ -270,7 +270,7 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
               Ad Budget
             </div>
             <div className="font-mono" style={{ fontSize: '1.55rem', fontWeight: 800, color: 'var(--primary-neon)', marginTop: 2 }}>
-              ${(user?.balance || 0).toFixed(2)} <span style={{ fontSize: '0.8rem', color: '#64748b' }}>USD</span>
+              ${(user?.creatorBalance !== undefined ? user.creatorBalance : (user?.balance || 0)).toFixed(2)} <span style={{ fontSize: '0.8rem', color: '#64748b' }}>USD</span>
             </div>
           </div>
         </aside>

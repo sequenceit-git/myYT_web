@@ -66,10 +66,10 @@ router.post('/', requireAuth, async (req: AuthRequest, res: Response): Promise<v
     const tier = config.pricingTiers[watchDurationSec];
     const totalCost = Number((tier.campaignerCost * targetViews).toFixed(4));
 
-    // Atomic balance deduction
+    // Atomic balance deduction (Creator Ad Budget)
     const updatedUser = await User.findOneAndUpdate(
       { _id: req.user!._id, balance: { $gte: totalCost } },
-      { $inc: { balance: -totalCost, totalSpent: totalCost } },
+      { $inc: { creatorBalance: -totalCost, balance: -totalCost, totalSpent: totalCost } },
       { new: true }
     );
 

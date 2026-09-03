@@ -30,10 +30,10 @@ router.post('/deposit', requireAuth, async (req: AuthRequest, res: Response): Pr
 
     const { amount, gateway, txHash } = parsed.data;
 
-    // Atomic balance credit
+    // Atomic balance credit (Creator Ad Budget)
     const updatedUser = await User.findByIdAndUpdate(
       req.user!._id,
-      { $inc: { balance: amount } },
+      { $inc: { creatorBalance: amount, balance: amount } },
       { new: true }
     );
 
@@ -52,6 +52,7 @@ router.post('/deposit', requireAuth, async (req: AuthRequest, res: Response): Pr
       success: true,
       data: {
         newBalance: updatedUser?.balance,
+        creatorBalance: updatedUser?.creatorBalance,
         transaction,
         message: `Deposit of $${amount.toFixed(2)} credited successfully!`,
       },
@@ -72,10 +73,10 @@ router.post('/withdraw', requireAuth, async (req: AuthRequest, res: Response): P
 
     const { amount, method, accountDetails } = parsed.data;
 
-    // Atomic balance check & deduction (hold balance in escrow)
+    // Atomic balance check & deduction (Viewer Earnings)
     const updatedUser = await User.findOneAndUpdate(
       { _id: req.user!._id, balance: { $gte: amount } },
-      { $inc: { balance: -amount } },
+      { $inc: { viewerBalance: -amount, totalWithdrawn: amount, balance: -amount } },
       { new: true }
     );
 

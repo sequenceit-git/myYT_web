@@ -4,6 +4,8 @@ export interface User {
   name: string;
   role: 'campaigner' | 'viewer' | 'admin';
   balance: number; // USD Cash Balance
+  viewerBalance?: number; // In USD Watch Earnings available for cashout
+  creatorBalance?: number; // In USD Ad Budget deposited for buying views
   credits?: number; // Watch Reward Credits
   totalCreditsEarned?: number;
   totalEarned?: number;
