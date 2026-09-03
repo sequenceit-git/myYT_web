@@ -688,109 +688,96 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                 </button>
               </div>
 
-              {/* 1. Mobile App Enforcement Hero Card */}
+              {/* 1. Mobile App Download Banner (Simple & Elegant like Profile Switch) */}
               <div
-                className="glass-card"
                 style={{
-                  padding: '24px',
-                  borderRadius: 18,
-                  border: '1.5px solid var(--primary-neon)',
-                  background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.08) 0%, rgba(255, 255, 255, 0.98) 100%)',
-                  boxShadow: '0 10px 30px rgba(14, 165, 233, 0.12)',
+                  position: 'relative',
+                  borderRadius: 14,
+                  background: 'linear-gradient(135deg, #0369a1 0%, #0284c7 45%, #0ea5e9 100%)',
+                  boxShadow: '0 6px 18px -3px rgba(2, 132, 199, 0.28)',
+                  padding: '12px 18px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: 12,
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
-                  <div style={{ flex: 1, minWidth: 280 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                      <span className="badge-pill badge-hot" style={{ fontSize: '0.74rem', padding: '3px 10px' }}>
-                        ⚡ MOBILE EXCLUSIVE
-                      </span>
-                      <span className="badge-pill badge-cyan" style={{ fontSize: '0.74rem', padding: '3px 10px' }}>
-                        Android v1.0.0
-                      </span>
-                    </div>
-                    <h2 className="font-display" style={{ fontSize: '1.65rem', color: '#0f172a', margin: '4px 0 10px 0' }}>
-                      Watch Videos & Earn on the myYT Android App
-                    </h2>
-                    <p style={{ color: '#475569', fontSize: '0.92rem', lineHeight: 1.55, margin: 0, maxWidth: 640 }}>
-                      To prevent fraud and guarantee creator view verification, video watching is supported <strong>exclusively inside our official Android application</strong>. The app features a smart floating bubble overlay, automatic ad skip detection, and instant automated payout verification.
-                    </p>
+                {/* Left: Compact Icon & Headline */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div
+                    style={{
+                      width: 42,
+                      height: 42,
+                      borderRadius: 10,
+                      background: 'rgba(255, 255, 255, 0.16)',
+                      border: '1px solid rgba(255, 255, 255, 0.28)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Smartphone size={22} color="#ffffff" />
                   </div>
 
-                  {/* Download CTA Box */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 220 }}>
-                    <a
-                      href="/downloads/myyt.apk"
-                      download="myyt.apk"
-                      className="btn btn-neon glow-neon"
-                      style={{
-                        padding: '12px 20px',
-                        fontSize: '0.96rem',
-                        borderRadius: 12,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 8,
-                        textDecoration: 'none',
-                        fontWeight: 700,
-                      }}
-                    >
-                      <Download size={18} /> Download Android App (.APK)
-                    </a>
-                    <a
-                      href="https://expo.dev/accounts/ovijitm/projects/myyt/builds"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="btn btn-ghost"
-                      style={{
-                        padding: '7px 12px',
-                        fontSize: '0.78rem',
-                        borderRadius: 8,
-                        textAlign: 'center',
-                        textDecoration: 'none',
-                        color: '#64748b',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 5,
-                      }}
-                    >
-                      <ExternalLink size={12} /> EAS Builds & Mirror Links
-                    </a>
+                  <div>
+                    <div className="font-display" style={{ fontSize: '1.25rem', color: '#ffffff', letterSpacing: '0.01em', margin: 0, lineHeight: 1.2 }}>
+                      WATCH & EARN ON THE <span style={{ color: '#bae6fd' }}>myYT ANDROID APP</span>
+                    </div>
+                    <div style={{ fontSize: '0.82rem', color: 'rgba(255, 255, 255, 0.88)', marginTop: 2 }}>
+                      Video viewing is exclusive to the mobile app with smart floating countdown & auto rewards.
+                    </div>
                   </div>
                 </div>
 
-                {/* 3 Step Guide Row */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginTop: 22, paddingTop: 18, borderTop: '1px solid rgba(14, 165, 233, 0.18)' }}>
-                  <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                    <div style={{ width: 34, height: 34, borderRadius: 10, background: '#0284c7', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.95rem', flexShrink: 0 }}>
-                      1
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0f172a' }}>1. Download & Install</div>
-                      <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 2 }}>Install the myYT APK on your Android device.</div>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                    <div style={{ width: 34, height: 34, borderRadius: 10, background: '#0284c7', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.95rem', flexShrink: 0 }}>
-                      2
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0f172a' }}>2. Sign In to Your Account</div>
-                      <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 2 }}>Log in with {user?.email || 'your email'} to link your wallet.</div>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                    <div style={{ width: 34, height: 34, borderRadius: 10, background: '#10b981', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.95rem', flexShrink: 0 }}>
-                      3
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0f172a' }}>3. Watch & Auto-Earn</div>
-                      <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 2 }}>The floating countdown credits earnings automatically.</div>
-                    </div>
-                  </div>
+                {/* Right: Download Buttons */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <a
+                    href="/downloads/myyt.apk"
+                    download="myyt.apk"
+                    style={{
+                      padding: '10px 22px',
+                      fontSize: '0.88rem',
+                      fontWeight: 800,
+                      fontFamily: 'JetBrains Mono, monospace',
+                      letterSpacing: '0.03em',
+                      textTransform: 'uppercase',
+                      borderRadius: 10,
+                      border: 'none',
+                      background: '#ffffff',
+                      color: '#0369a1',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      cursor: 'pointer',
+                      boxShadow: '0 3px 12px rgba(0, 0, 0, 0.15)',
+                      textDecoration: 'none',
+                      whiteSpace: 'nowrap',
+                      transition: 'all 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-1px)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
+                  >
+                    <Download size={16} /> Download APK
+                  </a>
+                  <a
+                    href="https://expo.dev/accounts/ovijitm/projects/myyt/builds"
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      padding: '7px 10px',
+                      fontSize: '0.78rem',
+                      color: 'rgba(255, 255, 255, 0.85)',
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                    }}
+                  >
+                    <ExternalLink size={12} /> Builds
+                  </a>
                 </div>
               </div>
 
