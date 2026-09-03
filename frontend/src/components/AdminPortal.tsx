@@ -91,7 +91,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user }) => {
     return (
       <div style={{ maxWidth: 800, margin: '60px auto', padding: 24, textAlign: 'center' }}>
         <Shield size={48} color="var(--primary-neon)" style={{ margin: '0 auto 16px' }} />
-        <h2 className="font-display" style={{ fontSize: '2rem' }}>Admin Authentication Required</h2>
+        <h2 className="font-display" style={{ fontSize: '2rem', color: '#0f172a' }}>Admin Authentication Required</h2>
         <p style={{ color: 'var(--on-surface-variant)', marginTop: 8 }}>
           Please use the "Admin" button in the top right to switch to the admin demo account.
         </p>
@@ -107,8 +107,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user }) => {
           <div className="badge-pill badge-cyan" style={{ marginBottom: 8 }}>
             ● Super Admin Control Surface
           </div>
-          <h1 className="font-display" style={{ fontSize: '2.8rem', letterSpacing: '0.01em', color: '#ffffff' }}>
-            OPERATIONS <span style={{ color: 'var(--secondary-cyan)' }}>CONTROL DESK</span>
+          <h1 className="font-display" style={{ fontSize: '2.8rem', letterSpacing: '0.01em', color: '#0f172a' }}>
+            OPERATIONS <span style={{ color: 'var(--primary-neon)' }}>CONTROL DESK</span>
           </h1>
           <p className="font-body" style={{ color: 'var(--on-surface-variant)', marginTop: 4 }}>
             System operations, 4,000–5,000 concurrent load monitor, withdrawal approval desk, and campaign moderation.
@@ -121,7 +121,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user }) => {
       </div>
 
       {actionNotice && (
-        <div className="glass-card" style={{ padding: '12px 18px', borderLeft: '4px solid var(--primary-neon)', background: 'rgba(195,244,0,0.1)', color: 'var(--primary-neon)' }}>
+        <div className="glass-card" style={{ padding: '12px 18px', borderLeft: '4px solid var(--primary-neon)', background: '#f0f9ff', color: '#0284c7' }}>
           {actionNotice}
         </div>
       )}
@@ -129,7 +129,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user }) => {
       {/* Real-Time Telemetry & Concurrency Row */}
       {stats && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 18 }}>
-          <div className="glass-card" style={{ padding: 22, border: '1px solid rgba(195,244,0,0.3)' }}>
+          <div className="glass-card" style={{ padding: 22, border: '1.5px solid rgba(14, 165, 233, 0.3)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--on-surface-variant)', fontSize: '0.8rem' }}>
               <span className="font-mono">Live Concurrency</span>
               <Activity size={18} color="var(--primary-neon)" />
@@ -145,9 +145,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user }) => {
           <div className="glass-card" style={{ padding: 22 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--on-surface-variant)', fontSize: '0.8rem' }}>
               <span className="font-mono">Registered Users</span>
-              <Users size={18} color="var(--secondary-cyan)" />
+              <Users size={18} color="var(--primary-neon)" />
             </div>
-            <div className="font-mono" style={{ fontSize: '2.2rem', fontWeight: 800, color: '#ffffff', marginTop: 8 }}>
+            <div className="font-mono" style={{ fontSize: '2.2rem', fontWeight: 800, color: '#0f172a', marginTop: 8 }}>
               {stats.totalUsers || 0}
             </div>
             <div className="font-mono" style={{ fontSize: '0.75rem', color: 'var(--on-surface-variant)', marginTop: 4 }}>
@@ -158,9 +158,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user }) => {
           <div className="glass-card" style={{ padding: 22 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--on-surface-variant)', fontSize: '0.8rem' }}>
               <span className="font-mono">Delivered Views</span>
-              <Video size={18} color="#b7f648" />
+              <Video size={18} color="#0284c7" />
             </div>
-            <div className="font-mono" style={{ fontSize: '2.2rem', fontWeight: 800, color: '#ffffff', marginTop: 8 }}>
+            <div className="font-mono" style={{ fontSize: '2.2rem', fontWeight: 800, color: '#0f172a', marginTop: 8 }}>
               {stats.totalViewsDelivered || 0}
             </div>
             <div className="font-mono" style={{ fontSize: '0.75rem', color: 'var(--on-surface-variant)', marginTop: 4 }}>
@@ -171,9 +171,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user }) => {
           <div className="glass-card" style={{ padding: 22 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--on-surface-variant)', fontSize: '0.8rem' }}>
               <span className="font-mono">Pending Withdrawals</span>
-              <DollarSign size={18} color="var(--accent-amber)" />
+              <DollarSign size={18} color="#d97706" />
             </div>
-            <div className="font-mono" style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--accent-amber)', marginTop: 8 }}>
+            <div className="font-mono" style={{ fontSize: '2.2rem', fontWeight: 800, color: '#d97706', marginTop: 8 }}>
               {stats.pendingPayoutsCount || 0}
             </div>
             <div className="font-mono" style={{ fontSize: '0.75rem', color: 'var(--on-surface-variant)', marginTop: 4 }}>
@@ -184,16 +184,16 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user }) => {
       )}
 
       {/* Sub-Navigation */}
-      <div style={{ display: 'flex', gap: 10, borderBottom: '1px solid var(--glass-stroke)', paddingBottom: 12 }}>
+      <div style={{ display: 'flex', gap: 10, borderBottom: '1px solid var(--glass-stroke)', paddingBottom: 12, flexWrap: 'wrap' }}>
         <button
           onClick={() => setActiveSection('payouts')}
           className="btn"
           style={{
             padding: '8px 20px',
             borderRadius: 9999,
-            background: activeSection === 'payouts' ? 'var(--secondary-cyan)' : 'transparent',
-            color: activeSection === 'payouts' ? '#003642' : 'var(--on-surface-variant)',
-            border: activeSection === 'payouts' ? '1px solid var(--secondary-cyan)' : '1px solid transparent',
+            background: activeSection === 'payouts' ? 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)' : 'transparent',
+            color: activeSection === 'payouts' ? '#ffffff' : 'var(--on-surface-variant)',
+            border: activeSection === 'payouts' ? '1px solid var(--primary-neon)' : '1px solid transparent',
           }}
         >
           Withdrawal Desk ({payoutsList.filter((p) => p.status === 'pending').length} Pending)
@@ -205,9 +205,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user }) => {
           style={{
             padding: '8px 20px',
             borderRadius: 9999,
-            background: activeSection === 'campaigns' ? 'var(--secondary-cyan)' : 'transparent',
-            color: activeSection === 'campaigns' ? '#003642' : 'var(--on-surface-variant)',
-            border: activeSection === 'campaigns' ? '1px solid var(--secondary-cyan)' : '1px solid transparent',
+            background: activeSection === 'campaigns' ? 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)' : 'transparent',
+            color: activeSection === 'campaigns' ? '#ffffff' : 'var(--on-surface-variant)',
+            border: activeSection === 'campaigns' ? '1px solid var(--primary-neon)' : '1px solid transparent',
           }}
         >
           Campaign Moderation ({campaignsList.length})
@@ -219,9 +219,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user }) => {
           style={{
             padding: '8px 20px',
             borderRadius: 9999,
-            background: activeSection === 'users' ? 'var(--secondary-cyan)' : 'transparent',
-            color: activeSection === 'users' ? '#003642' : 'var(--on-surface-variant)',
-            border: activeSection === 'users' ? '1px solid var(--secondary-cyan)' : '1px solid transparent',
+            background: activeSection === 'users' ? 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)' : 'transparent',
+            color: activeSection === 'users' ? '#ffffff' : 'var(--on-surface-variant)',
+            border: activeSection === 'users' ? '1px solid var(--primary-neon)' : '1px solid transparent',
           }}
         >
           User Accounts ({usersList.length})
@@ -231,7 +231,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user }) => {
       {/* SECTION 1: WITHDRAWAL APPROVAL DESK */}
       {activeSection === 'payouts' && (
         <div className="glass-card" style={{ padding: 28 }}>
-          <h2 className="font-display" style={{ fontSize: '1.6rem', marginBottom: 20, color: '#ffffff' }}>
+          <h2 className="font-display" style={{ fontSize: '1.6rem', marginBottom: 20, color: '#0f172a' }}>
             Manual Payout Requests (bKash / Nagad / Crypto / FaucetPay / WebMoney)
           </h2>
           {!payoutsList.length ? (
@@ -240,7 +240,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user }) => {
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid var(--glass-stroke)', textAlign: 'left', color: 'var(--on-surface-variant)' }}>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0', textAlign: 'left', color: 'var(--on-surface-variant)' }}>
                     <th className="font-mono" style={{ padding: '12px' }}>Viewer</th>
                     <th className="font-mono" style={{ padding: '12px' }}>Method</th>
                     <th className="font-mono" style={{ padding: '12px' }}>Amount</th>
@@ -252,8 +252,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user }) => {
                 </thead>
                 <tbody>
                   {payoutsList.map((p) => (
-                    <tr key={p._id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                      <td style={{ padding: '14px', fontWeight: 600 }}>{p.viewerId?.email || 'Viewer'}</td>
+                    <tr key={p._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '14px', fontWeight: 600, color: '#0f172a' }}>{p.viewerId?.email || 'Viewer'}</td>
                       <td style={{ padding: '14px' }}>
                         <span className="badge-pill badge-cyan">
                           {p.method}
@@ -262,7 +262,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user }) => {
                       <td className="font-mono" style={{ padding: '14px', fontWeight: 800, color: 'var(--primary-neon)' }}>
                         ${p.amount.toFixed(2)}
                       </td>
-                      <td className="font-mono" style={{ padding: '14px', fontSize: '0.8rem' }}>
+                      <td className="font-mono" style={{ padding: '14px', fontSize: '0.8rem', color: '#0f172a' }}>
                         {p.accountDetails}
                       </td>
                       <td className="font-mono" style={{ padding: '14px' }}>
@@ -273,7 +273,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user }) => {
                               p.status === 'approved'
                                 ? 'var(--primary-neon)'
                                 : p.status === 'pending'
-                                ? 'var(--accent-amber)'
+                                ? '#d97706'
                                 : '#ef4444',
                           }}
                         >
@@ -317,13 +317,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user }) => {
       {/* SECTION 2: CAMPAIGNS MODERATION */}
       {activeSection === 'campaigns' && (
         <div className="glass-card" style={{ padding: 28 }}>
-          <h2 className="font-display" style={{ fontSize: '1.6rem', marginBottom: 20, color: '#ffffff' }}>
+          <h2 className="font-display" style={{ fontSize: '1.6rem', marginBottom: 20, color: '#0f172a' }}>
             All Video Campaigns ({campaignsList.length})
           </h2>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid var(--glass-stroke)', textAlign: 'left', color: 'var(--on-surface-variant)' }}>
+                <tr style={{ borderBottom: '1px solid #e2e8f0', textAlign: 'left', color: 'var(--on-surface-variant)' }}>
                   <th className="font-mono" style={{ padding: '12px' }}>Video</th>
                   <th className="font-mono" style={{ padding: '12px' }}>Duration</th>
                   <th className="font-mono" style={{ padding: '12px' }}>Views Progress</th>
@@ -334,7 +334,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user }) => {
               </thead>
               <tbody>
                 {campaignsList.map((c) => (
-                  <tr key={c._id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                  <tr key={c._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                     <td style={{ padding: '14px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <img
@@ -343,18 +343,18 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user }) => {
                           style={{ width: 64, height: 40, objectFit: 'cover', borderRadius: 8 }}
                         />
                         <div>
-                          <div style={{ fontWeight: 600 }}>{c.title}</div>
+                          <div style={{ fontWeight: 600, color: '#0f172a' }}>{c.title}</div>
                           <div className="font-mono" style={{ fontSize: '0.75rem', color: 'var(--on-surface-variant)' }}>ID: {c.videoId}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="font-mono" style={{ padding: '14px' }}>{c.watchDurationSec}s</td>
-                    <td className="font-mono" style={{ padding: '14px', fontWeight: 600 }}>
+                    <td className="font-mono" style={{ padding: '14px', color: '#0f172a' }}>{c.watchDurationSec}s</td>
+                    <td className="font-mono" style={{ padding: '14px', fontWeight: 600, color: 'var(--primary-neon)' }}>
                       {c.viewsDelivered} / {c.targetViews}
                     </td>
-                    <td className="font-mono" style={{ padding: '14px' }}>${c.totalCost.toFixed(2)}</td>
+                    <td className="font-mono" style={{ padding: '14px', color: '#0f172a' }}>${c.totalCost.toFixed(2)}</td>
                     <td style={{ padding: '14px' }}>
-                      <span className="badge-pill" style={{ background: c.status === 'active' ? 'rgba(195,244,0,0.15)' : 'rgba(255,255,255,0.05)', color: c.status === 'active' ? 'var(--primary-neon)' : 'var(--on-surface-variant)' }}>
+                      <span className="badge-pill" style={{ background: c.status === 'active' ? '#e0f2fe' : '#f1f5f9', color: c.status === 'active' ? 'var(--primary-neon)' : 'var(--on-surface-variant)' }}>
                         {c.status}
                       </span>
                     </td>
@@ -378,13 +378,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user }) => {
       {/* SECTION 3: USERS DESK */}
       {activeSection === 'users' && (
         <div className="glass-card" style={{ padding: 28 }}>
-          <h2 className="font-display" style={{ fontSize: '1.6rem', marginBottom: 20, color: '#ffffff' }}>
+          <h2 className="font-display" style={{ fontSize: '1.6rem', marginBottom: 20, color: '#0f172a' }}>
             Registered Users ({usersList.length})
           </h2>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid var(--glass-stroke)', textAlign: 'left', color: 'var(--on-surface-variant)' }}>
+                <tr style={{ borderBottom: '1px solid #e2e8f0', textAlign: 'left', color: 'var(--on-surface-variant)' }}>
                   <th className="font-mono" style={{ padding: '12px' }}>User</th>
                   <th className="font-mono" style={{ padding: '12px' }}>Role</th>
                   <th className="font-mono" style={{ padding: '12px' }}>Balance</th>
@@ -394,13 +394,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user }) => {
               </thead>
               <tbody>
                 {usersList.map((u) => (
-                  <tr key={u.id || (u as any)._id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                  <tr key={u.id || (u as any)._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                     <td style={{ padding: '14px' }}>
-                      <div style={{ fontWeight: 600 }}>{u.name}</div>
+                      <div style={{ fontWeight: 600, color: '#0f172a' }}>{u.name}</div>
                       <div className="font-mono" style={{ fontSize: '0.75rem', color: 'var(--on-surface-variant)' }}>{u.email}</div>
                     </td>
                     <td style={{ padding: '14px' }}>
-                      <span className="badge-pill" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                      <span className="badge-pill" style={{ background: '#f0f9ff', color: 'var(--primary-neon)' }}>
                         {u.role}
                       </span>
                     </td>

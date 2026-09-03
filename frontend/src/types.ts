@@ -33,6 +33,9 @@ export interface Task {
   campaignId: string;
   viewerId: string;
   videoId: string;
+  title?: string;
+  thumbnailUrl?: string;
+  rewardUsd?: number;
   requiredDurationSec: number;
   rewardAmount: number;
   status: 'assigned' | 'in_progress' | 'completed' | 'failed';

@@ -10,7 +10,7 @@ import { MobileSimulator } from './components/MobileSimulator';
 import { AdminPortal } from './components/AdminPortal';
 import { AuthModal } from './components/AuthModal';
 import { User } from './types';
-import { apiRequest, clearAuthToken } from './api';
+import { apiRequest, clearAuthToken, setAuthToken } from './api';
 
 export function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -24,11 +24,11 @@ export function App() {
 
   // Check auth on load
   const fetchMe = async () => {
+    const token = localStorage.getItem('myyt_token');
+    if (!token) return;
     const res = await apiRequest<User>('/auth/me');
     if (res.success && res.data) {
       setUser(res.data);
-    } else {
-      setUser(null);
     }
   };
 
@@ -37,19 +37,61 @@ export function App() {
   }, []);
 
   const handleOpenAuth = (mode: 'signin' | 'signup' = 'signin', role: 'viewer' | 'campaigner' = 'viewer') => {
+    // If user is already logged in, seamlessly redirect to their dashboard without opening auth modal
+    if (user) {
+      navigate(user.role === 'campaigner' ? '/creator' : '/viewer');
+      return;
+    }
     setAuthMode(mode);
     setAuthRole(role);
     setAuthModalOpen(true);
   };
 
-  const handleAuthSuccess = (authenticatedUser: User, _token: string) => {
+  const handleAuthSuccess = (authenticatedUser: User, token: string) => {
+    if (token) {
+      setAuthToken(token);
+    }
     setUser(authenticatedUser);
+    setAuthModalOpen(false);
     if (authenticatedUser.role === 'campaigner') {
       navigate('/creator');
     } else if (authenticatedUser.role === 'admin') {
       navigate('/admin');
     } else {
       navigate('/viewer');
+    }
+  };
+
+  const handleSwitchProfile = async (targetRole: 'viewer' | 'campaigner') => {
+    if (!user) {
+      handleOpenAuth('signin');
+      return;
+    }
+
+    const normalizedRole = targetRole === 'campaigner' ? 'campaigner' : 'viewer';
+    const nextRoute = normalizedRole === 'campaigner' ? '/creator' : '/viewer';
+
+    // 1. Instantly update React user state in-place so there is zero logout or flicker
+    setUser((prev) => (prev ? { ...prev, role: normalizedRole } : prev));
+    navigate(nextRoute);
+
+    // 2. Persist role change on backend
+    try {
+      const res = await apiRequest<{ user: User; token: string }>('/auth/switch-profile', {
+        method: 'POST',
+        body: JSON.stringify({ targetRole: normalizedRole }),
+      });
+
+      if (res.success && res.data) {
+        if (res.data.token) {
+          setAuthToken(res.data.token);
+        }
+        if (res.data.user) {
+          setUser(res.data.user);
+        }
+      }
+    } catch {
+      // Keep optimistic user state; NEVER clear user or log out
     }
   };
 
@@ -68,6 +110,7 @@ export function App() {
         user={user}
         onOpenAuth={handleOpenAuth}
         onLogout={handleLogout}
+        onSwitchProfile={handleSwitchProfile}
       />
 
       {/* Live Payouts Ticker - Rendered only on public Landing Page */}
@@ -81,11 +124,12 @@ export function App() {
             path="/"
             element={
               <LandingPage
+                user={user}
                 onStartEarning={() => {
                   if (user) {
                     navigate(user.role === 'campaigner' ? '/creator' : '/viewer');
                   } else {
-                    handleOpenAuth('signup', 'viewer');
+                    handleOpenAuth('signup');
                   }
                 }}
                 onBuyViews={() => {
@@ -105,7 +149,14 @@ export function App() {
           {/* Creator Studio & Campaign Dashboard */}
           <Route
             path="/creator"
-            element={<CampaignerPortal user={user} onRefreshUser={fetchMe} onOpenAuth={handleOpenAuth} />}
+            element={
+              <CampaignerPortal
+                user={user}
+                onRefreshUser={fetchMe}
+                onOpenAuth={handleOpenAuth}
+                onSwitchProfile={handleSwitchProfile}
+              />
+            }
           />
 
           {/* Viewer Rewards & Wallet Portal */}
@@ -117,6 +168,7 @@ export function App() {
                 onRefreshUser={fetchMe}
                 onOpenAuth={handleOpenAuth}
                 onStartWatching={() => navigate('/simulator')}
+                onSwitchProfile={handleSwitchProfile}
               />
             }
           />
@@ -128,6 +180,7 @@ export function App() {
                 onRefreshUser={fetchMe}
                 onOpenAuth={handleOpenAuth}
                 onStartWatching={() => navigate('/simulator')}
+                onSwitchProfile={handleSwitchProfile}
               />
             }
           />
@@ -168,10 +221,10 @@ export function App() {
 
       {/* Footer - Rendered on Landing Page */}
       {isLandingPage && (
-        <footer style={{ borderTop: '1px solid var(--glass-stroke)', background: '#0e0e0e', padding: '50px 30px 30px', marginTop: 50 }}>
+        <footer style={{ borderTop: '1px solid var(--glass-stroke)', background: '#ffffff', padding: '50px 30px 30px', marginTop: 50 }}>
           <div style={{ maxWidth: 1240, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 32, marginBottom: 36 }}>
             <div>
-              <div className="font-display" style={{ fontSize: '1.5rem', color: '#ffffff', marginBottom: 8 }}>
+              <div className="font-display" style={{ fontSize: '1.5rem', color: '#0f172a', marginBottom: 8 }}>
                 MY<span style={{ color: 'var(--primary-neon)' }}>YT</span>
               </div>
               <p className="font-body" style={{ color: 'var(--on-surface-variant)', fontSize: '0.8rem', lineHeight: 1.55, maxWidth: 260 }}>
@@ -180,22 +233,22 @@ export function App() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <span className="font-mono" style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#ffffff', letterSpacing: '0.05em' }}>Platform</span>
+              <span className="font-mono" style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#0f172a', letterSpacing: '0.05em', fontWeight: 700 }}>Platform</span>
               <Link to="/buy-views" style={{ color: 'var(--on-surface-variant)', fontSize: '0.78rem', textDecoration: 'none' }}>Buy YouTube Views</Link>
               <Link to="/simulator" style={{ color: 'var(--on-surface-variant)', fontSize: '0.78rem', textDecoration: 'none' }}>Watch & Earn App</Link>
               <Link to="/viewer" style={{ color: 'var(--on-surface-variant)', fontSize: '0.78rem', textDecoration: 'none' }}>Instant Wallet</Link>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <span className="font-mono" style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#ffffff', letterSpacing: '0.05em' }}>Payout Rails</span>
+              <span className="font-mono" style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#0f172a', letterSpacing: '0.05em', fontWeight: 700 }}>Payout Rails</span>
               <span style={{ color: 'var(--on-surface-variant)', fontSize: '0.78rem' }}>bKash & Nagad (MFS)</span>
               <span style={{ color: 'var(--on-surface-variant)', fontSize: '0.78rem' }}>FaucetPay & WebMoney</span>
               <span style={{ color: 'var(--on-surface-variant)', fontSize: '0.78rem' }}>Direct Crypto (USDT / LTC)</span>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <span className="font-mono" style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#ffffff', letterSpacing: '0.05em' }}>Infrastructure</span>
-              <span className="font-mono" style={{ color: 'var(--primary-neon)', fontSize: '0.75rem' }}>4k–5k Concurrency Target</span>
+              <span className="font-mono" style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#0f172a', letterSpacing: '0.05em', fontWeight: 700 }}>Infrastructure</span>
+              <span className="font-mono" style={{ color: 'var(--primary-neon)', fontSize: '0.75rem', fontWeight: 700 }}>4k–5k Concurrency Target</span>
               <span className="font-mono" style={{ color: 'var(--on-surface-variant)', fontSize: '0.75rem' }}>Server-Authoritative Timing</span>
               <span className="font-mono" style={{ color: 'var(--on-surface-variant)', fontSize: '0.75rem' }}>Redis BullMQ In-Memory</span>
             </div>
@@ -205,7 +258,7 @@ export function App() {
             <span className="font-mono" style={{ fontSize: '0.68rem', color: 'var(--on-surface-variant)' }}>
               © 2026 MYYT. ALL RIGHTS RESERVED.
             </span>
-            <span className="font-mono" style={{ fontSize: '0.68rem', color: 'var(--primary-neon)' }}>
+            <span className="font-mono" style={{ fontSize: '0.68rem', color: 'var(--primary-neon)', fontWeight: 700 }}>
               BUILT FOR HIGH CONCURRENCY & ZERO BANDWIDTH WASTE.
             </span>
           </div>

@@ -8,14 +8,14 @@ import { requireAuth, AuthRequest } from '../../middleware/auth.middleware.js';
 const router = Router();
 
 const withdrawSchema = z.object({
-  amount: z.number().min(1, 'Minimum withdrawal is $1.00'),
+  amount: z.number().min(5, 'Minimum withdrawal is $5.00 USD'),
   method: z.enum(['bkash', 'nagad', 'crypto', 'faucetpay', 'webmoney']),
   accountDetails: z.string().min(3, 'Valid account details / number required'),
 });
 
 const depositSchema = z.object({
-  amount: z.number().min(1, 'Minimum deposit is $1.00'),
-  gateway: z.enum(['faucetpay', 'crypto']),
+  amount: z.number().min(5, 'Minimum deposit is $5.00 USD'),
+  gateway: z.enum(['faucetpay', 'crypto', 'bkash', 'nagad']),
   txHash: z.string().optional(),
 });
 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, CheckCircle2, AlertCircle, ShieldCheck, Zap, BarChart2, Clock, Users } from 'lucide-react';
+import { Sparkles, CheckCircle2, AlertCircle, ShieldCheck, Zap, Clock } from 'lucide-react';
 import { User, Campaign } from '../types';
 import { apiRequest } from '../api';
 
@@ -102,7 +102,7 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
       
       {/* Hero Header */}
       <div>
-        <h1 className="font-display hero-title" style={{ fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', color: '#ffffff', letterSpacing: '0.02em', lineHeight: 1.1 }}>
+        <h1 className="font-display hero-title" style={{ fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', color: '#0f172a', letterSpacing: '0.02em', lineHeight: 1.1 }}>
           BUY REAL <span style={{ color: 'var(--primary-neon)' }}>YOUTUBE VIEWS</span>
         </h1>
         <p className="font-body" style={{ color: 'var(--on-surface-variant)', marginTop: 8, fontSize: '0.92rem', maxWidth: 840, lineHeight: 1.5 }}>
@@ -120,11 +120,11 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
             gap: 10,
             borderRadius: 12,
             borderLeft: feedback.type === 'success' ? '4px solid var(--primary-neon)' : '4px solid #ef4444',
-            background: feedback.type === 'success' ? 'rgba(195,244,0,0.1)' : 'rgba(239,68,68,0.1)',
+            background: feedback.type === 'success' ? '#f0f9ff' : 'rgba(239,68,68,0.08)',
           }}
         >
           {feedback.type === 'success' ? <CheckCircle2 color="var(--primary-neon)" size={18} /> : <AlertCircle color="#ef4444" size={18} />}
-          <span style={{ fontSize: '0.88rem', fontWeight: 500 }}>{feedback.message}</span>
+          <span style={{ fontSize: '0.88rem', fontWeight: 500, color: feedback.type === 'success' ? '#0369a1' : '#b91c1c' }}>{feedback.message}</span>
         </div>
       )}
 
@@ -136,14 +136,14 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, flexWrap: 'wrap', gap: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Sparkles size={18} color="var(--primary-neon)" />
-              <h2 className="font-display" style={{ fontSize: '1.3rem', color: '#ffffff', letterSpacing: '0.02em' }}>
+              <h2 className="font-display" style={{ fontSize: '1.3rem', color: '#0f172a', letterSpacing: '0.02em' }}>
                 NEW CAMPAIGN ORDER
               </h2>
             </div>
             
             {user && (
               <div className="font-mono" style={{ fontSize: '0.78rem', color: 'var(--on-surface-variant)' }}>
-                Balance: <strong style={{ color: 'var(--secondary-cyan)' }}>${user.balance.toFixed(2)} USD</strong>
+                Balance: <strong style={{ color: 'var(--primary-neon)' }}>${user.balance.toFixed(2)} USD</strong>
               </div>
             )}
           </div>
@@ -156,7 +156,7 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
                 <label className="font-mono" style={{ fontSize: '0.75rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   YouTube Video URL:
                 </label>
-                <span className="badge-pill badge-neutral" style={{ fontSize: '0.62rem', padding: '1px 6px' }}>REQUIRED</span>
+                <span className="badge-pill badge-cyan" style={{ fontSize: '0.62rem', padding: '1px 6px' }}>REQUIRED</span>
               </div>
               <input
                 type="text"
@@ -171,14 +171,14 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
 
             {/* Live Detected Thumbnail */}
             {previewVideoId && (
-              <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid var(--glass-stroke)', background: '#0a0a0a', display: 'flex', gap: 12, padding: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid var(--glass-stroke)', background: '#f0f9ff', display: 'flex', gap: 12, padding: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                 <img
                   src={`https://img.youtube.com/vi/${previewVideoId}/hqdefault.jpg`}
                   alt="YouTube Preview"
                   style={{ width: 100, height: 60, objectFit: 'cover', borderRadius: 8 }}
                 />
                 <div>
-                  <div className="font-mono" style={{ fontSize: '0.72rem', color: 'var(--primary-neon)' }}>✓ Valid Video Detected</div>
+                  <div className="font-mono" style={{ fontSize: '0.72rem', color: 'var(--primary-neon)', fontWeight: 700 }}>✓ Valid Video Detected</div>
                   <div className="font-mono" style={{ fontSize: '0.68rem', color: 'var(--on-surface-variant)', marginTop: 2 }}>ID: {previewVideoId}</div>
                 </div>
               </div>
@@ -213,18 +213,19 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
                     style={{
                       padding: '10px 6px',
                       borderRadius: 12,
-                      background: duration === d ? 'var(--primary-neon)' : '#161616',
-                      color: duration === d ? 'var(--on-primary)' : 'var(--on-surface-variant)',
-                      border: duration === d ? '1px solid var(--primary-neon)' : '1px solid var(--glass-stroke)',
+                      background: duration === d ? 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)' : '#ffffff',
+                      color: duration === d ? '#ffffff' : 'var(--on-surface-variant)',
+                      border: duration === d ? '1px solid var(--primary-neon)' : '1px solid #cbd5e1',
                       fontFamily: 'JetBrains Mono, monospace',
                       fontWeight: 700,
                       fontSize: '0.82rem',
                       cursor: 'pointer',
                       transition: 'all 0.2s',
+                      boxShadow: duration === d ? '0 2px 8px rgba(14, 165, 233, 0.3)' : 'none',
                     }}
                   >
                     {d}s
-                    <div style={{ fontSize: '0.65rem', opacity: 0.8, marginTop: 2 }}>
+                    <div style={{ fontSize: '0.65rem', opacity: 0.9, marginTop: 2 }}>
                       ${(basePrice * (durationMultiplier[d] || 1)).toFixed(2)}/k
                     </div>
                   </button>
@@ -286,7 +287,7 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           
           {/* Order Summary Card */}
-          <div className="glass-card mobile-p-small" style={{ padding: 22, borderRadius: 18, border: '1px solid rgba(195, 244, 0, 0.35)' }}>
+          <div className="glass-card mobile-p-small" style={{ padding: 22, borderRadius: 18, border: '1px solid rgba(14, 165, 233, 0.35)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <span className="font-mono" style={{ fontSize: '0.75rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase' }}>
                 Estimated Total Cost
@@ -302,17 +303,17 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--glass-stroke)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
                 <span style={{ color: 'var(--on-surface-variant)' }}>Cost Per View:</span>
-                <strong className="font-mono" style={{ color: '#ffffff' }}>${costPerView.toFixed(4)} USD</strong>
+                <strong className="font-mono" style={{ color: '#0f172a' }}>${costPerView.toFixed(4)} USD</strong>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
                 <span style={{ color: 'var(--on-surface-variant)' }}>Duration Per View:</span>
-                <strong className="font-mono" style={{ color: '#ffffff' }}>{duration} seconds</strong>
+                <strong className="font-mono" style={{ color: '#0f172a' }}>{duration} seconds</strong>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
                 <span style={{ color: 'var(--on-surface-variant)' }}>Total Watch Hours Delivered:</span>
-                <strong className="font-mono" style={{ color: 'var(--secondary-cyan)' }}>≈ {totalWatchHours} Hours</strong>
+                <strong className="font-mono" style={{ color: 'var(--primary-neon)' }}>≈ {totalWatchHours} Hours</strong>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
@@ -324,7 +325,7 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
 
           {/* Guaranteed Features List */}
           <div className="glass-card mobile-p-small" style={{ padding: 20, borderRadius: 18, border: '1px solid var(--glass-stroke)' }}>
-            <h3 className="font-display" style={{ fontSize: '1.1rem', color: '#ffffff', letterSpacing: '0.02em', marginBottom: 12 }}>
+            <h3 className="font-display" style={{ fontSize: '1.1rem', color: '#0f172a', letterSpacing: '0.02em', marginBottom: 12 }}>
               GUARANTEED DELIVERY PERKS
             </h3>
 
@@ -335,7 +336,7 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.82rem', color: 'var(--on-surface)' }}>
-                <Clock size={16} color="var(--secondary-cyan)" style={{ flexShrink: 0 }} />
+                <Clock size={16} color="var(--primary-neon)" style={{ flexShrink: 0 }} />
                 <span><strong>1-Hour Anti-Spam:</strong> Unique viewer IP distribution prevents invalid YouTube duplicate detection.</span>
               </div>
 

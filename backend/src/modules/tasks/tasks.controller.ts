@@ -153,13 +153,14 @@ router.post('/:id/complete', requireAuth, async (req: AuthRequest, res: Response
     };
     await task.save();
 
-    // Calculate watch credits (1 credit per second watched)
-    const creditsEarned = task.requiredDurationSec;
+    // Calculate USD cash reward based on pricing tier (fallback $0.0035)
+    const tier = config.pricingTiers[task.requiredDurationSec];
+    const rewardAmount = tier ? tier.viewerReward : (task.rewardAmount || 0.0035);
 
-    // Atomic reward credits to viewer
+    // Atomic direct USD balance and totalEarned increment to viewer
     const updatedUser = await User.findByIdAndUpdate(
       req.user!._id,
-      { $inc: { credits: creditsEarned, totalCreditsEarned: creditsEarned } },
+      { $inc: { balance: rewardAmount, totalEarned: rewardAmount } },
       { new: true }
     );
 
@@ -175,15 +176,15 @@ router.post('/:id/complete', requireAuth, async (req: AuthRequest, res: Response
       await campaign.save();
     }
 
-    // Record earning transaction
+    // Record direct earning transaction in USD
     await Transaction.create({
       userId: req.user!._id,
-      type: 'watch_credit',
-      amount: 0,
+      type: 'earning',
+      amount: rewardAmount,
       balanceAfter: updatedUser?.balance || 0,
       status: 'completed',
       referenceId: task._id.toString(),
-      notes: `+${creditsEarned} Watch Credits earned from ${task.requiredDurationSec}s video view (${task.videoId})`,
+      notes: `+$${rewardAmount.toFixed(4)} USD earned from ${task.requiredDurationSec}s video view (${task.videoId})`,
     });
 
     // Enforce cooldown in Redis/Cache if enabled
@@ -198,11 +199,11 @@ router.post('/:id/complete', requireAuth, async (req: AuthRequest, res: Response
     res.json({
       success: true,
       data: {
-        creditsEarned,
-        newCredits: updatedUser?.credits || 0,
+        rewardAmount,
         newBalance: updatedUser?.balance || 0,
+        totalEarned: updatedUser?.totalEarned || 0,
         actualDurationSec: task.actualDurationSec,
-        message: `Task successfully verified! +${creditsEarned} Watch Credits credited.`,
+        message: `Task successfully verified! +$${rewardAmount.toFixed(4)} USD credited directly to your wallet.`,
       },
     });
   } catch (error: any) {

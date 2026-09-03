@@ -1,132 +1,101 @@
-import React, { useState, useEffect } from 'react';
-import { X, Mail, Lock, User, Eye, EyeOff, ShieldCheck, PlaySquare, ArrowRight, CheckCircle2, Megaphone, PlayCircle, Rocket } from 'lucide-react';
+import React, { useState } from 'react';
+import {
+  X,
+  Mail,
+  Lock,
+  User as UserIcon,
+  Eye,
+  EyeOff,
+  ShieldCheck,
+  PlaySquare,
+  ArrowRight,
+} from 'lucide-react';
 import { apiRequest, setAuthToken } from '../api';
-import { User as UserType } from '../types';
+import { User } from '../types';
 
 interface AuthModalProps {
   isOpen: boolean;
+  onClose: () => void;
   initialMode?: 'signin' | 'signup';
   initialRole?: 'viewer' | 'campaigner';
-  onClose: () => void;
-  onAuthSuccess: (user: UserType, token: string) => void;
+  onAuthSuccess?: (user: User, token: string) => void;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
   isOpen,
-  initialMode = 'signin',
-  initialRole = 'viewer',
   onClose,
+  initialMode = 'signin',
   onAuthSuccess,
 }) => {
   const [mode, setMode] = useState<'signin' | 'signup'>(initialMode);
-  const [role, setRole] = useState<'viewer' | 'campaigner'>(initialRole);
   const [email, setEmail] = useState('');
-  const [name, setName] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    setMode(initialMode);
-    setRole(initialRole);
-    setError(null);
-  }, [initialMode, initialRole, isOpen]);
-
-  // Handle ESC key
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) onClose();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
-
   if (!isOpen) return null;
 
-  // Handle Google OAuth Sign In / Sign Up
   const handleGoogleAuth = async () => {
     setLoading(true);
     setError(null);
-
-    const googleEmail = email.trim().toLowerCase() || `${role}_user@gmail.com`;
-    const googleName = name.trim() || (googleEmail.split('@')[0].replace(/[._]/g, ' '));
-    const avatar = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(googleEmail)}`;
-
     try {
-      const res = await apiRequest<{ user: UserType; token: string }>('/auth/google', {
+      const demoEmail = `user.${Math.floor(Math.random() * 9000 + 1000)}@gmail.com`;
+      const res = await apiRequest<{ token: string; user: User }>('/auth/google', {
         method: 'POST',
         body: JSON.stringify({
-          email: googleEmail,
-          name: googleName,
-          avatar,
-          googleId: `google_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
-          role,
+          email: demoEmail,
+          name: 'Verified Google User',
+          googleId: `goog_${Date.now()}`,
+          avatar: `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(demoEmail)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`,
+          role: 'viewer',
         }),
       });
 
       if (res.success && res.data) {
-        setAuthToken(res.data.token);
-        onAuthSuccess(res.data.user, res.data.token);
+        if (res.data.token) {
+          setAuthToken(res.data.token);
+        }
+        if (onAuthSuccess) onAuthSuccess(res.data.user, res.data.token);
         onClose();
       } else {
-        setError(res.error || 'Failed to authenticate with Google');
+        setError(res.error || 'Google Authentication failed');
       }
     } catch (err: any) {
-      setError(err.message || 'Google authentication connection failed');
+      setError(err.message || 'An unexpected error occurred');
     } finally {
       setLoading(false);
     }
   };
 
-  // Handle Traditional Email Password Submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
+    const endpoint = mode === 'signup' ? '/auth/register' : '/auth/login';
+    const payload = mode === 'signup'
+      ? { email, password, name, role: 'viewer' }
+      : { email, password };
+
     try {
-      if (mode === 'signup') {
-        if (!name.trim()) {
-          setError('Please provide your full name');
-          setLoading(false);
-          return;
-        }
-        if (password.length < 6) {
-          setError('Password must be at least 6 characters');
-          setLoading(false);
-          return;
-        }
+      const res = await apiRequest<{ token: string; user: User }>(endpoint, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
 
-        const res = await apiRequest<{ user: UserType; token: string }>('/auth/register', {
-          method: 'POST',
-          body: JSON.stringify({ email: email.trim().toLowerCase(), name: name.trim(), password, role }),
-        });
-
-        if (res.success && res.data) {
+      if (res.success && res.data) {
+        if (res.data.token) {
           setAuthToken(res.data.token);
-          onAuthSuccess(res.data.user, res.data.token);
-          onClose();
-        } else {
-          setError(res.error || 'Registration failed');
         }
+        if (onAuthSuccess) onAuthSuccess(res.data.user, res.data.token);
+        onClose();
       } else {
-        const res = await apiRequest<{ user: UserType; token: string }>('/auth/login', {
-          method: 'POST',
-          body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
-        });
-
-        if (res.success && res.data) {
-          setAuthToken(res.data.token);
-          // Auto-detect role from backend and route to the corresponding dashboard
-          onAuthSuccess(res.data.user, res.data.token);
-          onClose();
-        } else {
-          setError(res.error || 'Invalid email or password');
-        }
+        setError(res.error || 'Authentication failed. Please verify credentials.');
       }
     } catch (err: any) {
-      setError(err.message || 'Network error occurred');
+      setError(err.message || 'Connection error. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -137,17 +106,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 9999,
+        backgroundColor: 'rgba(15, 23, 42, 0.45)',
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
+        zIndex: 1000,
         padding: 16,
-        backgroundColor: 'rgba(0, 0, 0, 0.85)',
-        backdropFilter: 'blur(10px)',
-        WebkitBackdropFilter: 'blur(10px)',
-      }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
@@ -155,10 +121,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         style={{
           width: '100%',
           maxWidth: 440,
-          background: '#161616',
+          background: '#ffffff',
           borderRadius: 24,
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          boxShadow: '0 25px 60px rgba(0, 0, 0, 0.85)',
+          border: '1.5px solid rgba(14, 165, 233, 0.25)',
+          boxShadow: '0 25px 60px rgba(14, 165, 233, 0.15)',
           overflow: 'hidden',
           position: 'relative',
         }}
@@ -168,7 +134,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           style={{
             height: 3,
             width: '100%',
-            background: 'linear-gradient(90deg, #c3f400 0%, #78d3ee 100%)',
+            background: 'linear-gradient(90deg, #38bdf8 0%, #0284c7 100%)',
           }}
         />
 
@@ -180,28 +146,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 width: 44,
                 height: 44,
                 borderRadius: '50%',
-                background: 'var(--primary-neon)',
+                background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 0 18px rgba(195, 244, 0, 0.35)',
+                boxShadow: '0 4px 14px rgba(14, 165, 233, 0.35)',
               }}
             >
-              <PlaySquare size={22} color="#161e00" />
+              <PlaySquare size={22} color="#ffffff" />
             </div>
             <div>
-              <div className="font-display" style={{ fontSize: '1.5rem', color: '#ffffff', letterSpacing: '0.04em', lineHeight: 1.1 }}>
+              <div className="font-display" style={{ fontSize: '1.5rem', color: '#0f172a', letterSpacing: '0.04em', lineHeight: 1.1 }}>
                 MY<span style={{ color: 'var(--primary-neon)' }}>YT</span> ACCESS
               </div>
               <div className="font-mono" style={{ fontSize: '0.76rem', color: 'var(--on-surface-variant)', marginTop: 2 }}>
-                {mode === 'signup' ? 'Create your account & pick your role' : 'Welcome back! Auto-detects your dashboard'}
+                {mode === 'signup' ? 'Create your free account to watch & promote' : 'Welcome back! Sign in to access your dashboard'}
               </div>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="btn-ghost"
             style={{
               width: 32,
               height: 32,
@@ -210,8 +175,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              background: 'rgba(255, 255, 255, 0.06)',
-              border: 'none',
+              background: '#f0f9ff',
+              border: '1px solid rgba(14, 165, 233, 0.2)',
               color: 'var(--on-surface-variant)',
             }}
           >
@@ -225,10 +190,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             style={{
               display: 'grid',
               gridTemplateColumns: '1fr 1fr',
-              background: '#0e0e0e',
+              background: '#f0f9ff',
               padding: 4,
               borderRadius: 14,
-              border: '1px solid var(--glass-stroke)',
+              border: '1px solid rgba(14, 165, 233, 0.2)',
             }}
           >
             <button
@@ -245,8 +210,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 cursor: 'pointer',
                 transition: 'all 0.2s',
                 border: 'none',
-                background: mode === 'signin' ? 'var(--primary-neon)' : 'transparent',
-                color: mode === 'signin' ? '#161e00' : 'var(--on-surface-variant)',
+                background: mode === 'signin' ? '#0284c7' : 'transparent',
+                color: mode === 'signin' ? '#ffffff' : 'var(--on-surface-variant)',
                 fontFamily: 'JetBrains Mono',
               }}
             >
@@ -266,8 +231,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 cursor: 'pointer',
                 transition: 'all 0.2s',
                 border: 'none',
-                background: mode === 'signup' ? 'var(--primary-neon)' : 'transparent',
-                color: mode === 'signup' ? '#161e00' : 'var(--on-surface-variant)',
+                background: mode === 'signup' ? '#0284c7' : 'transparent',
+                color: mode === 'signup' ? '#ffffff' : 'var(--on-surface-variant)',
                 fontFamily: 'JetBrains Mono',
               }}
             >
@@ -277,84 +242,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </div>
 
         <div style={{ padding: '0 28px 28px' }}>
-          {/* Explicit 2-Role Selection (Shown during Account Creation) */}
-          {mode === 'signup' && (
-            <div style={{ marginBottom: 16 }}>
-              <span className="font-mono" style={{ fontSize: '0.72rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', display: 'block', marginBottom: 8 }}>
-                Choose Your Account Role:
-              </span>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                {/* Viewer Role Card */}
-                <div
-                  onClick={() => setRole('viewer')}
-                  style={{
-                    padding: '10px 12px',
-                    borderRadius: 12,
-                    cursor: 'pointer',
-                    border: `1.5px solid ${role === 'viewer' ? 'var(--primary-neon)' : 'var(--glass-stroke)'}`,
-                    background: role === 'viewer' ? 'rgba(195, 244, 0, 0.12)' : '#101010',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 4,
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <PlayCircle size={16} color="var(--primary-neon)" />
-                      <span style={{ fontSize: '0.82rem', fontWeight: 700, color: role === 'viewer' ? 'var(--primary-neon)' : '#ffffff' }}>
-                        Viewer
-                      </span>
-                    </div>
-                    {role === 'viewer' && <CheckCircle2 size={14} color="var(--primary-neon)" />}
-                  </div>
-                  <span style={{ fontSize: '0.66rem', color: 'var(--on-surface-variant)', lineHeight: 1.3 }}>
-                    Watch videos & earn cash
-                  </span>
-                </div>
-
-                {/* Creator Role Card */}
-                <div
-                  onClick={() => setRole('campaigner')}
-                  style={{
-                    padding: '10px 12px',
-                    borderRadius: 12,
-                    cursor: 'pointer',
-                    border: `1.5px solid ${role === 'campaigner' ? 'var(--secondary-cyan)' : 'var(--glass-stroke)'}`,
-                    background: role === 'campaigner' ? 'rgba(120, 211, 238, 0.12)' : '#101010',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 4,
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Rocket size={16} color="var(--secondary-cyan)" />
-                      <span style={{ fontSize: '0.82rem', fontWeight: 700, color: role === 'campaigner' ? 'var(--secondary-cyan)' : '#ffffff' }}>
-                        Creator
-                      </span>
-                    </div>
-                    {role === 'campaigner' && <CheckCircle2 size={14} color="var(--secondary-cyan)" />}
-                  </div>
-                  <span style={{ fontSize: '0.66rem', color: 'var(--on-surface-variant)', lineHeight: 1.3 }}>
-                    Buy real views & promote
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Error Alert */}
           {error && (
             <div
               style={{
-                background: 'rgba(239, 68, 68, 0.15)',
-                border: '1px solid rgba(239, 68, 68, 0.4)',
+                background: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
                 borderRadius: 12,
                 padding: '10px 14px',
                 fontSize: '0.78rem',
-                color: '#fca5a5',
+                color: '#dc2626',
                 marginBottom: 14,
               }}
             >
@@ -375,16 +272,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               gap: 12,
               padding: '13px 18px',
               background: '#ffffff',
-              color: '#1f1f1f',
+              color: '#0f172a',
               borderRadius: 14,
               fontWeight: 650,
               fontSize: '0.9rem',
               cursor: 'pointer',
-              border: 'none',
-              boxShadow: '0 2px 10px rgba(0, 0, 0, 0.25)',
+              border: '1px solid #cbd5e1',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
               transition: 'all 0.2s ease',
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f4f4f4')}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#ffffff')}
           >
             {/* Google official multi-color SVG icon */}
@@ -406,16 +303,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.28 6.61l3.99 3.12c.95-2.85 3.6-4.98 6.73-4.98z"
               />
             </svg>
-            <span>{mode === 'signup' ? `Sign up as ${role === 'campaigner' ? 'Creator' : 'Viewer'} with Google` : 'Continue with Google'}</span>
+            <span>{mode === 'signup' ? 'Sign up with Google' : 'Continue with Google'}</span>
           </button>
 
           {/* Divider */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '20px 0' }}>
-            <div style={{ flex: 1, height: 1, background: 'rgba(255, 255, 255, 0.08)' }} />
+            <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
             <span className="font-mono" style={{ fontSize: '0.72rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase' }}>
               OR WITH EMAIL
             </span>
-            <div style={{ flex: 1, height: 1, background: 'rgba(255, 255, 255, 0.08)' }} />
+            <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
           </div>
 
           {/* Form */}
@@ -433,9 +330,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g. John Doe"
                     className="input-field"
-                    style={{ padding: '11px 14px 11px 40px', fontSize: '0.85rem', borderRadius: 12, background: '#0e0e0e' }}
+                    style={{ padding: '11px 14px 11px 40px', fontSize: '0.85rem', borderRadius: 12 }}
                   />
-                  <User size={16} color="var(--on-surface-variant)" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
+                  <UserIcon size={16} color="var(--on-surface-variant)" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
                 </div>
               </div>
             )}
@@ -452,7 +349,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@example.com"
                   className="input-field"
-                  style={{ padding: '11px 14px 11px 40px', fontSize: '0.85rem', borderRadius: 12, background: '#0e0e0e' }}
+                  style={{ padding: '11px 14px 11px 40px', fontSize: '0.85rem', borderRadius: 12 }}
                 />
                 <Mail size={16} color="var(--on-surface-variant)" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
               </div>
@@ -470,7 +367,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   className="input-field"
-                  style={{ padding: '11px 40px 11px 40px', fontSize: '0.85rem', borderRadius: 12, background: '#0e0e0e' }}
+                  style={{ padding: '11px 40px 11px 40px', fontSize: '0.85rem', borderRadius: 12 }}
                 />
                 <Lock size={16} color="var(--on-surface-variant)" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
                 <button
@@ -510,7 +407,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <span>Processing...</span>
               ) : (
                 <span style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
-                  {mode === 'signup' ? `CREATE ${role === 'campaigner' ? 'CREATOR' : 'VIEWER'} ACCOUNT` : 'SIGN IN TO ACCOUNT'}
+                  {mode === 'signup' ? 'CREATE FREE ACCOUNT' : 'SIGN IN TO ACCOUNT'}
                   <ArrowRight size={16} />
                 </span>
               )}

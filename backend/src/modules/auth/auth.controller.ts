@@ -12,7 +12,7 @@ const registerSchema = z.object({
   email: z.string().email(),
   name: z.string().min(2),
   password: z.string().min(6),
-  role: z.enum(['campaigner', 'viewer']).default('viewer'),
+  role: z.enum(['campaigner', 'viewer']).optional().default('viewer'),
 });
 
 const loginSchema = z.object({
@@ -50,9 +50,9 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
       email,
       name,
       passwordHash,
-      role,
+      role: role || 'viewer',
       avatar: randomAvatar,
-      balance: role === 'campaigner' ? 10.0 : 0.5, // Free starter credit for testing!
+      balance: 1.0, // Free starter credit for testing both viewing and campaigns!
     });
 
     const tokens = generateTokens(user._id.toString(), user.role);
@@ -165,7 +165,7 @@ router.post('/google', async (req: Request, res: Response): Promise<void> => {
         googleId,
         avatar: generatedAvatar,
         role: role === 'campaigner' ? 'campaigner' : 'viewer',
-        balance: role === 'campaigner' ? 10.0 : 0.5,
+        balance: 1.0,
       });
     } else {
       let updated = false;
@@ -232,6 +232,50 @@ router.get('/me', requireAuth, async (req: AuthRequest, res: Response): Promise<
       avatar: (u.avatar ? u.avatar.replace('/svg', '/png') : `https://api.dicebear.com/7.x/adventurer/png?seed=${encodeURIComponent(u.email)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`),
     },
   });
+});
+
+// Switch Profile (Creator <-> Viewer)
+router.post('/switch-profile', requireAuth, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { targetRole } = req.body;
+    if (!targetRole || !['campaigner', 'creator', 'viewer'].includes(targetRole)) {
+      res.status(400).json({ success: false, error: 'Valid target profile role (creator or viewer) is required' });
+      return;
+    }
+
+    const normalizedRole = (targetRole === 'creator' || targetRole === 'campaigner') ? 'campaigner' : 'viewer';
+    const user = req.user!;
+
+    if (user.role !== 'admin') {
+      user.role = normalizedRole;
+      await user.save();
+    }
+
+    const tokens = generateTokens(user._id.toString(), user.role);
+
+    res.json({
+      success: true,
+      data: {
+        user: {
+          id: user._id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          balance: user.balance,
+          credits: user.credits || 0,
+          totalCreditsEarned: user.totalCreditsEarned || 0,
+          totalEarned: user.totalEarned,
+          totalSpent: user.totalSpent,
+          totalWithdrawn: user.totalWithdrawn,
+          status: user.status,
+          avatar: (user.avatar ? user.avatar.replace('/svg', '/png') : `https://api.dicebear.com/7.x/adventurer/png?seed=${encodeURIComponent(user.email)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`),
+        },
+        ...tokens,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
 export const authRouter = router;

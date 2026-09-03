@@ -15,12 +15,14 @@ interface HeaderProps {
   user: User | null;
   onOpenAuth: (mode: 'signin' | 'signup', role?: 'viewer' | 'campaigner') => void;
   onLogout: () => void;
+  onSwitchProfile?: (targetRole: 'viewer' | 'campaigner') => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   user,
   onOpenAuth,
   onLogout,
+  onSwitchProfile,
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -28,6 +30,25 @@ export const Header: React.FC<HeaderProps> = ({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const closeMenu = () => setMobileMenuOpen(false);
+
+  // Active Profile Mode:
+  // Evaluated directly from user.role ('campaigner' vs 'viewer')
+  // and synchronized with active route paths
+  const userRoleStr = (user?.role || '') as string;
+  const isCreatorMode = user
+    ? (userRoleStr === 'campaigner' || userRoleStr === 'creator')
+    : (currentPath === '/creator' || currentPath === '/buy-views');
+
+  const isViewerMode = user
+    ? (!isCreatorMode)
+    : (currentPath === '/viewer' || currentPath === '/simulator' || currentPath === '/watch');
+
+  // Strict Contextual Navigation Rules:
+  // 1. Viewer Profile: 'Buy Views' is completely hidden
+  // 2. Creator Profile: 'Watch App' is completely hidden
+  // 3. Guest / Exploring Home: both visible for discovery
+  const showBuyViews = user ? isCreatorMode : !isViewerMode;
+  const showWatchApp = user ? isViewerMode : !isCreatorMode;
 
   return (
     <header
@@ -38,12 +59,13 @@ export const Header: React.FC<HeaderProps> = ({
         borderLeft: 'none',
         borderRight: 'none',
         padding: '10px 16px',
-        background: 'rgba(12, 12, 12, 0.96)',
+        background: 'rgba(255, 255, 255, 0.95)',
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
         position: 'sticky',
         top: 0,
         zIndex: 100,
+        borderBottom: '1px solid var(--glass-stroke)',
       }}
     >
       <div
@@ -64,24 +86,24 @@ export const Header: React.FC<HeaderProps> = ({
         >
           <div
             style={{
-              width: 32,
-              height: 32,
-              borderRadius: 9,
-              background: 'linear-gradient(135deg, #c3f400 0%, #a2cc00 100%)',
+              width: 34,
+              height: 34,
+              borderRadius: 10,
+              background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 0 14px rgba(195, 244, 0, 0.35)',
+              boxShadow: '0 4px 14px rgba(14, 165, 233, 0.35)',
             }}
           >
-            <PlaySquare size={17} color="#161e00" />
+            <PlaySquare size={18} color="#ffffff" />
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <span className="font-display" style={{ fontSize: '1.35rem', letterSpacing: '0.02em', color: '#ffffff' }}>
+              <span className="font-display" style={{ fontSize: '1.4rem', letterSpacing: '0.02em', color: '#0f172a' }}>
                 MY<span style={{ color: 'var(--primary-neon)' }}>YT</span>
               </span>
-              <span className="badge-pill badge-neon" style={{ fontSize: '0.52rem', padding: '1px 5px' }}>
+              <span className="badge-pill badge-cyan" style={{ fontSize: '0.52rem', padding: '1px 5px' }}>
                 PRO
               </span>
             </div>
@@ -94,10 +116,10 @@ export const Header: React.FC<HeaderProps> = ({
           style={{
             alignItems: 'center',
             gap: 4,
-            background: '#161616',
+            background: '#f0f9ff',
             padding: '3px 6px',
             borderRadius: 9999,
-            border: '1px solid var(--glass-stroke)',
+            border: '1px solid rgba(14, 165, 233, 0.22)',
           }}
         >
           <Link
@@ -107,58 +129,114 @@ export const Header: React.FC<HeaderProps> = ({
               padding: '6px 14px',
               fontSize: '0.74rem',
               borderRadius: 9999,
-              background: currentPath === '/' ? 'var(--primary-neon)' : 'transparent',
-              color: currentPath === '/' ? 'var(--on-primary)' : 'var(--on-surface-variant)',
+              background: currentPath === '/' ? 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)' : 'transparent',
+              color: currentPath === '/' ? '#ffffff' : 'var(--on-surface-variant)',
               fontWeight: currentPath === '/' ? 700 : 500,
               textDecoration: 'none',
+              boxShadow: currentPath === '/' ? '0 2px 8px rgba(14, 165, 233, 0.25)' : 'none',
             }}
           >
             Home
           </Link>
 
-          <Link
-            to="/buy-views"
-            className="btn"
-            style={{
-              padding: '6px 14px',
-              fontSize: '0.74rem',
-              borderRadius: 9999,
-              background: currentPath === '/buy-views' || currentPath === '/creator' ? '#78d3ee' : 'transparent',
-              color: currentPath === '/buy-views' || currentPath === '/creator' ? '#003642' : 'var(--on-surface-variant)',
-              fontWeight: currentPath === '/buy-views' || currentPath === '/creator' ? 700 : 500,
-              textDecoration: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 5,
-            }}
-          >
-            <Megaphone size={13} /> Buy Views
-          </Link>
+          {showBuyViews && (
+            <Link
+              to="/buy-views"
+              className="btn"
+              style={{
+                padding: '6px 14px',
+                fontSize: '0.74rem',
+                borderRadius: 9999,
+                background: currentPath === '/buy-views' || currentPath === '/creator' ? 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)' : 'transparent',
+                color: currentPath === '/buy-views' || currentPath === '/creator' ? '#ffffff' : 'var(--on-surface-variant)',
+                fontWeight: currentPath === '/buy-views' || currentPath === '/creator' ? 700 : 500,
+                textDecoration: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                boxShadow: currentPath === '/buy-views' || currentPath === '/creator' ? '0 2px 8px rgba(14, 165, 233, 0.25)' : 'none',
+              }}
+            >
+              <Megaphone size={13} /> Buy Views
+            </Link>
+          )}
 
-          <Link
-            to="/simulator"
-            className="btn"
-            style={{
-              padding: '6px 14px',
-              fontSize: '0.74rem',
-              borderRadius: 9999,
-              background: currentPath === '/simulator' || currentPath === '/watch' ? 'var(--primary-neon)' : 'transparent',
-              color: currentPath === '/simulator' || currentPath === '/watch' ? 'var(--on-primary)' : 'var(--on-surface-variant)',
-              fontWeight: currentPath === '/simulator' || currentPath === '/watch' ? 700 : 500,
-              textDecoration: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 5,
-            }}
-          >
-            <Smartphone size={13} /> Watch App
-          </Link>
+          {showWatchApp && (
+            <Link
+              to="/simulator"
+              className="btn"
+              style={{
+                padding: '6px 14px',
+                fontSize: '0.74rem',
+                borderRadius: 9999,
+                background: currentPath === '/simulator' || currentPath === '/watch' ? 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)' : 'transparent',
+                color: currentPath === '/simulator' || currentPath === '/watch' ? '#ffffff' : 'var(--on-surface-variant)',
+                fontWeight: currentPath === '/simulator' || currentPath === '/watch' ? 700 : 500,
+                textDecoration: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                boxShadow: currentPath === '/simulator' || currentPath === '/watch' ? '0 2px 8px rgba(14, 165, 233, 0.25)' : 'none',
+              }}
+            >
+              <Smartphone size={13} /> Watch App
+            </Link>
+          )}
         </nav>
 
         {/* Right Actions (Desktop) */}
         <div className="desktop-only" style={{ alignItems: 'center', gap: 8 }}>
           {user ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {/* Profile Mode Switcher Pill */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  background: '#f0f9ff',
+                  padding: 2,
+                  borderRadius: 9999,
+                  border: '1px solid rgba(14, 165, 233, 0.22)',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => onSwitchProfile ? onSwitchProfile('viewer') : navigate('/viewer')}
+                  style={{
+                    padding: '3px 10px',
+                    borderRadius: 9999,
+                    fontSize: '0.7rem',
+                    fontWeight: 700,
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: isViewerMode ? '#0284c7' : 'transparent',
+                    color: isViewerMode ? '#ffffff' : 'var(--on-surface-variant)',
+                    transition: 'all 0.2s',
+                  }}
+                  title="Switch to Viewer Profile"
+                >
+                  Viewer
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onSwitchProfile ? onSwitchProfile('campaigner') : navigate('/creator')}
+                  style={{
+                    padding: '3px 10px',
+                    borderRadius: 9999,
+                    fontSize: '0.7rem',
+                    fontWeight: 700,
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: isCreatorMode ? '#0284c7' : 'transparent',
+                    color: isCreatorMode ? '#ffffff' : 'var(--on-surface-variant)',
+                    transition: 'all 0.2s',
+                  }}
+                  title="Switch to Creator Profile"
+                >
+                  Creator
+                </button>
+              </div>
+
               {/* Balance */}
               <div
                 onClick={() => navigate(user.role === 'campaigner' ? '/creator' : '/viewer')}
@@ -166,10 +244,10 @@ export const Header: React.FC<HeaderProps> = ({
                   display: 'flex',
                   alignItems: 'center',
                   gap: 6,
-                  background: '#181818',
+                  background: '#f0f9ff',
                   padding: '4px 10px',
                   borderRadius: 10,
-                  border: '1px solid rgba(195, 244, 0, 0.25)',
+                  border: '1px solid rgba(14, 165, 233, 0.28)',
                   cursor: 'pointer',
                 }}
               >
@@ -187,8 +265,8 @@ export const Header: React.FC<HeaderProps> = ({
                   height: 32,
                   borderRadius: '50%',
                   overflow: 'hidden',
-                  border: `1.5px solid ${user.role === 'campaigner' ? 'var(--secondary-cyan)' : 'var(--primary-neon)'}`,
-                  background: '#1e1e1e',
+                  border: `1.5px solid var(--primary-neon)`,
+                  background: '#f0f9ff',
                   cursor: 'pointer',
                 }}
               >
@@ -239,10 +317,10 @@ export const Header: React.FC<HeaderProps> = ({
                 display: 'flex',
                 alignItems: 'center',
                 gap: 5,
-                background: '#181818',
+                background: '#f0f9ff',
                 padding: '4px 8px',
                 borderRadius: 8,
-                border: '1px solid rgba(195, 244, 0, 0.25)',
+                border: '1px solid rgba(14, 165, 233, 0.28)',
               }}
             >
               <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--primary-neon)' }} className="pulse-neon" />
@@ -255,9 +333,9 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             style={{
-              background: '#1c1c1c',
+              background: '#f0f9ff',
               border: '1px solid var(--glass-stroke)',
-              color: '#ffffff',
+              color: '#0284c7',
               borderRadius: 8,
               padding: 6,
               display: 'flex',
@@ -267,12 +345,12 @@ export const Header: React.FC<HeaderProps> = ({
             }}
             aria-label="Toggle navigation menu"
           >
-            {mobileMenuOpen ? <X size={20} color="var(--primary-neon)" /> : <Menu size={20} />}
+            {mobileMenuOpen ? <X size={20} color="var(--primary-neon)" /> : <Menu size={20} color="var(--primary-neon)" />}
           </button>
         </div>
       </div>
 
-      {/* Responsive Mobile Drawer Menu (3 Clean Options) */}
+      {/* Responsive Mobile Drawer Menu */}
       {mobileMenuOpen && (
         <div
           className="mobile-only"
@@ -282,6 +360,7 @@ export const Header: React.FC<HeaderProps> = ({
             padding: '14px 0 6px 0',
             marginTop: 10,
             borderTop: '1px solid var(--glass-stroke)',
+            background: '#ffffff',
           }}
         >
           {/* 1. Home */}
@@ -291,8 +370,8 @@ export const Header: React.FC<HeaderProps> = ({
             style={{
               padding: '12px 16px',
               borderRadius: 12,
-              background: currentPath === '/' ? '#1f1f1f' : 'transparent',
-              color: currentPath === '/' ? 'var(--primary-neon)' : '#ffffff',
+              background: currentPath === '/' ? '#e0f2fe' : 'transparent',
+              color: currentPath === '/' ? 'var(--primary-neon)' : '#0f172a',
               fontWeight: 700,
               fontSize: '0.9rem',
               textDecoration: 'none',
@@ -304,59 +383,111 @@ export const Header: React.FC<HeaderProps> = ({
             Home
           </Link>
 
-          {/* 2. Buy Views */}
-          <Link
-            to="/buy-views"
-            onClick={closeMenu}
-            style={{
-              padding: '12px 16px',
-              borderRadius: 12,
-              background: currentPath === '/buy-views' || currentPath === '/creator' ? '#1f1f1f' : 'transparent',
-              color: currentPath === '/buy-views' || currentPath === '/creator' ? '#78d3ee' : '#ffffff',
-              fontWeight: 700,
-              fontSize: '0.9rem',
-              textDecoration: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-            }}
-          >
-            <Megaphone size={16} color="#78d3ee" /> Buy Views
-          </Link>
+          {/* 2. Buy Views (hidden on viewer profile) */}
+          {showBuyViews && (
+            <Link
+              to="/buy-views"
+              onClick={closeMenu}
+              style={{
+                padding: '12px 16px',
+                borderRadius: 12,
+                background: currentPath === '/buy-views' || currentPath === '/creator' ? '#e0f2fe' : 'transparent',
+                color: currentPath === '/buy-views' || currentPath === '/creator' ? 'var(--primary-neon)' : '#0f172a',
+                fontWeight: 700,
+                fontSize: '0.9rem',
+                textDecoration: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+              }}
+            >
+              <Megaphone size={16} color="var(--primary-neon)" /> Buy Views
+            </Link>
+          )}
 
-          {/* 3. Watch App */}
-          <Link
-            to="/simulator"
-            onClick={closeMenu}
-            style={{
-              padding: '12px 16px',
-              borderRadius: 12,
-              background: currentPath === '/simulator' || currentPath === '/watch' ? '#1f1f1f' : 'transparent',
-              color: currentPath === '/simulator' || currentPath === '/watch' ? 'var(--primary-neon)' : '#ffffff',
-              fontWeight: 700,
-              fontSize: '0.9rem',
-              textDecoration: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-            }}
-          >
-            <Smartphone size={16} color="var(--primary-neon)" /> Watch App
-          </Link>
+          {/* 3. Watch App (hidden on creator profile) */}
+          {showWatchApp && (
+            <Link
+              to="/simulator"
+              onClick={closeMenu}
+              style={{
+                padding: '12px 16px',
+                borderRadius: 12,
+                background: currentPath === '/simulator' || currentPath === '/watch' ? '#e0f2fe' : 'transparent',
+                color: currentPath === '/simulator' || currentPath === '/watch' ? 'var(--primary-neon)' : '#0f172a',
+                fontWeight: 700,
+                fontSize: '0.9rem',
+                textDecoration: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+              }}
+            >
+              <Smartphone size={16} color="var(--primary-neon)" /> Watch App
+            </Link>
+          )}
 
           {/* Auth / Profile Actions on Mobile */}
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 10, marginTop: 4 }}>
+          <div style={{ borderTop: '1px solid rgba(14, 165, 233, 0.15)', paddingTop: 10, marginTop: 4 }}>
             {user ? (
-              <button
-                onClick={() => {
-                  onLogout();
-                  closeMenu();
-                }}
-                className="btn btn-ghost"
-                style={{ width: '100%', padding: '10px', borderRadius: 10, fontSize: '0.78rem', justifyContent: 'center' }}
-              >
-                <LogOut size={13} /> Logout ({user.email.split('@')[0]})
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {/* Mobile Profile Switcher Pill */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, background: '#f0f9ff', padding: 4, borderRadius: 12, border: '1px solid var(--glass-stroke)' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onSwitchProfile) onSwitchProfile('viewer');
+                      else navigate('/viewer');
+                      closeMenu();
+                    }}
+                    style={{
+                      padding: '8px 10px',
+                      borderRadius: 10,
+                      fontSize: '0.76rem',
+                      fontWeight: 700,
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: isViewerMode ? 'var(--primary-neon)' : 'transparent',
+                      color: isViewerMode ? '#ffffff' : 'var(--on-surface-variant)',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    🎬 Viewer Profile
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onSwitchProfile) onSwitchProfile('campaigner');
+                      else navigate('/creator');
+                      closeMenu();
+                    }}
+                    style={{
+                      padding: '8px 10px',
+                      borderRadius: 10,
+                      fontSize: '0.76rem',
+                      fontWeight: 700,
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: isCreatorMode ? 'var(--primary-neon)' : 'transparent',
+                      color: isCreatorMode ? '#ffffff' : 'var(--on-surface-variant)',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    🚀 Creator Profile
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => {
+                    onLogout();
+                    closeMenu();
+                  }}
+                  className="btn btn-ghost"
+                  style={{ width: '100%', padding: '10px', borderRadius: 10, fontSize: '0.78rem', justifyContent: 'center' }}
+                >
+                  <LogOut size={13} /> Logout ({user.email.split('@')[0]})
+                </button>
+              </div>
             ) : (
               <div style={{ display: 'flex', gap: 8 }}>
                 <button
