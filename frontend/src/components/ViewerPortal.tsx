@@ -1,5 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Wallet, ArrowDownRight, ArrowUpRight, CheckCircle2, AlertCircle, RefreshCw, History, CreditCard, Play, Coins, ArrowRightLeft } from 'lucide-react';
+import {
+  Wallet,
+  ArrowRightLeft,
+  ArrowUpRight,
+  ArrowDownRight,
+  CheckCircle2,
+  AlertCircle,
+  History,
+  RefreshCw,
+  Coins,
+  Play,
+  CreditCard,
+} from 'lucide-react';
 import { User, Transaction } from '../types';
 import { apiRequest } from '../api';
 
@@ -10,22 +22,28 @@ interface ViewerPortalProps {
   onStartWatching?: () => void;
 }
 
-export const ViewerPortal: React.FC<ViewerPortalProps> = ({ user, onRefreshUser, onOpenAuth, onStartWatching }) => {
+export const ViewerPortal: React.FC<ViewerPortalProps> = ({
+  user,
+  onRefreshUser,
+  onOpenAuth,
+  onStartWatching,
+}) => {
   const [activeAction, setActiveAction] = useState<'none' | 'convert' | 'withdraw' | 'deposit'>('none');
-  
-  // Credits to USD Conversion
-  const [convertCredits, setConvertCredits] = useState<number>(user?.credits || 100);
+
+  // Converter State
+  const [convertCredits, setConvertCredits] = useState<number>(500);
   const [convertLoading, setConvertLoading] = useState(false);
 
-  // Cashout / Withdrawal State
-  const [withdrawAmount, setWithdrawAmount] = useState(0.5);
+  // Withdraw State
+  const [withdrawAmount, setWithdrawAmount] = useState<number>(0.50);
   const [withdrawMethod, setWithdrawMethod] = useState<'bkash' | 'nagad' | 'crypto' | 'faucetpay' | 'webmoney'>('bkash');
   const [accountDetails, setAccountDetails] = useState('');
 
   // Deposit State
-  const [depositAmount, setDepositAmount] = useState(5);
+  const [depositAmount, setDepositAmount] = useState<number>(10);
   const [depositGateway, setDepositGateway] = useState<'faucetpay' | 'crypto'>('faucetpay');
 
+  // Ledger & Messages
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -40,23 +58,21 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({ user, onRefreshUser,
   useEffect(() => {
     if (user) {
       fetchTransactions();
-      if (user.credits && user.credits > 0) {
-        setConvertCredits(Math.min(user.credits, 1000));
-      }
     }
   }, [user]);
 
-  // Handle Convert Credits to USD Cash
+  // Handle Credits Conversion
   const handleConvertCredits = async (e: React.FormEvent) => {
     e.preventDefault();
     setMsg(null);
+
     if (!user) {
       if (onOpenAuth) onOpenAuth('signin', 'viewer');
       return;
     }
 
     if (!convertCredits || convertCredits < 100) {
-      setMsg({ type: 'error', text: 'Minimum conversion is 100 Credits ($0.10 USD)' });
+      setMsg({ type: 'error', text: 'Minimum conversion is 100 Watch Credits ($0.10 USD)' });
       return;
     }
 
@@ -68,7 +84,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({ user, onRefreshUser,
     setConvertLoading(true);
     const res = await apiRequest<any>('/wallet/convert-credits', {
       method: 'POST',
-      body: JSON.stringify({ credits: convertCredits }),
+      body: JSON.stringify({ credits: Number(convertCredits) }),
     });
     setConvertLoading(false);
 
@@ -83,7 +99,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({ user, onRefreshUser,
     }
   };
 
-  // Handle Cashout / Withdrawal
+  // Handle Withdrawal
   const handleWithdraw = async (e: React.FormEvent) => {
     e.preventDefault();
     setMsg(null);
@@ -91,8 +107,9 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({ user, onRefreshUser,
       if (onOpenAuth) onOpenAuth('signin', 'viewer');
       return;
     }
+
     if (!accountDetails.trim()) {
-      setMsg({ type: 'error', text: 'Please enter your payment recipient phone number or address' });
+      setMsg({ type: 'error', text: 'Please enter your payment recipient account / phone number' });
       return;
     }
 
@@ -158,7 +175,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({ user, onRefreshUser,
 
   if (!user) {
     return (
-      <div style={{ maxWidth: 600, margin: '40px auto', padding: 20, textAlign: 'center' }}>
+      <div className="responsive-container" style={{ margin: '40px auto', padding: 20, textAlign: 'center' }}>
         <h2 className="font-display" style={{ fontSize: '1.4rem', color: '#ffffff' }}>Please log in to view your Wallet</h2>
         <p style={{ color: 'var(--on-surface-variant)', fontSize: '0.8rem', marginTop: 4 }}>Earn credits watching videos and convert them directly to cash.</p>
         <button
@@ -176,14 +193,14 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({ user, onRefreshUser,
   const estimatedBdt = ((convertCredits * 0.001) * 122).toFixed(1);
 
   return (
-    <div style={{ maxWidth: 1180, margin: '16px auto', padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Top Header (Compact) */}
+    <div className="responsive-container" style={{ margin: '16px auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Top Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
         <div>
           <div className="badge-pill badge-neon" style={{ marginBottom: 4, fontSize: '0.62rem', padding: '2px 8px' }}>
             ● Watch to Earn & Instant Cashout
           </div>
-          <h1 className="font-display" style={{ fontSize: 'clamp(1.5rem, 2.5vw, 1.9rem)', letterSpacing: '0.01em', color: '#ffffff', lineHeight: 1.1 }}>
+          <h1 className="font-display hero-title" style={{ fontSize: 'clamp(1.5rem, 2.5vw, 1.9rem)', letterSpacing: '0.01em', color: '#ffffff', lineHeight: 1.1 }}>
             VIEWER <span style={{ color: 'var(--primary-neon)' }}>WALLET & REWARDS</span>
           </h1>
           <p className="font-body" style={{ color: 'var(--on-surface-variant)', marginTop: 2, fontSize: '0.78rem' }}>
@@ -221,9 +238,9 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({ user, onRefreshUser,
       )}
 
       {/* Metrics Row: 1. Watch Credits | 2. Cash Balance | 3. Total Withdrawn */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
-        {/* 1. Watch Credits (Earned from Watching) */}
-        <div className="glass-card" style={{ padding: '14px 18px', border: '1.5px solid rgba(195,244,0,0.4)', borderRadius: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: 12 }}>
+        {/* 1. Watch Credits */}
+        <div className="glass-card mobile-p-small" style={{ padding: '14px 18px', border: '1.5px solid rgba(195,244,0,0.4)', borderRadius: 14 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className="font-mono" style={{ fontSize: '0.68rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase' }}>Watch Credits</span>
             <Coins size={16} color="var(--primary-neon)" />
@@ -231,7 +248,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({ user, onRefreshUser,
           <div className="font-mono" style={{ fontSize: '1.55rem', fontWeight: 800, color: 'var(--primary-neon)', marginTop: 4 }}>
             {(user.credits || 0).toLocaleString()} <span style={{ fontSize: '0.7rem', color: 'var(--on-surface-variant)' }}>Credits</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, flexWrap: 'wrap', gap: 6 }}>
             <span style={{ fontSize: '0.65rem', color: 'var(--on-surface-variant)' }}>
               1,000 Credits = $1.00 USD
             </span>
@@ -245,8 +262,8 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({ user, onRefreshUser,
           </div>
         </div>
 
-        {/* 2. Available Cash Funds (Converted / Deposited) */}
-        <div className="glass-card" style={{ padding: '14px 18px', border: '1px solid rgba(120, 211, 238, 0.35)', borderRadius: 14 }}>
+        {/* 2. Available Cash Funds */}
+        <div className="glass-card mobile-p-small" style={{ padding: '14px 18px', border: '1px solid rgba(120, 211, 238, 0.35)', borderRadius: 14 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className="font-mono" style={{ fontSize: '0.68rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase' }}>Available USD Cash</span>
             <Wallet size={16} color="var(--secondary-cyan)" />
@@ -273,7 +290,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({ user, onRefreshUser,
         </div>
 
         {/* 3. Total Settled & Withdrawn */}
-        <div className="glass-card" style={{ padding: '14px 18px', borderRadius: 14 }}>
+        <div className="glass-card mobile-p-small" style={{ padding: '14px 18px', borderRadius: 14 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className="font-mono" style={{ fontSize: '0.68rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase' }}>Total Withdrawn</span>
             <CreditCard size={16} color="#00c853" />
@@ -289,7 +306,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({ user, onRefreshUser,
 
       {/* 4. Interactive Converter Form: Watch Credits ➔ USD Cash Funds */}
       {activeAction === 'convert' && (
-        <div className="glass-card" style={{ padding: '16px 20px', borderRadius: 14, border: '1.5px solid var(--primary-neon)' }}>
+        <div className="glass-card mobile-p-small" style={{ padding: '16px 20px', borderRadius: 14, border: '1.5px solid var(--primary-neon)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <ArrowRightLeft size={16} color="var(--primary-neon)" />
@@ -300,7 +317,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({ user, onRefreshUser,
 
           <form onSubmit={handleConvertCredits} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, flexWrap: 'wrap', gap: 4 }}>
                 <label className="font-mono" style={{ fontSize: '0.68rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase' }}>
                   Credits to Convert (Min 100):
                 </label>
@@ -354,7 +371,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({ user, onRefreshUser,
             </div>
 
             {/* Rate & Estimated Payout Preview */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#101010', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--glass-stroke)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#101010', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--glass-stroke)', flexWrap: 'wrap', gap: 8 }}>
               <div>
                 <div className="font-mono" style={{ fontSize: '0.65rem', color: 'var(--on-surface-variant)' }}>Conversion Rate</div>
                 <div className="font-mono" style={{ fontSize: '0.78rem', color: '#ffffff' }}>1,000 Credits = $1.00 USD</div>
@@ -370,7 +387,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({ user, onRefreshUser,
             <button
               type="submit"
               disabled={convertLoading || (user.credits || 0) < 100}
-              className="btn btn-neon glow-neon"
+              className="btn btn-neon glow-neon btn-mobile-full"
               style={{ padding: '10px', fontSize: '0.8rem', borderRadius: 10 }}
             >
               {convertLoading ? 'Converting Credits...' : `Convert ${convertCredits.toLocaleString()} Credits into Cash`}
@@ -381,13 +398,13 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({ user, onRefreshUser,
 
       {/* 5. Withdrawal Form */}
       {activeAction === 'withdraw' && (
-        <div className="glass-card" style={{ padding: '16px 20px', borderRadius: 14, border: '1.5px solid var(--secondary-cyan)' }}>
+        <div className="glass-card mobile-p-small" style={{ padding: '16px 20px', borderRadius: 14, border: '1.5px solid var(--secondary-cyan)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#ffffff' }}>Withdraw Cash Earnings (Min $0.50)</h3>
             <button onClick={() => setActiveAction('none')} className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: '0.65rem' }}>Close</button>
           </div>
           <form onSubmit={handleWithdraw} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))', gap: 8 }}>
               <div>
                 <label className="font-mono" style={{ fontSize: '0.68rem', color: 'var(--on-surface-variant)', display: 'block', marginBottom: 4 }}>Payout Method:</label>
                 <select
@@ -429,11 +446,11 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({ user, onRefreshUser,
                 />
               </div>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
               <span className="font-mono" style={{ fontSize: '0.72rem', color: 'var(--secondary-cyan)' }}>
                 Est: ৳{(withdrawAmount * 122).toFixed(0)} BDT
               </span>
-              <button type="submit" disabled={loading} className="btn btn-cyan" style={{ padding: '8px 18px', fontSize: '0.78rem', borderRadius: 8 }}>
+              <button type="submit" disabled={loading} className="btn btn-cyan btn-mobile-full" style={{ padding: '8px 18px', fontSize: '0.78rem', borderRadius: 8 }}>
                 {loading ? 'Submitting...' : `Submit Payout Request ($${withdrawAmount.toFixed(2)})`}
               </button>
             </div>
@@ -443,13 +460,13 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({ user, onRefreshUser,
 
       {/* 6. Deposit Form */}
       {activeAction === 'deposit' && (
-        <div className="glass-card" style={{ padding: '16px 20px', borderRadius: 14, border: '1px solid var(--primary-neon)' }}>
+        <div className="glass-card mobile-p-small" style={{ padding: '16px 20px', borderRadius: 14, border: '1px solid var(--primary-neon)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: '#ffffff' }}>Deposit Instant Funds</h3>
             <button onClick={() => setActiveAction('none')} className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: '0.65rem' }}>Close</button>
           </div>
           <form onSubmit={handleDeposit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))', gap: 8 }}>
               <div>
                 <label className="font-mono" style={{ fontSize: '0.68rem', color: 'var(--on-surface-variant)', display: 'block', marginBottom: 4 }}>Gateway:</label>
                 <select
@@ -474,15 +491,15 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({ user, onRefreshUser,
                 />
               </div>
             </div>
-            <button type="submit" disabled={loading} className="btn btn-neon glow-neon" style={{ padding: '8px', fontSize: '0.78rem', borderRadius: 8 }}>
+            <button type="submit" disabled={loading} className="btn btn-neon glow-neon btn-mobile-full" style={{ padding: '8px', fontSize: '0.78rem', borderRadius: 8 }}>
               {loading ? 'Processing...' : `Deposit $${depositAmount.toFixed(2)} USD`}
             </button>
           </form>
         </div>
       )}
 
-      {/* 7. Transaction & Payout Ledger (Compact Table) */}
-      <div className="glass-card" style={{ padding: '16px 18px', borderRadius: 14 }}>
+      {/* 7. Transaction & Payout Ledger (Responsive Table) */}
+      <div className="glass-card mobile-p-small" style={{ padding: '16px 18px', borderRadius: 14 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <History size={16} color="var(--primary-neon)" />
@@ -504,8 +521,8 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({ user, onRefreshUser,
             No transactions found yet. Watch videos to earn credits and convert to cash.
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
+          <div className="responsive-table-wrapper">
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem', minWidth: 480 }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.08)', color: 'var(--on-surface-variant)', textAlign: 'left' }}>
                   <th style={{ padding: '6px 10px', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.66rem' }}>Type</th>

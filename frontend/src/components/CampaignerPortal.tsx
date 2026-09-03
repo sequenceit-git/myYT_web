@@ -85,7 +85,7 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({ user, onRefr
   const activeCampaignsCount = campaigns.filter((c) => c.status === 'active').length;
 
   return (
-    <div style={{ maxWidth: 1180, margin: '16px auto', padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div className="responsive-container" style={{ margin: '16px auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
       
       {/* Top Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
@@ -93,7 +93,7 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({ user, onRefr
           <div className="badge-pill badge-cyan" style={{ marginBottom: 4, fontSize: '0.62rem', padding: '2px 8px' }}>
             ● Creator Studio Management
           </div>
-          <h1 className="font-display" style={{ fontSize: 'clamp(1.5rem, 2.5vw, 1.9rem)', letterSpacing: '0.01em', color: '#ffffff', lineHeight: 1.1 }}>
+          <h1 className="font-display hero-title" style={{ fontSize: 'clamp(1.5rem, 2.5vw, 1.9rem)', letterSpacing: '0.01em', color: '#ffffff', lineHeight: 1.1 }}>
             CREATOR <span style={{ color: 'var(--secondary-cyan)' }}>DASHBOARD</span>
           </h1>
           <p className="font-body" style={{ color: 'var(--on-surface-variant)', marginTop: 2, fontSize: '0.78rem' }}>
@@ -101,8 +101,8 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({ user, onRefr
           </p>
         </div>
 
-        {/* Action Shortcuts */}
-        <div style={{ display: 'flex', gap: 8 }}>
+        {/* Action Buttons */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button
             onClick={() => {
               if (!user) {
@@ -145,8 +145,8 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({ user, onRefr
         </div>
       )}
 
-      {/* 4 Metric Cards Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+      {/* 4 Metric Cards Responsive Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: 12 }}>
         
         {/* 1. Campaign Balance Card */}
         <div className="glass-card" style={{ padding: '14px 18px', border: '1px solid rgba(120, 211, 238, 0.35)', borderRadius: 14 }}>
@@ -213,8 +213,8 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({ user, onRefr
       </div>
 
       {/* Campaigns Table Card */}
-      <div className="glass-card" style={{ padding: '18px 20px', borderRadius: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+      <div className="glass-card mobile-p-small" style={{ padding: '18px 20px', borderRadius: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Eye size={17} color="var(--primary-neon)" />
             <h3 className="font-display" style={{ fontSize: '1.1rem', color: '#ffffff', letterSpacing: '0.02em' }}>
@@ -276,7 +276,7 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({ user, onRefr
                       </a>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                       <span className="font-mono" style={{ fontSize: '0.75rem', color: 'var(--on-surface-variant)' }}>
                         {camp.watchDurationSec}s watch
                       </span>
@@ -300,14 +300,24 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({ user, onRefr
                     </div>
                   </div>
 
-                  {/* Progress */}
+                  {/* Delivery Progress Bar */}
                   <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--on-surface-variant)', marginBottom: 3 }}>
-                      <span>View Delivery</span>
-                      <span className="font-mono">{camp.viewsDelivered || 0} / {camp.targetViews} Views ({percent}%)</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', marginBottom: 4 }}>
+                      <span style={{ color: 'var(--on-surface-variant)' }}>Delivery Progress:</span>
+                      <strong className="font-mono" style={{ color: 'var(--primary-neon)' }}>
+                        {(camp.viewsDelivered || 0).toLocaleString()} / {camp.targetViews.toLocaleString()} views ({percent}%)
+                      </strong>
                     </div>
-                    <div style={{ width: '100%', height: 6, background: '#1c1c1c', borderRadius: 9999, overflow: 'hidden' }}>
-                      <div style={{ width: `${percent}%`, height: '100%', background: 'var(--primary-neon)', transition: 'width 0.3s ease' }} />
+                    <div style={{ height: 6, background: '#1e1e1e', borderRadius: 3, overflow: 'hidden' }}>
+                      <div
+                        style={{
+                          width: `${percent}%`,
+                          height: '100%',
+                          background: 'linear-gradient(90deg, var(--primary-neon) 0%, var(--secondary-cyan) 100%)',
+                          borderRadius: 3,
+                          transition: 'width 0.3s ease',
+                        }}
+                      />
                     </div>
                   </div>
                 </div>
@@ -317,72 +327,61 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({ user, onRefr
         )}
       </div>
 
-      {/* Transaction & Budget Ledger */}
-      <div className="glass-card" style={{ padding: '18px 20px', borderRadius: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <History size={17} color="var(--secondary-cyan)" />
-            <h3 className="font-display" style={{ fontSize: '1.1rem', color: '#ffffff', letterSpacing: '0.02em' }}>
-              BUDGET & SPEND LEDGER
-            </h3>
-          </div>
-          <button
-            onClick={fetchTransactions}
-            className="btn btn-ghost"
-            style={{ padding: '3px 8px', fontSize: '0.68rem', borderRadius: 6 }}
-          >
-            <RefreshCw size={11} /> Refresh
-          </button>
+      {/* Spend & Deposit Transaction Ledger */}
+      <div className="glass-card mobile-p-small" style={{ padding: '18px 20px', borderRadius: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <History size={16} color="var(--secondary-cyan)" />
+          <h3 className="font-display" style={{ fontSize: '1.05rem', color: '#ffffff', letterSpacing: '0.02em' }}>
+            CREATOR DEPOSITS & SPEND LEDGER
+          </h3>
         </div>
 
-        {!transactions.length ? (
-          <div style={{ textAlign: 'center', padding: '24px 10px', color: 'var(--on-surface-variant)', fontSize: '0.78rem' }}>
-            No financial transactions recorded yet.
-          </div>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.08)', color: 'var(--on-surface-variant)', textAlign: 'left' }}>
-                  <th style={{ padding: '6px 10px', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.66rem' }}>Type</th>
-                  <th style={{ padding: '6px 10px', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.66rem' }}>Amount</th>
-                  <th style={{ padding: '6px 10px', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.66rem' }}>Balance After</th>
-                  <th style={{ padding: '6px 10px', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.66rem' }}>Status</th>
-                  <th style={{ padding: '6px 10px', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.66rem' }}>Note / Details</th>
-                  <th style={{ padding: '6px 10px', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.66rem' }}>Date</th>
+        <div className="responsive-table-wrapper">
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem', minWidth: 480 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--glass-stroke)', textAlign: 'left', color: 'var(--on-surface-variant)' }}>
+                <th style={{ padding: '8px 10px' }}>TYPE</th>
+                <th style={{ padding: '8px 10px' }}>AMOUNT (USD)</th>
+                <th style={{ padding: '8px 10px' }}>GATEWAY / DETAILS</th>
+                <th style={{ padding: '8px 10px' }}>DATE</th>
+                <th style={{ padding: '8px 10px' }}>STATUS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {!transactions.length ? (
+                <tr>
+                  <td colSpan={5} style={{ textAlign: 'center', padding: '20px 0', color: 'var(--on-surface-variant)' }}>
+                    No financial transactions recorded yet.
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {transactions.map((tx) => (
-                  <tr key={tx._id} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.04)' }}>
-                    <td style={{ padding: '8px 10px' }}>
-                      <span className="badge-pill" style={{ padding: '1px 6px', fontSize: '0.58rem', textTransform: 'uppercase' }}>
-                        {tx.type}
+              ) : (
+                transactions.map((tx) => (
+                  <tr key={tx._id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <td style={{ padding: '8px 10px', textTransform: 'uppercase', fontWeight: 600 }}>
+                      <span className={`badge-pill ${tx.type === 'deposit' ? 'badge-neon' : 'badge-cyan'}`} style={{ fontSize: '0.6rem', padding: '1px 6px' }}>
+                        {tx.type.replace('_', ' ')}
                       </span>
                     </td>
-                    <td className="font-mono" style={{ padding: '8px 10px', fontWeight: 700, color: tx.amount > 0 ? 'var(--primary-neon)' : '#ef4444' }}>
-                      {tx.amount > 0 ? `+$${tx.amount.toFixed(2)}` : `-$${Math.abs(tx.amount).toFixed(2)}`}
+                    <td className="font-mono" style={{ padding: '8px 10px', fontWeight: 700, color: tx.amount >= 0 ? 'var(--primary-neon)' : '#ef4444' }}>
+                      {tx.amount >= 0 ? `+$${tx.amount.toFixed(4)}` : `-$${Math.abs(tx.amount).toFixed(4)}`}
                     </td>
-                    <td className="font-mono" style={{ padding: '8px 10px', color: '#ffffff' }}>
-                      ${(tx.balanceAfter || 0).toFixed(2)}
+                    <td style={{ padding: '8px 10px', color: 'var(--on-surface-variant)' }}>
+                      {tx.notes || tx.gateway || 'Internal System'}
                     </td>
-                    <td style={{ padding: '8px 10px' }}>
-                      <span className="font-mono" style={{ color: tx.status === 'completed' ? 'var(--primary-neon)' : '#fbbf24', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase' }}>
-                        {tx.status}
-                      </span>
-                    </td>
-                    <td style={{ padding: '8px 10px', color: 'var(--on-surface-variant)', fontSize: '0.72rem' }}>
-                      {tx.notes || tx.gateway || 'Ad Campaign Spend'}
-                    </td>
-                    <td style={{ padding: '8px 10px', color: 'var(--on-surface-variant)', fontSize: '0.7rem' }}>
+                    <td className="font-mono" style={{ padding: '8px 10px', color: 'var(--on-surface-variant)', fontSize: '0.72rem' }}>
                       {new Date(tx.createdAt).toLocaleDateString()} {new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </td>
+                    <td style={{ padding: '8px 10px' }}>
+                      <span style={{ color: 'var(--primary-neon)', fontSize: '0.72rem', fontWeight: 700 }}>
+                        {tx.status.toUpperCase()}
+                      </span>
+                    </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Deposit Modal */}
@@ -396,91 +395,100 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({ user, onRefr
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 9999,
+            zIndex: 1000,
             padding: 16,
           }}
         >
-          <div className="glass-card" style={{ width: '100%', maxWidth: 440, padding: 24, borderRadius: 20, border: '1.5px solid var(--primary-neon)' }}>
+          <div
+            className="glass-card"
+            style={{
+              width: '100%',
+              maxWidth: 440,
+              padding: 24,
+              borderRadius: 20,
+              border: '1px solid var(--primary-neon)',
+            }}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <CreditCard size={18} color="var(--primary-neon)" />
-                <h3 className="font-display" style={{ fontSize: '1.2rem', color: '#ffffff' }}>Deposit Campaign Budget</h3>
+                <h3 className="font-display" style={{ fontSize: '1.25rem', color: '#ffffff' }}>DEPOSIT FUNDS</h3>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowDepositModal(false)}
-                className="btn btn-ghost"
-                style={{ padding: '2px 8px', fontSize: '0.72rem' }}
-              >
+              <button onClick={() => setShowDepositModal(false)} className="btn btn-ghost" style={{ padding: '4px 8px', borderRadius: 8 }}>
                 ✕
               </button>
             </div>
 
             <form onSubmit={handleDeposit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div>
-                <label className="font-mono" style={{ fontSize: '0.72rem', color: 'var(--on-surface-variant)', display: 'block', marginBottom: 6 }}>
-                  Gateway:
-                </label>
-                <select
-                  value={depositGateway}
-                  onChange={(e) => setDepositGateway(e.target.value as any)}
-                  className="input-field"
-                  style={{ padding: '10px 12px', fontSize: '0.85rem' }}
-                >
-                  <option value="faucetpay">FaucetPay (Instant Zero Fee)</option>
-                  <option value="crypto">Crypto USDT / LTC / BTC</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="font-mono" style={{ fontSize: '0.72rem', color: 'var(--on-surface-variant)', display: 'block', marginBottom: 6 }}>
+                <label className="font-mono" style={{ fontSize: '0.72rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
                   Deposit Amount (USD):
                 </label>
                 <input
                   type="number"
-                  min="1"
-                  step="1"
+                  min={1}
+                  step="any"
                   value={depositAmount}
-                  onChange={(e) => setDepositAmount(parseFloat(e.target.value) || 1)}
+                  onChange={(e) => setDepositAmount(Number(e.target.value))}
+                  required
                   className="input-field"
-                  style={{ padding: '10px 12px', fontSize: '0.9rem' }}
+                  style={{ padding: '10px 14px' }}
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {[5, 10, 25, 50, 100].map((amt) => (
+              <div>
+                <label className="font-mono" style={{ fontSize: '0.72rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
+                  Payment Method:
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                   <button
-                    key={amt}
                     type="button"
-                    onClick={() => setDepositAmount(amt)}
-                    className="btn btn-ghost"
+                    onClick={() => setDepositGateway('faucetpay')}
                     style={{
-                      padding: '3px 10px',
-                      fontSize: '0.7rem',
-                      borderRadius: 8,
-                      background: depositAmount === amt ? 'rgba(195,244,0,0.15)' : 'rgba(255,255,255,0.03)',
-                      borderColor: depositAmount === amt ? 'var(--primary-neon)' : 'var(--glass-stroke)',
-                      color: depositAmount === amt ? 'var(--primary-neon)' : 'var(--on-surface-variant)',
+                      padding: 10,
+                      borderRadius: 10,
+                      background: depositGateway === 'faucetpay' ? 'rgba(195,244,0,0.15)' : '#121212',
+                      border: depositGateway === 'faucetpay' ? '1px solid var(--primary-neon)' : '1px solid var(--glass-stroke)',
+                      color: depositGateway === 'faucetpay' ? 'var(--primary-neon)' : 'var(--on-surface-variant)',
+                      fontWeight: 700,
+                      fontSize: '0.78rem',
+                      cursor: 'pointer',
                     }}
                   >
-                    ${amt}
+                    FaucetPay
                   </button>
-                ))}
+
+                  <button
+                    type="button"
+                    onClick={() => setDepositGateway('crypto')}
+                    style={{
+                      padding: 10,
+                      borderRadius: 10,
+                      background: depositGateway === 'crypto' ? 'rgba(120,211,238,0.15)' : '#121212',
+                      border: depositGateway === 'crypto' ? '1px solid var(--secondary-cyan)' : '1px solid var(--glass-stroke)',
+                      color: depositGateway === 'crypto' ? 'var(--secondary-cyan)' : 'var(--on-surface-variant)',
+                      fontWeight: 700,
+                      fontSize: '0.78rem',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Crypto (USDT)
+                  </button>
+                </div>
               </div>
 
               <button
                 type="submit"
                 disabled={depositLoading}
                 className="btn btn-neon glow-neon"
-                style={{ padding: '12px', fontSize: '0.88rem', borderRadius: 12, marginTop: 6 }}
+                style={{ padding: 12, borderRadius: 12, marginTop: 6 }}
               >
-                {depositLoading ? 'Crediting Funds...' : `Complete Deposit of $${depositAmount.toFixed(2)} USD`}
+                {depositLoading ? 'Processing...' : `Confirm $${depositAmount.toFixed(2)} USD Deposit`}
               </button>
             </form>
           </div>
         </div>
       )}
-
     </div>
   );
 };

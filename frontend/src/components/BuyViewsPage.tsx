@@ -98,14 +98,14 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
   };
 
   return (
-    <div style={{ maxWidth: 1180, margin: '24px auto', padding: '0 20px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div className="responsive-container" style={{ margin: '20px auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
       
       {/* Hero Header */}
       <div>
-        <h1 className="font-display" style={{ fontSize: 'clamp(2rem, 4vw, 3rem)', color: '#ffffff', letterSpacing: '0.02em', lineHeight: 1.1 }}>
+        <h1 className="font-display hero-title" style={{ fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', color: '#ffffff', letterSpacing: '0.02em', lineHeight: 1.1 }}>
           BUY REAL <span style={{ color: 'var(--primary-neon)' }}>YOUTUBE VIEWS</span>
         </h1>
-        <p className="font-body" style={{ color: 'var(--on-surface-variant)', marginTop: 8, fontSize: '0.95rem', maxWidth: 840, lineHeight: 1.5 }}>
+        <p className="font-body" style={{ color: 'var(--on-surface-variant)', marginTop: 8, fontSize: '0.92rem', maxWidth: 840, lineHeight: 1.5 }}>
           Promote your YouTube video directly to hundreds of thousands of active mobile viewers. Guaranteed official player watch time with 1-hour anti-spam cooldowns.
         </p>
       </div>
@@ -128,15 +128,15 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
         </div>
       )}
 
-      {/* 2-Column Order & Cost Simulator Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(440px, 1fr))', gap: 24, alignItems: 'start' }}>
+      {/* 2-Column Responsive Order & Cost Simulator Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: 20, alignItems: 'start' }}>
         
         {/* Left Column: Cost Simulator & Campaign Order Builder */}
-        <div className="glass-card" style={{ padding: 26, borderRadius: 20, border: '1px solid var(--glass-stroke)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <div className="glass-card mobile-p-small" style={{ padding: 24, borderRadius: 18, border: '1px solid var(--glass-stroke)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, flexWrap: 'wrap', gap: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Sparkles size={20} color="var(--primary-neon)" />
-              <h2 className="font-display" style={{ fontSize: '1.4rem', color: '#ffffff', letterSpacing: '0.02em' }}>
+              <Sparkles size={18} color="var(--primary-neon)" />
+              <h2 className="font-display" style={{ fontSize: '1.3rem', color: '#ffffff', letterSpacing: '0.02em' }}>
                 NEW CAMPAIGN ORDER
               </h2>
             </div>
@@ -148,7 +148,7 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
             )}
           </div>
 
-          <form onSubmit={handleCreateOrder} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <form onSubmit={handleCreateOrder} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             
             {/* 1. YouTube Video URL */}
             <div>
@@ -171,11 +171,11 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
 
             {/* Live Detected Thumbnail */}
             {previewVideoId && (
-              <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid var(--glass-stroke)', background: '#0a0a0a', display: 'flex', gap: 14, padding: 10, alignItems: 'center' }}>
+              <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid var(--glass-stroke)', background: '#0a0a0a', display: 'flex', gap: 12, padding: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                 <img
                   src={`https://img.youtube.com/vi/${previewVideoId}/hqdefault.jpg`}
                   alt="YouTube Preview"
-                  style={{ width: 110, height: 65, objectFit: 'cover', borderRadius: 8 }}
+                  style={{ width: 100, height: 60, objectFit: 'cover', borderRadius: 8 }}
                 />
                 <div>
                   <div className="font-mono" style={{ fontSize: '0.72rem', color: 'var(--primary-neon)' }}>✓ Valid Video Detected</div>
@@ -199,192 +199,155 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
               />
             </div>
 
-            {/* 3. Watch Duration Selector */}
+            {/* 3. Duration Selector (Pills) */}
             <div>
               <label className="font-mono" style={{ fontSize: '0.75rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 8 }}>
-                Required Watch Duration:
+                Viewer Watch Duration:
               </label>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-                {[
-                  { sec: 10, label: '10s', rate: '$5.00/1k' },
-                  { sec: 30, label: '30s', rate: '$7.50/1k' },
-                  { sec: 60, label: '1 Min', rate: '$10.00/1k' },
-                  { sec: 120, label: '2 Min', rate: '$15.00/1k' },
-                ].map((item) => {
-                  const isSelected = duration === item.sec;
-                  return (
-                    <button
-                      key={item.sec}
-                      type="button"
-                      onClick={() => setDuration(item.sec)}
-                      style={{
-                        padding: '12px 6px',
-                        borderRadius: 12,
-                        textAlign: 'center',
-                        background: isSelected ? 'rgba(195, 244, 0, 0.12)' : 'rgba(255, 255, 255, 0.03)',
-                        border: isSelected ? '2px solid var(--primary-neon)' : '1px solid var(--glass-stroke)',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                      }}
-                    >
-                      <div className="font-display" style={{ fontSize: '1.05rem', color: isSelected ? 'var(--primary-neon)' : '#ffffff' }}>
-                        {item.label}
-                      </div>
-                      <div className="font-mono" style={{ fontSize: '0.62rem', color: isSelected ? 'var(--primary-neon)' : 'var(--on-surface-variant)', marginTop: 2 }}>
-                        {item.rate}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* 4. Target Views Slider & Presets */}
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <label className="font-mono" style={{ fontSize: '0.75rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Target Views:
-                </label>
-                <span className="font-mono" style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary-neon)' }}>
-                  {views.toLocaleString()} Views
-                </span>
-              </div>
-              <input
-                type="range"
-                min="100"
-                max="50000"
-                step="100"
-                value={views}
-                onChange={(e) => setViews(parseInt(e.target.value, 10) || 100)}
-                style={{ width: '100%', accentColor: 'var(--primary-neon)', cursor: 'pointer', height: 6 }}
-              />
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 4, marginTop: 8, flexWrap: 'wrap' }}>
-                {[100, 500, 1000, 2500, 5000, 10000].map((preset) => (
+                {[10, 30, 60, 120].map((d) => (
                   <button
-                    key={preset}
+                    key={d}
                     type="button"
-                    onClick={() => setViews(preset)}
-                    className="btn btn-ghost"
+                    onClick={() => setDuration(d)}
                     style={{
-                      padding: '3px 8px',
-                      fontSize: '0.68rem',
-                      borderRadius: 8,
-                      background: views === preset ? 'rgba(195, 244, 0, 0.15)' : 'rgba(255,255,255,0.03)',
-                      borderColor: views === preset ? 'var(--primary-neon)' : 'var(--glass-stroke)',
-                      color: views === preset ? 'var(--primary-neon)' : 'var(--on-surface-variant)',
+                      padding: '10px 6px',
+                      borderRadius: 12,
+                      background: duration === d ? 'var(--primary-neon)' : '#161616',
+                      color: duration === d ? 'var(--on-primary)' : 'var(--on-surface-variant)',
+                      border: duration === d ? '1px solid var(--primary-neon)' : '1px solid var(--glass-stroke)',
+                      fontFamily: 'JetBrains Mono, monospace',
+                      fontWeight: 700,
+                      fontSize: '0.82rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
                     }}
                   >
-                    {preset.toLocaleString()}
+                    {d}s
+                    <div style={{ fontSize: '0.65rem', opacity: 0.8, marginTop: 2 }}>
+                      ${(basePrice * (durationMultiplier[d] || 1)).toFixed(2)}/k
+                    </div>
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* 5. Summary & Price Banner */}
-            <div style={{ background: '#0e0e0e', border: '1px solid var(--glass-stroke)', borderRadius: 14, padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <div className="font-mono" style={{ fontSize: '0.68rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase' }}>Total Campaign Cost</div>
-                <div className="font-mono" style={{ fontSize: '1.6rem', fontWeight: 800, color: '#ffffff', marginTop: 2 }}>
-                  ${calculatedCost.toFixed(2)} <span style={{ fontSize: '0.75rem', color: 'var(--on-surface-variant)' }}>USD</span>
+            {/* 4. Target Views Slider & Number Input */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <label className="font-mono" style={{ fontSize: '0.75rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Target Views:
+                </label>
+                <div className="font-mono" style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--primary-neon)' }}>
+                  {views.toLocaleString()} Views
                 </div>
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <div className="font-mono" style={{ fontSize: '0.68rem', color: 'var(--on-surface-variant)' }}>Est. Watch Time: <strong style={{ color: 'var(--secondary-cyan)' }}>{totalWatchHours}h</strong></div>
-                <div className="font-mono" style={{ fontSize: '0.68rem', color: 'var(--on-surface-variant)', marginTop: 2 }}>${costPerView.toFixed(4)} / view</div>
+              <input
+                type="range"
+                min={100}
+                max={50000}
+                step={100}
+                value={views}
+                onChange={(e) => setViews(Number(e.target.value))}
+                style={{
+                  width: '100%',
+                  accentColor: 'var(--primary-neon)',
+                  cursor: 'pointer',
+                  height: 6,
+                }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--on-surface-variant)', marginTop: 4 }}>
+                <span>100 min</span>
+                <span>10,000</span>
+                <span>25,000</span>
+                <span>50,000 max</span>
               </div>
             </div>
 
-            {/* Submit Action */}
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
-              className="btn btn-neon glow-neon"
+              className="btn btn-neon glow-neon btn-mobile-full"
               style={{
                 width: '100%',
                 padding: '14px',
-                fontSize: '0.95rem',
-                fontWeight: 750,
+                fontSize: '0.92rem',
                 borderRadius: 14,
-                letterSpacing: '0.03em',
+                marginTop: 8,
               }}
             >
-              {loading ? 'Processing Order...' : 'CREATE VIEW CAMPAIGN'}
+              {loading ? 'Creating Campaign...' : user ? `LAUNCH CAMPAIGN ($${calculatedCost.toFixed(2)} USD)` : 'SIGN IN & LAUNCH CAMPAIGN'}
             </button>
           </form>
         </div>
 
-        {/* Right Column: Real-Time Campaign Simulation & Delivery Perks */}
+        {/* Right Column: Live Order Summary & Delivery Estimates */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           
-          {/* Live Cost & Delivery Simulation Card */}
-          <div className="glass-card" style={{ padding: 22, borderRadius: 20, border: '1px solid var(--primary-neon)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-              <BarChart2 size={20} color="var(--primary-neon)" />
-              <h3 className="font-display" style={{ fontSize: '1.2rem', color: '#ffffff' }}>
-                CAMPAIGN SIMULATION BREAKDOWN
-              </h3>
+          {/* Order Summary Card */}
+          <div className="glass-card mobile-p-small" style={{ padding: 22, borderRadius: 18, border: '1px solid rgba(195, 244, 0, 0.35)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <span className="font-mono" style={{ fontSize: '0.75rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase' }}>
+                Estimated Total Cost
+              </span>
+              <span className="badge-pill badge-neon" style={{ fontSize: '0.62rem' }}>BEST VALUE</span>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', background: '#0e0e0e', borderRadius: 10 }}>
-                <span style={{ fontSize: '0.78rem', color: 'var(--on-surface-variant)' }}>Target Views</span>
-                <span className="font-mono" style={{ fontSize: '0.88rem', fontWeight: 700, color: '#ffffff' }}>{views.toLocaleString()} Real Views</span>
+            <div className="font-mono" style={{ fontSize: '2.4rem', fontWeight: 900, color: 'var(--primary-neon)', lineHeight: 1 }}>
+              ${calculatedCost.toFixed(2)}{' '}
+              <span style={{ fontSize: '0.9rem', color: 'var(--on-surface-variant)', fontWeight: 500 }}>USD</span>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--glass-stroke)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
+                <span style={{ color: 'var(--on-surface-variant)' }}>Cost Per View:</span>
+                <strong className="font-mono" style={{ color: '#ffffff' }}>${costPerView.toFixed(4)} USD</strong>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', background: '#0e0e0e', borderRadius: 10 }}>
-                <span style={{ fontSize: '0.78rem', color: 'var(--on-surface-variant)' }}>Retention Time</span>
-                <span className="font-mono" style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--primary-neon)' }}>{duration}s per video</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
+                <span style={{ color: 'var(--on-surface-variant)' }}>Duration Per View:</span>
+                <strong className="font-mono" style={{ color: '#ffffff' }}>{duration} seconds</strong>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', background: '#0e0e0e', borderRadius: 10 }}>
-                <span style={{ fontSize: '0.78rem', color: 'var(--on-surface-variant)' }}>Total Retention Watch Time</span>
-                <span className="font-mono" style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--secondary-cyan)' }}>{totalWatchHours} Hours</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
+                <span style={{ color: 'var(--on-surface-variant)' }}>Total Watch Hours Delivered:</span>
+                <strong className="font-mono" style={{ color: 'var(--secondary-cyan)' }}>≈ {totalWatchHours} Hours</strong>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', background: '#0e0e0e', borderRadius: 10 }}>
-                <span style={{ fontSize: '0.78rem', color: 'var(--on-surface-variant)' }}>Effective Rate</span>
-                <span className="font-mono" style={{ fontSize: '0.88rem', fontWeight: 700, color: '#ffffff' }}>${costPerView.toFixed(4)} / view</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
+                <span style={{ color: 'var(--on-surface-variant)' }}>Estimated Start Time:</span>
+                <strong className="font-mono" style={{ color: 'var(--primary-neon)' }}>Instant (&lt; 2 Minutes)</strong>
               </div>
             </div>
           </div>
 
-          {/* Value Props */}
-          <div className="glass-card" style={{ padding: 20, borderRadius: 18, border: '1px solid var(--glass-stroke)' }}>
-            <span className="font-mono" style={{ fontSize: '0.7rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Why Advertise on myYT?
-            </span>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                <Users size={16} color="var(--primary-neon)" />
-                <span style={{ fontSize: '0.78rem', color: 'var(--on-surface-variant)' }}>
-                  <strong>100% Real Mobile Viewers:</strong> No headless browsers or bot scripts.
-                </span>
+          {/* Guaranteed Features List */}
+          <div className="glass-card mobile-p-small" style={{ padding: 20, borderRadius: 18, border: '1px solid var(--glass-stroke)' }}>
+            <h3 className="font-display" style={{ fontSize: '1.1rem', color: '#ffffff', letterSpacing: '0.02em', marginBottom: 12 }}>
+              GUARANTEED DELIVERY PERKS
+            </h3>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.82rem', color: 'var(--on-surface)' }}>
+                <ShieldCheck size={16} color="var(--primary-neon)" style={{ flexShrink: 0 }} />
+                <span><strong>100% Real Viewers:</strong> Views streamed inside official YouTube app player.</span>
               </div>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                <Clock size={16} color="var(--secondary-cyan)" />
-                <span style={{ fontSize: '0.78rem', color: 'var(--on-surface-variant)' }}>
-                  <strong>1-Hour Cooldown:</strong> Prevents spam and naturalizes view distribution.
-                </span>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.82rem', color: 'var(--on-surface)' }}>
+                <Clock size={16} color="var(--secondary-cyan)" style={{ flexShrink: 0 }} />
+                <span><strong>1-Hour Anti-Spam:</strong> Unique viewer IP distribution prevents invalid YouTube duplicate detection.</span>
               </div>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                <ShieldCheck size={16} color="var(--primary-neon)" />
-                <span style={{ fontSize: '0.78rem', color: 'var(--on-surface-variant)' }}>
-                  <strong>Official YouTube Player:</strong> Full Play Integrity & watch time attribution.
-                </span>
-              </div>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                <Zap size={16} color="var(--secondary-cyan)" />
-                <span style={{ fontSize: '0.78rem', color: 'var(--on-surface-variant)' }}>
-                  <strong>High-Speed Delivery:</strong> BullMQ queue handles 5k+ concurrent tasks.
-                </span>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.82rem', color: 'var(--on-surface)' }}>
+                <Zap size={16} color="var(--primary-neon)" style={{ flexShrink: 0 }} />
+                <span><strong>Real-Time Analytics:</strong> Live delivery graph and pause/resume controls in your Creator Dashboard.</span>
               </div>
             </div>
           </div>
 
         </div>
-
       </div>
-
     </div>
   );
 };

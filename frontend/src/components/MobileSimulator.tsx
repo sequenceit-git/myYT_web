@@ -78,13 +78,13 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({ user }) => {
   };
 
   return (
-    <div style={{ maxWidth: 1180, margin: '20px auto', padding: '0 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
+    <div className="responsive-container" style={{ margin: '20px auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
       {/* Top Header */}
       <div style={{ textAlign: 'center', maxWidth: 680 }}>
         <div className="badge-pill badge-neon" style={{ marginBottom: 6, fontSize: '0.65rem', padding: '2px 8px' }}>
           <Smartphone size={12} /> Interactive Mobile App Demo & QR Download
         </div>
-        <h1 className="font-display" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.2rem)', color: '#ffffff', letterSpacing: '0.01em', lineHeight: 1.1 }}>
+        <h1 className="font-display hero-title" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.2rem)', color: '#ffffff', letterSpacing: '0.01em', lineHeight: 1.1 }}>
           MOBILE APP <span style={{ color: 'var(--primary-neon)' }}>SIMULATOR & DOWNLOAD</span>
         </h1>
         <p className="font-body" style={{ color: 'var(--on-surface-variant)', marginTop: 4, fontSize: '0.8rem' }}>
@@ -92,15 +92,15 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({ user }) => {
         </p>
       </div>
 
-      {/* Main 2-Column Section: Left Phone Mockup | Right QR Code Download Card */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 24, width: '100%', maxWidth: 960, alignItems: 'center' }}>
+      {/* Main 2-Column Responsive Section: Left Phone Mockup | Right QR Code Download Card */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 24, width: '100%', maxWidth: 960, alignItems: 'center' }}>
         
         {/* Left: Interactive Phone Mockup */}
         <div style={{ display: 'flex', justifyContent: 'center' }}>
           <div
             style={{
-              width: 330,
-              height: 640,
+              width: 'min(330px, 92vw)',
+              height: 'min(640px, 85vh)',
               background: '#0d0d0d',
               borderRadius: 36,
               border: '6px solid #242424',
@@ -201,62 +201,61 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({ user }) => {
                       </div>
                     </div>
 
-                    <div style={{ marginTop: 10 }}>
-                      <h4 style={{ fontSize: '0.82rem', color: '#ffffff', fontWeight: 600 }}>{selectedVideo.title}</h4>
-                      <div className="font-mono" style={{ fontSize: '0.65rem', color: 'var(--on-surface-variant)', marginTop: 1 }}>
-                        Anti-Cheat Watchdog: ACTIVE
-                      </div>
-                    </div>
+                    <h4 style={{ fontSize: '0.82rem', fontWeight: 600, color: '#ffffff', marginTop: 10, lineHeight: 1.3 }}>
+                      {selectedVideo.title}
+                    </h4>
                   </div>
 
-                  {/* Circular Countdown Timer */}
-                  <div style={{ textAlign: 'center', margin: '10px 0' }}>
+                  {/* Circular Countdown Watchdog */}
+                  <div style={{ textAlign: 'center', margin: 'auto 0' }}>
                     <div
                       style={{
-                        width: 90,
-                        height: 90,
+                        width: 86,
+                        height: 86,
                         borderRadius: '50%',
                         border: '3px solid var(--primary-neon)',
-                        margin: '0 auto',
+                        background: 'rgba(195, 244, 0, 0.08)',
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        background: 'rgba(195,244,0,0.06)',
+                        margin: '0 auto',
+                        boxShadow: '0 0 20px rgba(195, 244, 0, 0.25)',
                       }}
-                      className="pulse-neon"
                     >
                       <span className="font-mono" style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--primary-neon)' }}>
                         {remainingSec}s
                       </span>
-                      <span className="font-mono" style={{ fontSize: '0.55rem', color: 'var(--on-surface-variant)' }}>
-                        Remaining
+                      <span className="font-mono" style={{ fontSize: '0.55rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase' }}>
+                        Required
                       </span>
                     </div>
-                    <p style={{ fontSize: '0.66rem', color: 'var(--on-surface-variant)', marginTop: 8 }}>
-                      Server timer is monitoring active video playback.
-                    </p>
+
+                    <span className="font-mono" style={{ fontSize: '0.65rem', color: 'var(--on-surface-variant)', display: 'block', marginTop: 10 }}>
+                      Foreground watchdog active
+                    </span>
                   </div>
 
-                  <div style={{ fontSize: '0.65rem', color: '#9ca3af', textAlign: 'center', background: '#141414', padding: '6px', borderRadius: 8 }}>
-                    Reward: <strong style={{ color: 'var(--primary-neon)' }}>+{selectedVideo.rewardCredits} Credits</strong> upon completion
+                  <div style={{ background: '#141414', borderRadius: 10, padding: '8px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.68rem', color: 'var(--on-surface-variant)' }}>Pending Reward:</span>
+                    <strong className="font-mono" style={{ fontSize: '0.78rem', color: 'var(--primary-neon)' }}>+{selectedVideo.rewardCredits} Credits</strong>
                   </div>
                 </div>
               )}
 
-              {/* STATE 3: HUMAN OVERLAY CHECK */}
+              {/* STATE 3: HUMAN OVERLAY CLAIM */}
               {appState === 'overlay' && (
-                <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', alignItems: 'center', textAlign: 'center', gap: 14 }}>
-                  <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(195,244,0,0.15)', border: '2px solid var(--primary-neon)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} className="pulse-neon">
-                    <Sparkles size={28} color="var(--primary-neon)" />
+                <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', alignItems: 'center', textAlign: 'center', gap: 12 }}>
+                  <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'rgba(195, 244, 0, 0.15)', border: '2px solid var(--primary-neon)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} className="pulse-neon">
+                    <Sparkles size={32} color="var(--primary-neon)" />
                   </div>
 
-                  <div>
-                    <h3 className="font-display" style={{ fontSize: '1.25rem', color: '#ffffff' }}>Human Confirmation</h3>
-                    <p className="font-body" style={{ fontSize: '0.72rem', color: 'var(--on-surface-variant)', marginTop: 4, padding: '0 6px' }}>
-                      Watch duration complete! Tap below to confirm presence and claim credits.
-                    </p>
-                  </div>
+                  <h3 className="font-display" style={{ fontSize: '1.2rem', color: '#ffffff' }}>
+                    HUMAN CONFIRMATION
+                  </h3>
+                  <p style={{ fontSize: '0.72rem', color: 'var(--on-surface-variant)', lineHeight: 1.4 }}>
+                    Watch time verified! Tap below to confirm presence and claim your +{selectedVideo.rewardCredits} Credits.
+                  </p>
 
                   <button
                     onClick={handleConfirmHumanPresence}
@@ -264,114 +263,118 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({ user }) => {
                     className="btn btn-neon glow-neon"
                     style={{
                       width: '100%',
-                      padding: '12px',
-                      fontSize: '0.78rem',
-                      borderRadius: 10,
+                      padding: 12,
+                      fontSize: '0.8rem',
+                      borderRadius: 12,
                       opacity: overlaySec > 0 ? 0.6 : 1,
+                      cursor: overlaySec > 0 ? 'not-allowed' : 'pointer',
                     }}
                   >
-                    {overlaySec > 0 ? `Wait (${overlaySec}s)...` : 'Claim +10 Reward Credits'}
+                    {overlaySec > 0 ? `Wait (${overlaySec}s)...` : `Claim +${selectedVideo.rewardCredits} Credits`}
                   </button>
                 </div>
               )}
 
-              {/* STATE 4: SUCCESS IN PHONE */}
+              {/* STATE 4: SUCCESS */}
               {appState === 'success' && (
-                <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', alignItems: 'center', textAlign: 'center', gap: 14 }}>
-                  <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(0,200,83,0.15)', border: '2px solid var(--success-green)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Award size={30} color="var(--success-green)" />
+                <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', alignItems: 'center', textAlign: 'center', gap: 12 }}>
+                  <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'rgba(0, 200, 83, 0.15)', border: '2px solid #00c853', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Award size={34} color="#00c853" />
                   </div>
 
-                  <div>
-                    <h3 className="font-display" style={{ fontSize: '1.3rem', color: 'var(--success-green)' }}>Simulation Complete!</h3>
-                    <div className="font-mono" style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--primary-neon)', marginTop: 4 }}>
-                      +{selectedVideo.rewardCredits} Credits Added
-                    </div>
-                    <p style={{ fontSize: '0.68rem', color: 'var(--on-surface-variant)', marginTop: 4 }}>
-                      Scan the QR code on the right to install the app and earn real cash on your phone!
-                    </p>
+                  <h3 className="font-display" style={{ fontSize: '1.2rem', color: '#00c853' }}>
+                    TASK VERIFIED!
+                  </h3>
+                  <div className="font-mono" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--primary-neon)' }}>
+                    +{selectedVideo.rewardCredits} CREDITS
                   </div>
+                  <p style={{ fontSize: '0.72rem', color: 'var(--on-surface-variant)', lineHeight: 1.4 }}>
+                    Credits added to your wallet! Convert them to USD cash funds anytime.
+                  </p>
 
                   <button
-                    onClick={handleStartDemoWatch}
+                    onClick={() => setAppState('home')}
                     className="btn btn-neon glow-neon"
-                    style={{ width: '100%', padding: '10px', fontSize: '0.75rem', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+                    style={{ width: '100%', padding: 12, fontSize: '0.8rem', borderRadius: 12 }}
                   >
-                    <RefreshCw size={12} /> Run Simulation Again
+                    Return to Simulator Home
                   </button>
                 </div>
               )}
+
             </div>
           </div>
         </div>
 
-        {/* Right: QR Code & Mobile App Download Portal Card */}
-        <div className="glass-card" style={{ padding: '22px 24px', borderRadius: 20, border: '1.5px solid var(--primary-neon)', display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <QrCode size={20} color="var(--primary-neon)" />
-            <h2 className="font-display" style={{ fontSize: '1.25rem', color: '#ffffff', letterSpacing: '0.02em' }}>
-              INSTALL OFFICIAL MOBILE APP
-            </h2>
+        {/* Right: Real Android App QR Code & APK Download Card */}
+        <div className="glass-card mobile-p-small" style={{ padding: 26, borderRadius: 20, border: '1px solid rgba(195, 244, 0, 0.35)', display: 'flex', flexDirection: 'column', gap: 18 }}>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--primary-neon)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <QrCode size={22} color="#161e00" />
+            </div>
+            <div>
+              <h3 className="font-display" style={{ fontSize: '1.25rem', color: '#ffffff', letterSpacing: '0.01em' }}>
+                SCAN TO INSTALL APP
+              </h3>
+              <span style={{ fontSize: '0.72rem', color: 'var(--secondary-cyan)' }}>Official myYT Android APK v1.2.0</span>
+            </div>
           </div>
 
-          <p style={{ fontSize: '0.78rem', color: 'var(--on-surface-variant)', lineHeight: 1.5 }}>
-            Ready to earn real money on autopilot? Scan the QR code below using your Android phone camera or download the APK directly.
+          <p style={{ fontSize: '0.8rem', color: 'var(--on-surface-variant)', lineHeight: 1.5 }}>
+            Scan the QR code with your phone camera or tap the direct download button to install the official myYT mobile app on your Android device.
           </p>
 
-          {/* QR Code Container */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, background: '#0e0e0e', padding: '16px', borderRadius: 16, border: '1px solid var(--glass-stroke)' }}>
-            <div style={{ background: '#ffffff', padding: '12px', borderRadius: 12, boxShadow: '0 0 20px rgba(195, 244, 0, 0.25)' }}>
+          {/* High-Contrast QR Code */}
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '16px 0' }}>
+            <div
+              style={{
+                background: '#ffffff',
+                padding: 14,
+                borderRadius: 16,
+                boxShadow: '0 0 25px rgba(195, 244, 0, 0.3)',
+                display: 'inline-block',
+              }}
+            >
               <QRCodeSVG
                 value={downloadUrl}
                 size={160}
-                bgColor="#ffffff"
-                fgColor="#000000"
-                level="Q"
+                level="H"
+                includeMargin={false}
               />
             </div>
-            <span className="font-mono" style={{ fontSize: '0.68rem', color: 'var(--primary-neon)', fontWeight: 700, letterSpacing: '0.04em' }}>
-              SCAN WITH PHONE CAMERA TO DOWNLOAD
-            </span>
           </div>
 
-          {/* Direct APK Download Button */}
+          {/* Download Button */}
           <a
             href={downloadUrl}
             target="_blank"
             rel="noreferrer"
             className="btn btn-neon glow-neon"
             style={{
-              width: '100%',
-              padding: '11px 16px',
-              fontSize: '0.82rem',
+              padding: '12px 18px',
+              fontSize: '0.85rem',
               borderRadius: 12,
-              fontWeight: 750,
+              textDecoration: 'none',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: 8,
-              textDecoration: 'none',
             }}
           >
-            <Download size={16} /> Download Android APK (v1.2.0)
+            <Download size={16} /> Direct APK Download (.apk)
           </a>
 
-          {/* How to Install Steps */}
-          <div style={{ background: '#141414', padding: '12px 14px', borderRadius: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span className="font-mono" style={{ fontSize: '0.68rem', color: '#ffffff', textTransform: 'uppercase', fontWeight: 700 }}>
-              Quick 3-Step Setup:
-            </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.72rem', color: 'var(--on-surface-variant)' }}>
-              <CheckCircle2 size={13} color="var(--primary-neon)" />
-              <span>1. Scan QR Code or tap direct APK download</span>
+          {/* Feature Highlights */}
+          <div style={{ borderTop: '1px solid var(--glass-stroke)', paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 6, fontSize: '0.75rem', color: 'var(--on-surface-variant)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <CheckCircle2 size={13} color="var(--primary-neon)" /> Fast in-app YouTube video streaming
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.72rem', color: 'var(--on-surface-variant)' }}>
-              <CheckCircle2 size={13} color="var(--primary-neon)" />
-              <span>2. Install `myYT-v1.2.0.apk` on your Android device</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <CheckCircle2 size={13} color="var(--primary-neon)" /> Direct credit-to-USD conversion
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.72rem', color: 'var(--on-surface-variant)' }}>
-              <CheckCircle2 size={13} color="var(--primary-neon)" />
-              <span>3. Log in & start earning real cashout rewards!</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <CheckCircle2 size={13} color="var(--primary-neon)" /> Instant bKash, Nagad & Crypto cashouts
             </div>
           </div>
         </div>
