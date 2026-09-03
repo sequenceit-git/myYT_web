@@ -8,7 +8,6 @@ import {
   LogIn,
   Menu,
   X,
-  Home,
 } from 'lucide-react';
 import { User } from '../types';
 
@@ -61,7 +60,7 @@ export const Header: React.FC<HeaderProps> = ({
         <Link
           to="/"
           onClick={closeMenu}
-          style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', flexShrink: 0 }}
+          style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}
         >
           <div
             style={{
@@ -89,37 +88,44 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </Link>
 
-        {/* Desktop Navigation (Inline Pills - Hidden on Mobile/Tablet) */}
-        <nav className="nav-desktop-pills">
+        {/* 3 Clean Navigation Options (Desktop) */}
+        <nav
+          className="desktop-only"
+          style={{
+            alignItems: 'center',
+            gap: 4,
+            background: '#161616',
+            padding: '3px 6px',
+            borderRadius: 9999,
+            border: '1px solid var(--glass-stroke)',
+          }}
+        >
           <Link
             to="/"
             className="btn"
             style={{
-              padding: '5px 14px',
+              padding: '6px 14px',
               fontSize: '0.74rem',
               borderRadius: 9999,
               background: currentPath === '/' ? 'var(--primary-neon)' : 'transparent',
               color: currentPath === '/' ? 'var(--on-primary)' : 'var(--on-surface-variant)',
               fontWeight: currentPath === '/' ? 700 : 500,
               textDecoration: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 5,
             }}
           >
-            <Home size={13} /> Home
+            Home
           </Link>
 
           <Link
             to="/buy-views"
             className="btn"
             style={{
-              padding: '5px 14px',
+              padding: '6px 14px',
               fontSize: '0.74rem',
               borderRadius: 9999,
-              background: currentPath === '/buy-views' ? '#78d3ee' : 'transparent',
-              color: currentPath === '/buy-views' ? '#003642' : 'var(--on-surface-variant)',
-              fontWeight: currentPath === '/buy-views' ? 700 : 500,
+              background: currentPath === '/buy-views' || currentPath === '/creator' ? '#78d3ee' : 'transparent',
+              color: currentPath === '/buy-views' || currentPath === '/creator' ? '#003642' : 'var(--on-surface-variant)',
+              fontWeight: currentPath === '/buy-views' || currentPath === '/creator' ? 700 : 500,
               textDecoration: 'none',
               display: 'flex',
               alignItems: 'center',
@@ -133,7 +139,7 @@ export const Header: React.FC<HeaderProps> = ({
             to="/simulator"
             className="btn"
             style={{
-              padding: '5px 14px',
+              padding: '6px 14px',
               fontSize: '0.74rem',
               borderRadius: 9999,
               background: currentPath === '/simulator' || currentPath === '/watch' ? 'var(--primary-neon)' : 'transparent',
@@ -149,8 +155,8 @@ export const Header: React.FC<HeaderProps> = ({
           </Link>
         </nav>
 
-        {/* Desktop Right Actions (Auth / Avatar / Balance - Hidden on Mobile/Tablet) */}
-        <div className="nav-desktop-actions">
+        {/* Right Actions (Desktop) */}
+        <div className="desktop-only" style={{ alignItems: 'center', gap: 8 }}>
           {user ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               {/* Balance */}
@@ -208,7 +214,7 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 onClick={() => onOpenAuth('signin')}
                 className="btn btn-ghost"
-                style={{ padding: '6px 12px', fontSize: '0.74rem', borderRadius: 8 }}
+                style={{ padding: '6px 12px', fontSize: '0.72rem', borderRadius: 8 }}
               >
                 <LogIn size={13} /> Sign In
               </button>
@@ -216,16 +222,16 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 onClick={() => onOpenAuth('signup', 'viewer')}
                 className="btn btn-neon glow-neon"
-                style={{ padding: '6px 14px', fontSize: '0.74rem', borderRadius: 8 }}
+                style={{ padding: '6px 12px', fontSize: '0.72rem', borderRadius: 8 }}
               >
-                <span>Join Now</span>
+                <span>Join Free</span>
               </button>
             </div>
           )}
         </div>
 
-        {/* Mobile Header Controls: 3-Bar (☰) Hamburger Menu Button */}
-        <div className="nav-mobile-toggle">
+        {/* Mobile Header Right Controls: Balance + Hamburger Toggle */}
+        <div className="mobile-only" style={{ alignItems: 'center', gap: 8 }}>
           {user && (
             <div
               onClick={() => navigate(user.role === 'campaigner' ? '/creator' : '/viewer')}
@@ -249,28 +255,29 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             style={{
-              background: '#181818',
+              background: '#1c1c1c',
               border: '1px solid var(--glass-stroke)',
               color: '#ffffff',
               borderRadius: 8,
-              padding: '8px 10px',
+              padding: 6,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
             }}
-            aria-label="Toggle 3-bar menu"
+            aria-label="Toggle navigation menu"
           >
             {mobileMenuOpen ? <X size={20} color="var(--primary-neon)" /> : <Menu size={20} />}
           </button>
         </div>
       </div>
 
-      {/* 3-Bar Mobile Dropdown Menu (Home, Buy Views, Watch App) */}
+      {/* Responsive Mobile Drawer Menu (3 Clean Options) */}
       {mobileMenuOpen && (
         <div
-          className="nav-mobile-dropdown"
+          className="mobile-only"
           style={{
+            flexDirection: 'column',
             gap: 8,
             padding: '14px 0 6px 0',
             marginTop: 10,
@@ -282,19 +289,19 @@ export const Header: React.FC<HeaderProps> = ({
             to="/"
             onClick={closeMenu}
             style={{
-              padding: '11px 14px',
-              borderRadius: 10,
+              padding: '12px 16px',
+              borderRadius: 12,
               background: currentPath === '/' ? '#1f1f1f' : 'transparent',
               color: currentPath === '/' ? 'var(--primary-neon)' : '#ffffff',
               fontWeight: 700,
-              fontSize: '0.88rem',
+              fontSize: '0.9rem',
               textDecoration: 'none',
               display: 'flex',
               alignItems: 'center',
               gap: 10,
             }}
           >
-            <Home size={16} color={currentPath === '/' ? 'var(--primary-neon)' : 'var(--on-surface-variant)'} /> Home
+            Home
           </Link>
 
           {/* 2. Buy Views */}
@@ -302,12 +309,12 @@ export const Header: React.FC<HeaderProps> = ({
             to="/buy-views"
             onClick={closeMenu}
             style={{
-              padding: '11px 14px',
-              borderRadius: 10,
-              background: currentPath === '/buy-views' ? '#1f1f1f' : 'transparent',
-              color: currentPath === '/buy-views' ? '#78d3ee' : '#ffffff',
+              padding: '12px 16px',
+              borderRadius: 12,
+              background: currentPath === '/buy-views' || currentPath === '/creator' ? '#1f1f1f' : 'transparent',
+              color: currentPath === '/buy-views' || currentPath === '/creator' ? '#78d3ee' : '#ffffff',
               fontWeight: 700,
-              fontSize: '0.88rem',
+              fontSize: '0.9rem',
               textDecoration: 'none',
               display: 'flex',
               alignItems: 'center',
@@ -322,12 +329,12 @@ export const Header: React.FC<HeaderProps> = ({
             to="/simulator"
             onClick={closeMenu}
             style={{
-              padding: '11px 14px',
-              borderRadius: 10,
+              padding: '12px 16px',
+              borderRadius: 12,
               background: currentPath === '/simulator' || currentPath === '/watch' ? '#1f1f1f' : 'transparent',
               color: currentPath === '/simulator' || currentPath === '/watch' ? 'var(--primary-neon)' : '#ffffff',
               fontWeight: 700,
-              fontSize: '0.88rem',
+              fontSize: '0.9rem',
               textDecoration: 'none',
               display: 'flex',
               alignItems: 'center',
@@ -337,45 +344,45 @@ export const Header: React.FC<HeaderProps> = ({
             <Smartphone size={16} color="var(--primary-neon)" /> Watch App
           </Link>
 
-          {/* Auth Action Buttons if not logged in */}
-          {!user ? (
-            <div style={{ display: 'flex', gap: 8, marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-              <button
-                onClick={() => {
-                  onOpenAuth('signin');
-                  closeMenu();
-                }}
-                className="btn btn-ghost"
-                style={{ flex: 1, padding: '10px', borderRadius: 10, fontSize: '0.8rem' }}
-              >
-                <LogIn size={14} /> Sign In
-              </button>
-
-              <button
-                onClick={() => {
-                  onOpenAuth('signup', 'viewer');
-                  closeMenu();
-                }}
-                className="btn btn-neon glow-neon"
-                style={{ flex: 1, padding: '10px', borderRadius: 10, fontSize: '0.8rem' }}
-              >
-                Join Free
-              </button>
-            </div>
-          ) : (
-            <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          {/* Auth / Profile Actions on Mobile */}
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 10, marginTop: 4 }}>
+            {user ? (
               <button
                 onClick={() => {
                   onLogout();
                   closeMenu();
                 }}
                 className="btn btn-ghost"
-                style={{ width: '100%', padding: '10px', borderRadius: 10, fontSize: '0.8rem', color: '#ef4444' }}
+                style={{ width: '100%', padding: '10px', borderRadius: 10, fontSize: '0.78rem', justifyContent: 'center' }}
               >
-                <LogOut size={14} /> Logout
+                <LogOut size={13} /> Logout ({user.email.split('@')[0]})
               </button>
-            </div>
-          )}
+            ) : (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={() => {
+                    onOpenAuth('signin');
+                    closeMenu();
+                  }}
+                  className="btn btn-ghost"
+                  style={{ flex: 1, padding: '10px', borderRadius: 10, fontSize: '0.78rem' }}
+                >
+                  <LogIn size={13} /> Sign In
+                </button>
+
+                <button
+                  onClick={() => {
+                    onOpenAuth('signup', 'viewer');
+                    closeMenu();
+                  }}
+                  className="btn btn-neon glow-neon"
+                  style={{ flex: 1, padding: '10px', borderRadius: 10, fontSize: '0.78rem' }}
+                >
+                  Join Free
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </header>

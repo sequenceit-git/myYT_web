@@ -211,56 +211,6 @@ body {
 }
 
 /* ==========================================================================
-   HEADER NAVIGATION (DESKTOP PILLS vs 3-BAR MOBILE MENU)
-   ========================================================================== */
-
-.nav-desktop-pills {
-  display: flex !important;
-  align-items: center;
-  gap: 4px;
-  background: #161616;
-  padding: 2px 4px;
-  borderRadius: 9999px;
-  border: 1px solid var(--glass-stroke);
-}
-
-.nav-desktop-actions {
-  display: flex !important;
-  align-items: center;
-  gap: 8px;
-}
-
-.nav-mobile-toggle {
-  display: none !important;
-}
-
-.nav-mobile-dropdown {
-  display: none !important;
-}
-
-/* Under 860px: ALWAYS minimize into 3-bar hamburger menu */
-@media (max-width: 860px) {
-  .nav-desktop-pills {
-    display: none !important;
-  }
-
-  .nav-desktop-actions {
-    display: none !important;
-  }
-
-  .nav-mobile-toggle {
-    display: flex !important;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .nav-mobile-dropdown {
-    display: flex !important;
-    flex-direction: column;
-  }
-}
-
-/* ==========================================================================
    RESPONSIVE LAYOUT & MEDIA QUERIES
    ========================================================================== */
 
@@ -300,6 +250,15 @@ body {
   background: var(--primary-neon);
 }
 
+/* Desktop Only Helpers */
+.desktop-only {
+  display: flex;
+}
+
+.mobile-only {
+  display: none !important;
+}
+
 /* TABLET BREAKPOINT (max-width: 1024px) */
 @media (max-width: 1024px) {
   .grid-4-col {
@@ -318,12 +277,21 @@ body {
 
 /* MOBILE BREAKPOINT (max-width: 768px) */
 @media (max-width: 768px) {
+  .desktop-only {
+    display: none !important;
+  }
+
+  .mobile-only {
+    display: flex !important;
+  }
+
   .grid-4-col,
   .grid-3-col,
   .grid-2-col {
     grid-template-columns: 1fr !important;
   }
 
+  /* Responsive typography */
   h1, .hero-title {
     font-size: clamp(1.8rem, 6.5vw, 2.5rem) !important;
     line-height: 1.15 !important;
@@ -333,6 +301,7 @@ body {
     font-size: clamp(1.4rem, 5vw, 1.9rem) !important;
   }
 
+  /* Mobile Paddings */
   .mobile-p-small {
     padding: 14px !important;
   }
@@ -342,8 +311,21 @@ body {
     align-items: stretch !important;
   }
 
+  /* Full width buttons on mobile */
   .btn-mobile-full {
     width: 100% !important;
     justify-content: center !important;
+  }
+}
+
+/* SMALL MOBILE (max-width: 480px) */
+@media (max-width: 480px) {
+  .mobile-hide-tiny {
+    display: none !important;
+  }
+
+  .btn {
+    padding: 10px 16px;
+    font-size: 0.78rem;
   }
 }
