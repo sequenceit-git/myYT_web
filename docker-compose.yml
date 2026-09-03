@@ -31,6 +31,8 @@ services:
       - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
       - ADMIN_SECRET_KEY=${ADMIN_SECRET_KEY}
       - CORS_ORIGIN=https://${DOMAIN}
+      - ENABLE_COOLDOWN=${ENABLE_COOLDOWN:-false}
+      - VIDEO_COOLDOWN_SECONDS=${VIDEO_COOLDOWN_SECONDS:-0}
     depends_on:
       redis:
         condition: service_healthy
@@ -57,7 +59,8 @@ services:
     container_name: myyt_frontend
     restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - myyt_internal
       - traefik_network
