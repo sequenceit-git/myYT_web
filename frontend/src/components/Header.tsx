@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   PlaySquare,
@@ -6,11 +6,6 @@ import {
   Megaphone,
   Smartphone,
   LogIn,
-  LayoutDashboard,
-  Wallet,
-  Menu,
-  X,
-  User as UserIcon,
 } from 'lucide-react';
 import { User } from '../types';
 
@@ -28,9 +23,6 @@ export const Header: React.FC<HeaderProps> = ({
   const navigate = useNavigate();
   const location = useLocation();
   const currentPath = location.pathname;
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  const closeMenu = () => setMobileMenuOpen(false);
 
   return (
     <header
@@ -40,7 +32,7 @@ export const Header: React.FC<HeaderProps> = ({
         borderTop: 'none',
         borderLeft: 'none',
         borderRight: 'none',
-        padding: '10px 16px',
+        padding: '10px 12px',
         background: 'rgba(12, 12, 12, 0.96)',
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
@@ -56,197 +48,129 @@ export const Header: React.FC<HeaderProps> = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: 12,
+          gap: 8,
         }}
       >
         {/* Brand Logo */}
         <Link
           to="/"
-          onClick={closeMenu}
-          style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, textDecoration: 'none', flexShrink: 0 }}
         >
           <div
             style={{
-              width: 32,
-              height: 32,
-              borderRadius: 9,
+              width: 30,
+              height: 30,
+              borderRadius: 8,
               background: 'linear-gradient(135deg, #c3f400 0%, #a2cc00 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 0 14px rgba(195, 244, 0, 0.35)',
+              boxShadow: '0 0 12px rgba(195, 244, 0, 0.35)',
             }}
           >
-            <PlaySquare size={17} color="#161e00" />
+            <PlaySquare size={16} color="#161e00" />
           </div>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <span className="font-display" style={{ fontSize: '1.35rem', letterSpacing: '0.02em', color: '#ffffff' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span className="font-display" style={{ fontSize: '1.25rem', letterSpacing: '0.02em', color: '#ffffff' }}>
                 MY<span style={{ color: 'var(--primary-neon)' }}>YT</span>
-              </span>
-              <span className="badge-pill badge-neon" style={{ fontSize: '0.52rem', padding: '1px 5px' }}>
-                PRO
               </span>
             </div>
           </div>
         </Link>
 
-        {/* Desktop Navigation (Hidden on Mobile) */}
+        {/* Clean Core Navigation: Home | Buy Views | Watch App (Same on Mobile, Tablet & Desktop) */}
         <nav
-          className="desktop-only"
           style={{
+            display: 'flex',
             alignItems: 'center',
-            gap: 4,
+            gap: 2,
             background: '#161616',
-            padding: '2px 4px',
+            padding: '2px 3px',
             borderRadius: 9999,
             border: '1px solid var(--glass-stroke)',
+            overflowX: 'auto',
           }}
         >
-          {user ? (
-            user.role === 'campaigner' ? (
-              // Creator Navigation
-              <Link
-                to="/creator"
-                className="btn"
-                style={{
-                  padding: '5px 14px',
-                  fontSize: '0.72rem',
-                  borderRadius: 9999,
-                  background: currentPath === '/creator' || currentPath === '/buy-views' ? '#78d3ee' : 'transparent',
-                  color: currentPath === '/creator' || currentPath === '/buy-views' ? '#003642' : 'var(--on-surface-variant)',
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  textDecoration: 'none',
-                }}
-              >
-                <LayoutDashboard size={13} /> Creator Dashboard
-              </Link>
-            ) : (
-              // Viewer Navigation
-              <>
-                <Link
-                  to="/viewer"
-                  className="btn"
-                  style={{
-                    padding: '5px 12px',
-                    fontSize: '0.72rem',
-                    borderRadius: 9999,
-                    background: currentPath === '/viewer' || currentPath === '/wallet' ? 'var(--primary-neon)' : 'transparent',
-                    color: currentPath === '/viewer' || currentPath === '/wallet' ? 'var(--on-primary)' : 'var(--on-surface-variant)',
-                    fontWeight: currentPath === '/viewer' || currentPath === '/wallet' ? 700 : 500,
-                    textDecoration: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 5,
-                  }}
-                >
-                  <Wallet size={13} /> Viewer Dashboard
-                </Link>
+          <Link
+            to="/"
+            className="btn"
+            style={{
+              padding: '5px 10px',
+              fontSize: '0.72rem',
+              borderRadius: 9999,
+              background: currentPath === '/' ? 'var(--primary-neon)' : 'transparent',
+              color: currentPath === '/' ? 'var(--on-primary)' : 'var(--on-surface-variant)',
+              fontWeight: currentPath === '/' ? 700 : 500,
+              textDecoration: 'none',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Home
+          </Link>
 
-                <Link
-                  to="/simulator"
-                  className="btn"
-                  style={{
-                    padding: '5px 12px',
-                    fontSize: '0.72rem',
-                    borderRadius: 9999,
-                    background: currentPath === '/simulator' || currentPath === '/watch' ? 'var(--primary-neon)' : 'transparent',
-                    color: currentPath === '/simulator' || currentPath === '/watch' ? 'var(--on-primary)' : 'var(--on-surface-variant)',
-                    fontWeight: currentPath === '/simulator' || currentPath === '/watch' ? 700 : 500,
-                    textDecoration: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 5,
-                  }}
-                >
-                  <Smartphone size={13} /> Watch Tasks
-                </Link>
-              </>
-            )
-          ) : (
-            // Visitor Navigation
-            <>
-              <Link
-                to="/"
-                className="btn"
-                style={{
-                  padding: '5px 12px',
-                  fontSize: '0.72rem',
-                  borderRadius: 9999,
-                  background: currentPath === '/' ? 'var(--primary-neon)' : 'transparent',
-                  color: currentPath === '/' ? 'var(--on-primary)' : 'var(--on-surface-variant)',
-                  fontWeight: currentPath === '/' ? 700 : 500,
-                  textDecoration: 'none',
-                }}
-              >
-                Home
-              </Link>
+          <Link
+            to="/buy-views"
+            className="btn"
+            style={{
+              padding: '5px 10px',
+              fontSize: '0.72rem',
+              borderRadius: 9999,
+              background: currentPath === '/buy-views' ? '#78d3ee' : 'transparent',
+              color: currentPath === '/buy-views' ? '#003642' : 'var(--on-surface-variant)',
+              fontWeight: currentPath === '/buy-views' ? 700 : 500,
+              textDecoration: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <Megaphone size={12} /> Buy Views
+          </Link>
 
-              <Link
-                to="/buy-views"
-                className="btn"
-                style={{
-                  padding: '5px 12px',
-                  fontSize: '0.72rem',
-                  borderRadius: 9999,
-                  background: currentPath === '/buy-views' ? '#78d3ee' : 'transparent',
-                  color: currentPath === '/buy-views' ? '#003642' : 'var(--on-surface-variant)',
-                  fontWeight: currentPath === '/buy-views' ? 700 : 500,
-                  textDecoration: 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 5,
-                }}
-              >
-                <Megaphone size={12} /> Buy Views
-              </Link>
-
-              <Link
-                to="/simulator"
-                className="btn"
-                style={{
-                  padding: '5px 12px',
-                  fontSize: '0.72rem',
-                  borderRadius: 9999,
-                  background: currentPath === '/simulator' ? 'var(--primary-neon)' : 'transparent',
-                  color: currentPath === '/simulator' ? 'var(--on-primary)' : 'var(--on-surface-variant)',
-                  fontWeight: currentPath === '/simulator' ? 700 : 500,
-                  textDecoration: 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 5,
-                }}
-              >
-                <Smartphone size={12} /> Watch App
-              </Link>
-            </>
-          )}
+          <Link
+            to="/simulator"
+            className="btn"
+            style={{
+              padding: '5px 10px',
+              fontSize: '0.72rem',
+              borderRadius: 9999,
+              background: currentPath === '/simulator' || currentPath === '/watch' ? 'var(--primary-neon)' : 'transparent',
+              color: currentPath === '/simulator' || currentPath === '/watch' ? 'var(--on-primary)' : 'var(--on-surface-variant)',
+              fontWeight: currentPath === '/simulator' || currentPath === '/watch' ? 700 : 500,
+              textDecoration: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <Smartphone size={12} /> Watch App
+          </Link>
         </nav>
 
-        {/* Right Actions (Desktop) */}
-        <div className="desktop-only" style={{ alignItems: 'center', gap: 8 }}>
+        {/* Right Actions (Auth / Avatar / Balance) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
           {user ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               {/* Balance */}
               <div
                 onClick={() => navigate(user.role === 'campaigner' ? '/creator' : '/viewer')}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 6,
+                  gap: 4,
                   background: '#181818',
-                  padding: '4px 10px',
-                  borderRadius: 10,
+                  padding: '3px 8px',
+                  borderRadius: 8,
                   border: '1px solid rgba(195, 244, 0, 0.25)',
                   cursor: 'pointer',
                 }}
               >
-                <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--primary-neon)' }} className="pulse-neon" />
-                <span className="font-mono" style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--primary-neon)' }}>
-                  ${user.balance.toFixed(4)} <span style={{ fontSize: '0.65rem', color: 'var(--on-surface-variant)' }}>USD</span>
+                <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--primary-neon)' }} className="pulse-neon" />
+                <span className="font-mono" style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--primary-neon)' }}>
+                  ${user.balance.toFixed(2)}
                 </span>
               </div>
 
@@ -254,8 +178,8 @@ export const Header: React.FC<HeaderProps> = ({
               <div
                 onClick={() => navigate(user.role === 'campaigner' ? '/creator' : '/viewer')}
                 style={{
-                  width: 32,
-                  height: 32,
+                  width: 28,
+                  height: 28,
                   borderRadius: '50%',
                   overflow: 'hidden',
                   border: `1.5px solid ${user.role === 'campaigner' ? 'var(--secondary-cyan)' : 'var(--primary-neon)'}`,
@@ -274,263 +198,33 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 onClick={onLogout}
                 className="btn btn-ghost"
-                style={{ padding: '6px 9px', fontSize: '0.68rem', borderRadius: 8 }}
+                style={{ padding: '5px 7px', fontSize: '0.65rem', borderRadius: 7 }}
                 title="Logout"
               >
-                <LogOut size={13} />
+                <LogOut size={12} />
               </button>
             </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               <button
                 onClick={() => onOpenAuth('signin')}
                 className="btn btn-ghost"
-                style={{ padding: '6px 12px', fontSize: '0.72rem', borderRadius: 8 }}
+                style={{ padding: '5px 9px', fontSize: '0.7rem', borderRadius: 7 }}
               >
-                <LogIn size={13} /> Sign In
+                <LogIn size={12} /> <span className="mobile-hide-tiny">Sign In</span>
               </button>
 
               <button
                 onClick={() => onOpenAuth('signup', 'viewer')}
                 className="btn btn-neon glow-neon"
-                style={{ padding: '6px 12px', fontSize: '0.72rem', borderRadius: 8 }}
+                style={{ padding: '5px 10px', fontSize: '0.7rem', borderRadius: 7 }}
               >
-                <span>Join Now</span>
+                <span>Join</span>
               </button>
             </div>
           )}
-        </div>
-
-        {/* Mobile Header Right Controls: Balance + Hamburger Toggle */}
-        <div className="mobile-only" style={{ alignItems: 'center', gap: 8 }}>
-          {user && (
-            <div
-              onClick={() => navigate(user.role === 'campaigner' ? '/creator' : '/viewer')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 5,
-                background: '#181818',
-                padding: '4px 8px',
-                borderRadius: 8,
-                border: '1px solid rgba(195, 244, 0, 0.25)',
-              }}
-            >
-              <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--primary-neon)' }} className="pulse-neon" />
-              <span className="font-mono" style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--primary-neon)' }}>
-                ${user.balance.toFixed(2)}
-              </span>
-            </div>
-          )}
-
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            style={{
-              background: '#1c1c1c',
-              border: '1px solid var(--glass-stroke)',
-              color: '#ffffff',
-              borderRadius: 8,
-              padding: 6,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-            }}
-            aria-label="Toggle navigation menu"
-          >
-            {mobileMenuOpen ? <X size={20} color="var(--primary-neon)" /> : <Menu size={20} />}
-          </button>
         </div>
       </div>
-
-      {/* Responsive Mobile Drawer Menu */}
-      {mobileMenuOpen && (
-        <div
-          className="mobile-only"
-          style={{
-            flexDirection: 'column',
-            gap: 10,
-            padding: '16px 0 8px 0',
-            marginTop: 10,
-            borderTop: '1px solid var(--glass-stroke)',
-          }}
-        >
-          {/* User Profile info if logged in */}
-          {user && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '8px 12px',
-                background: '#161616',
-                borderRadius: 12,
-                marginBottom: 6,
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: '50%',
-                    overflow: 'hidden',
-                    border: `1.5px solid ${user.role === 'campaigner' ? 'var(--secondary-cyan)' : 'var(--primary-neon)'}`,
-                  }}
-                >
-                  <img
-                    src={user.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(user.email)}`}
-                    alt="avatar"
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                </div>
-                <div>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#ffffff' }}>
-                    {user.name || user.email.split('@')[0]}
-                  </div>
-                  <div style={{ fontSize: '0.65rem', color: 'var(--on-surface-variant)' }}>
-                    {user.role === 'campaigner' ? 'Creator Account' : 'Viewer Account'}
-                  </div>
-                </div>
-              </div>
-
-              <button
-                onClick={() => {
-                  onLogout();
-                  closeMenu();
-                }}
-                className="btn btn-ghost"
-                style={{ padding: '6px 10px', fontSize: '0.7rem', borderRadius: 8 }}
-              >
-                <LogOut size={12} /> Logout
-              </button>
-            </div>
-          )}
-
-          {/* Links list */}
-          <Link
-            to="/"
-            onClick={closeMenu}
-            style={{
-              padding: '10px 14px',
-              borderRadius: 10,
-              background: currentPath === '/' ? '#1f1f1f' : 'transparent',
-              color: currentPath === '/' ? 'var(--primary-neon)' : '#ffffff',
-              fontWeight: 700,
-              fontSize: '0.85rem',
-              textDecoration: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-            }}
-          >
-            Home Overview
-          </Link>
-
-          <Link
-            to="/buy-views"
-            onClick={closeMenu}
-            style={{
-              padding: '10px 14px',
-              borderRadius: 10,
-              background: currentPath === '/buy-views' ? '#1f1f1f' : 'transparent',
-              color: currentPath === '/buy-views' ? '#78d3ee' : '#ffffff',
-              fontWeight: 700,
-              fontSize: '0.85rem',
-              textDecoration: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-            }}
-          >
-            <Megaphone size={15} color="#78d3ee" /> Buy Real YouTube Views
-          </Link>
-
-          <Link
-            to="/creator"
-            onClick={closeMenu}
-            style={{
-              padding: '10px 14px',
-              borderRadius: 10,
-              background: currentPath === '/creator' ? '#1f1f1f' : 'transparent',
-              color: currentPath === '/creator' ? '#78d3ee' : '#ffffff',
-              fontWeight: 700,
-              fontSize: '0.85rem',
-              textDecoration: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-            }}
-          >
-            <LayoutDashboard size={15} color="#78d3ee" /> Creator Studio Dashboard
-          </Link>
-
-          <Link
-            to="/viewer"
-            onClick={closeMenu}
-            style={{
-              padding: '10px 14px',
-              borderRadius: 10,
-              background: currentPath === '/viewer' ? '#1f1f1f' : 'transparent',
-              color: currentPath === '/viewer' ? 'var(--primary-neon)' : '#ffffff',
-              fontWeight: 700,
-              fontSize: '0.85rem',
-              textDecoration: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-            }}
-          >
-            <Wallet size={15} color="var(--primary-neon)" /> Viewer Wallet & Cashouts
-          </Link>
-
-          <Link
-            to="/simulator"
-            onClick={closeMenu}
-            style={{
-              padding: '10px 14px',
-              borderRadius: 10,
-              background: currentPath === '/simulator' ? '#1f1f1f' : 'transparent',
-              color: currentPath === '/simulator' ? 'var(--primary-neon)' : '#ffffff',
-              fontWeight: 700,
-              fontSize: '0.85rem',
-              textDecoration: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-            }}
-          >
-            <Smartphone size={15} color="var(--primary-neon)" /> Mobile Simulator & QR APK
-          </Link>
-
-          {/* Auth Action Buttons if not logged in */}
-          {!user && (
-            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-              <button
-                onClick={() => {
-                  onOpenAuth('signin');
-                  closeMenu();
-                }}
-                className="btn btn-ghost"
-                style={{ flex: 1, padding: '10px', borderRadius: 10, fontSize: '0.78rem' }}
-              >
-                <LogIn size={13} /> Sign In
-              </button>
-
-              <button
-                onClick={() => {
-                  onOpenAuth('signup', 'viewer');
-                  closeMenu();
-                }}
-                className="btn btn-neon glow-neon"
-                style={{ flex: 1, padding: '10px', borderRadius: 10, fontSize: '0.78rem' }}
-              >
-                Join Free
-              </button>
-            </div>
-          )}
-        </div>
-      )}
     </header>
   );
 };
