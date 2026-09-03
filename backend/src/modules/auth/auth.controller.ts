@@ -45,7 +45,7 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    const randomAvatar = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(email)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`;
+    const randomAvatar = `https://api.dicebear.com/7.x/adventurer/png?seed=${encodeURIComponent(email)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`;
     const user = await User.create({
       email,
       name,
@@ -117,7 +117,7 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
           credits: user.credits || 0,
           totalCreditsEarned: user.totalCreditsEarned || 0,
           totalEarned: user.totalEarned,
-          avatar: user.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(user.email)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`,
+          avatar: (user.avatar ? user.avatar.replace('/svg', '/png') : `https://api.dicebear.com/7.x/adventurer/png?seed=${encodeURIComponent(user.email)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`),
         },
         ...tokens,
       },
@@ -154,7 +154,7 @@ router.post('/google', async (req: Request, res: Response): Promise<void> => {
 
     email = email.toLowerCase().trim();
     name = name || email.split('@')[0];
-    const generatedAvatar = avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(email)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`;
+    const generatedAvatar = avatar ? avatar.replace('/svg', '/png') : `https://api.dicebear.com/7.x/adventurer/png?seed=${encodeURIComponent(email)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`;
 
     let user = await User.findOne({ email });
 
@@ -229,7 +229,7 @@ router.get('/me', requireAuth, async (req: AuthRequest, res: Response): Promise<
       totalSpent: u.totalSpent,
       totalWithdrawn: u.totalWithdrawn,
       status: u.status,
-      avatar: u.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(u.email)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`,
+      avatar: (u.avatar ? u.avatar.replace('/svg', '/png') : `https://api.dicebear.com/7.x/adventurer/png?seed=${encodeURIComponent(u.email)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`),
     },
   });
 });

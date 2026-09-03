@@ -29,10 +29,12 @@ router.get('/next', requireAuth, async (req: AuthRequest, res: Response): Promis
       return;
     }
 
-    // Filter by cooldown: video must not have been watched in the last 1 hour
+    // Filter by cooldown (if enabled)
     let selectedCampaign: any = null;
     for (const camp of activeCampaigns) {
-      const isCooldown = await cacheService.hasCooldown(userId, camp.videoId);
+      const isCooldown = config.enableCooldown && config.videoCooldownSeconds > 0
+        ? await cacheService.hasCooldown(userId, camp.videoId)
+        : false;
       if (!isCooldown) {
         selectedCampaign = camp;
         break;
@@ -184,12 +186,14 @@ router.post('/:id/complete', requireAuth, async (req: AuthRequest, res: Response
       notes: `+${creditsEarned} Watch Credits earned from ${task.requiredDurationSec}s video view (${task.videoId})`,
     });
 
-    // Enforce 1-hour cooldown in Redis/Cache
-    await cacheService.setCooldown(
-      req.user!._id.toString(),
-      task.videoId,
-      config.videoCooldownSeconds
-    );
+    // Enforce cooldown in Redis/Cache if enabled
+    if (config.enableCooldown && config.videoCooldownSeconds > 0) {
+      await cacheService.setCooldown(
+        req.user!._id.toString(),
+        task.videoId,
+        config.videoCooldownSeconds
+      );
+    }
 
     res.json({
       success: true,

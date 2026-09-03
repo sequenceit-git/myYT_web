@@ -21,8 +21,9 @@ export const config = {
     120: { campaignerCost: 0.0150, viewerReward: 0.0110 },
   } as Record<number, { campaignerCost: number; viewerReward: number }>,
 
-  // Cooldown in seconds before a viewer can watch the same video again (default: 1 hour)
-  videoCooldownSeconds: 3600,
+  // Cooldown in seconds before a viewer can watch the same video again (default: 1 hour, disabled if ENABLE_COOLDOWN=false)
+  enableCooldown: process.env.ENABLE_COOLDOWN === 'true',
+  videoCooldownSeconds: parseInt(process.env.VIDEO_COOLDOWN_SECONDS || '3600', 10),
   
   // Timing tolerance for server watch verification (in seconds)
   timeToleranceSeconds: 2,
