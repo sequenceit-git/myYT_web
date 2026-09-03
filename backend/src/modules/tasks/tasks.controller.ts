@@ -217,9 +217,9 @@ router.post('/:id/complete', requireAuth, async (req: AuthRequest, res: Response
 router.get('/history', requireAuth, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const tasks = await Task.find({ viewerId: req.user!._id })
-      .populate('campaignId', 'title')
+      .populate('campaignId', 'title videoId thumbnailUrl')
       .sort({ createdAt: -1 })
-      .limit(50);
+      .limit(100);
     res.json({ success: true, data: tasks });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
