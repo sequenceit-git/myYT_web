@@ -1,0 +1,207 @@
+@import url('https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+:root {
+  --surface-container-lowest: #0e0e0e;
+  --surface: #131313;
+  --surface-card: #1a1a1a;
+  --surface-container-high: #2a2a2a;
+  --primary-neon: #c3f400;
+  --primary-neon-dim: #abd600;
+  --on-primary: #161e00;
+  --secondary-cyan: #78d3ee;
+  --on-surface: #e5e2e1;
+  --on-surface-variant: #9ca3af;
+  --glass-stroke: rgba(255, 255, 255, 0.1);
+  --success-green: #00c853;
+  --brand-red: #ff0033;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: var(--surface-container-lowest);
+  color: var(--on-surface);
+  min-height: 100vh;
+  line-height: 1.5;
+  background-image: 
+    radial-gradient(circle at 85% 10%, rgba(195, 244, 0, 0.12) 0%, transparent 45%),
+    radial-gradient(circle at 10% 80%, rgba(120, 211, 238, 0.08) 0%, transparent 40%);
+  background-attachment: fixed;
+  overflow-x: hidden;
+}
+
+/* Typography Classes */
+.font-display {
+  font-family: 'Anton', sans-serif;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.font-body {
+  font-family: 'IBM Plex Sans', sans-serif;
+}
+
+.font-mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Glassmorphism & Cards */
+.glass-card {
+  background: rgba(26, 26, 26, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-stroke);
+  border-radius: 18px;
+}
+
+.glass-card:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+/* Neon Glows */
+.glow-neon {
+  box-shadow: 0 0 30px rgba(195, 244, 0, 0.35);
+}
+
+.glow-cyan {
+  box-shadow: 0 0 25px rgba(120, 211, 238, 0.25);
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: 9999px; /* LuckyWatch pill-shaped */
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  border: none;
+  outline: none;
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn-neon {
+  background: var(--primary-neon);
+  color: var(--on-primary);
+  box-shadow: 0 0 20px rgba(195, 244, 0, 0.3);
+}
+
+.btn-neon:hover {
+  background: var(--primary-neon-dim);
+  box-shadow: 0 0 35px rgba(195, 244, 0, 0.5);
+  transform: translateY(-2px);
+}
+
+.btn-ghost {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--on-surface);
+  border: 1px solid var(--glass-stroke);
+}
+
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+/* Chips & Badges */
+.badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.725rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border: 1px solid var(--glass-stroke);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.badge-neon {
+  background: rgba(195, 244, 0, 0.15);
+  color: var(--primary-neon);
+  border-color: rgba(195, 244, 0, 0.3);
+}
+
+.badge-cyan {
+  background: rgba(120, 211, 238, 0.15);
+  color: var(--secondary-cyan);
+  border-color: rgba(120, 211, 238, 0.3);
+}
+
+/* Input Fields */
+.input-field {
+  width: 100%;
+  background: #1c1b1b;
+  border: 1px solid var(--glass-stroke);
+  color: var(--on-surface);
+  padding: 14px 18px;
+  border-radius: 12px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 0.95rem;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.input-field:focus {
+  border-color: var(--primary-neon);
+  box-shadow: 0 0 0 3px rgba(195, 244, 0, 0.15);
+}
+
+/* Pulse animation */
+@keyframes neonPulse {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+
+.pulse-neon {
+  animation: neonPulse 2s infinite ease-in-out;
+}
+
+/* Smooth Infinite Ticker Marquee */
+@keyframes tickerScroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.ticker-track {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  width: max-content;
+  animation: tickerScroll 35s linear infinite;
+}
+
+.ticker-track:hover {
+  animation-play-state: paused;
+}
+
+@keyframes feedItemFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+

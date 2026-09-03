@@ -1,0 +1,21 @@
+{
+  "name": "myyt-platform",
+  "version": "1.0.0",
+  "description": "High-concurrency YouTube video engagement and view-exchange platform",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "start:backend": "npm --prefix backend run dev",
+    "start:frontend": "npm --prefix frontend run dev",
+    "dev": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
+    "build": "npm --prefix backend run build && npm --prefix frontend run build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "author": "myYT Team",
+  "license": "ISC"
+}

@@ -1,0 +1,237 @@
+import { Router, Request, Response } from 'express';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { z } from 'zod';
+import { User } from '../../models/User.js';
+import { config } from '../../config/index.js';
+import { requireAuth, AuthRequest } from '../../middleware/auth.middleware.js';
+
+const router = Router();
+
+const registerSchema = z.object({
+  email: z.string().email(),
+  name: z.string().min(2),
+  password: z.string().min(6),
+  role: z.enum(['campaigner', 'viewer']).default('viewer'),
+});
+
+const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+});
+
+const generateTokens = (userId: string, role: string) => {
+  const token = jwt.sign({ userId, role }, config.jwtSecret, { expiresIn: '7d' });
+  const refreshToken = jwt.sign({ userId }, config.jwtRefreshSecret, { expiresIn: '30d' });
+  return { token, refreshToken };
+};
+
+// Register
+router.post('/register', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const parsed = registerSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ success: false, error: parsed.error.issues[0].message });
+      return;
+    }
+
+    const { email, name, password, role } = parsed.data;
+    const existing = await User.findOne({ email });
+    if (existing) {
+      res.status(400).json({ success: false, error: 'Email is already registered' });
+      return;
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+
+    const randomAvatar = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(email)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`;
+    const user = await User.create({
+      email,
+      name,
+      passwordHash,
+      role,
+      avatar: randomAvatar,
+      balance: role === 'campaigner' ? 10.0 : 0.5, // Free starter credit for testing!
+    });
+
+    const tokens = generateTokens(user._id.toString(), user.role);
+
+    res.status(201).json({
+      success: true,
+      data: {
+        user: {
+          id: user._id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          balance: user.balance,
+          avatar: user.avatar || randomAvatar,
+        },
+        ...tokens,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Login
+router.post('/login', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const parsed = loginSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ success: false, error: 'Invalid email or password' });
+      return;
+    }
+
+    const { email, password } = parsed.data;
+    const user = await User.findOne({ email });
+    if (!user || !user.passwordHash) {
+      res.status(401).json({ success: false, error: 'Invalid email or password' });
+      return;
+    }
+
+    const valid = await bcrypt.compare(password, user.passwordHash);
+    if (!valid) {
+      res.status(401).json({ success: false, error: 'Invalid email or password' });
+      return;
+    }
+
+    if (user.status === 'banned') {
+      res.status(403).json({ success: false, error: 'Account suspended' });
+      return;
+    }
+
+    const tokens = generateTokens(user._id.toString(), user.role);
+
+    res.json({
+      success: true,
+      data: {
+        user: {
+          id: user._id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          balance: user.balance,
+          credits: user.credits || 0,
+          totalCreditsEarned: user.totalCreditsEarned || 0,
+          totalEarned: user.totalEarned,
+          avatar: user.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(user.email)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`,
+        },
+        ...tokens,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Google One-Tap / OAuth Sign-in
+router.post('/google', async (req: Request, res: Response): Promise<void> => {
+  try {
+    let { email, name, avatar, googleId, role, credential } = req.body;
+
+    // If a Google GIS JWT credential is provided, decode payload
+    if (credential && typeof credential === 'string') {
+      try {
+        const decoded: any = jwt.decode(credential);
+        if (decoded && decoded.email) {
+          email = decoded.email;
+          name = name || decoded.name || decoded.given_name;
+          avatar = avatar || decoded.picture;
+          googleId = googleId || decoded.sub;
+        }
+      } catch (e) {
+        // Fallback to direct parameters
+      }
+    }
+
+    if (!email) {
+      res.status(400).json({ success: false, error: 'Valid Google email is required' });
+      return;
+    }
+
+    email = email.toLowerCase().trim();
+    name = name || email.split('@')[0];
+    const generatedAvatar = avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(email)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`;
+
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      user = await User.create({
+        email,
+        name,
+        googleId,
+        avatar: generatedAvatar,
+        role: role === 'campaigner' ? 'campaigner' : 'viewer',
+        balance: role === 'campaigner' ? 10.0 : 0.5,
+      });
+    } else {
+      let updated = false;
+      if (avatar && !user.avatar) {
+        user.avatar = avatar;
+        updated = true;
+      }
+      if (googleId && !user.googleId) {
+        user.googleId = googleId;
+        updated = true;
+      }
+      if (updated) {
+        await user.save();
+      }
+    }
+
+    if (user.status === 'banned') {
+      res.status(403).json({ success: false, error: 'This account is suspended' });
+      return;
+    }
+
+    const tokens = generateTokens(user._id.toString(), user.role);
+
+    res.json({
+      success: true,
+      data: {
+        user: {
+          id: user._id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          balance: user.balance,
+          credits: user.credits || 0,
+          totalCreditsEarned: user.totalCreditsEarned || 0,
+          avatar: user.avatar,
+          totalEarned: user.totalEarned,
+          totalSpent: user.totalSpent,
+        },
+        ...tokens,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Me
+router.get('/me', requireAuth, async (req: AuthRequest, res: Response): Promise<void> => {
+  const u = req.user!;
+  res.json({
+    success: true,
+    data: {
+      id: u._id,
+      email: u.email,
+      name: u.name,
+      role: u.role,
+      balance: u.balance,
+      credits: u.credits || 0,
+      totalCreditsEarned: u.totalCreditsEarned || 0,
+      totalEarned: u.totalEarned,
+      totalSpent: u.totalSpent,
+      totalWithdrawn: u.totalWithdrawn,
+      status: u.status,
+      avatar: u.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(u.email)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`,
+    },
+  });
+});
+
+export const authRouter = router;

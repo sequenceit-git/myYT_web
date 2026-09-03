@@ -1,0 +1,222 @@
+import { Router, Response } from 'express';
+import mongoose from 'mongoose';
+import { Task } from '../../models/Task.js';
+import { Campaign } from '../../models/Campaign.js';
+import { User } from '../../models/User.js';
+import { Transaction } from '../../models/Transaction.js';
+import { config } from '../../config/index.js';
+import { cacheService } from '../../services/cache.service.js';
+import { requireAuth, AuthRequest } from '../../middleware/auth.middleware.js';
+
+const router = Router();
+
+// GET /api/tasks/next - fetch next eligible task for viewer
+router.get('/next', requireAuth, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!._id.toString();
+
+    // Find active campaigns that still have views to deliver
+    const activeCampaigns = await Campaign.find({
+      status: 'active',
+      $expr: { $lt: ['$viewsDelivered', '$targetViews'] },
+    }).sort({ createdAt: 1 });
+
+    if (!activeCampaigns.length) {
+      res.status(404).json({
+        success: false,
+        error: 'No active video campaigns available at the moment. Please check back shortly!',
+      });
+      return;
+    }
+
+    // Filter by cooldown: video must not have been watched in the last 1 hour
+    let selectedCampaign: any = null;
+    for (const camp of activeCampaigns) {
+      const isCooldown = await cacheService.hasCooldown(userId, camp.videoId);
+      if (!isCooldown) {
+        selectedCampaign = camp;
+        break;
+      }
+    }
+
+    if (!selectedCampaign) {
+      res.status(429).json({
+        success: false,
+        error: 'All available videos have been watched within the last hour. Cooldown in progress.',
+      });
+      return;
+    }
+
+    const tier = config.pricingTiers[selectedCampaign.watchDurationSec];
+    const rewardAmount = tier ? tier.viewerReward : 0.003;
+
+    // Create assigned task
+    const task = await Task.create({
+      campaignId: selectedCampaign._id,
+      viewerId: req.user!._id,
+      videoId: selectedCampaign.videoId,
+      requiredDurationSec: selectedCampaign.watchDurationSec,
+      rewardAmount,
+      status: 'assigned',
+    });
+
+    res.json({
+      success: true,
+      data: {
+        taskId: task._id,
+        videoId: selectedCampaign.videoId,
+        requiredDurationSec: selectedCampaign.watchDurationSec,
+        rewardAmount,
+        title: selectedCampaign.title,
+        thumbnailUrl: selectedCampaign.thumbnailUrl,
+        youtubeDeepLink: `vnd.youtube:${selectedCampaign.videoId}`,
+        youtubeWebUrl: `https://www.youtube.com/watch?v=${selectedCampaign.videoId}`,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/tasks/:id/start - server stamps start time
+router.post('/:id/start', requireAuth, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const task = await Task.findOne({
+      _id: req.params.id,
+      viewerId: req.user!._id,
+      status: 'assigned',
+    });
+
+    if (!task) {
+      res.status(404).json({ success: false, error: 'Task not found or already started' });
+      return;
+    }
+
+    task.status = 'in_progress';
+    task.startedAt = new Date();
+    await task.save();
+
+    res.json({
+      success: true,
+      data: {
+        taskId: task._id,
+        startedAt: task.startedAt,
+        requiredDurationSec: task.requiredDurationSec,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/tasks/:id/complete - server-authoritative verification & reward
+router.post('/:id/complete', requireAuth, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { overlayConfirmed, deviceId } = req.body;
+    const task = await Task.findOne({
+      _id: req.params.id,
+      viewerId: req.user!._id,
+      status: 'in_progress',
+    });
+
+    if (!task || !task.startedAt) {
+      res.status(404).json({ success: false, error: 'Task not found or not currently in progress' });
+      return;
+    }
+
+    const now = Date.now();
+    const elapsedSec = (now - task.startedAt.getTime()) / 1000;
+    const minRequired = task.requiredDurationSec - config.timeToleranceSeconds;
+
+    // Rule 1: Server-Authoritative Timing check
+    if (elapsedSec < minRequired) {
+      task.status = 'failed';
+      await task.save();
+      res.status(400).json({
+        success: false,
+        error: `Insufficient watch time detected by server. Required ${task.requiredDurationSec}s, but only ${elapsedSec.toFixed(1)}s elapsed. Reward denied.`,
+      });
+      return;
+    }
+
+    // Mark task completed
+    task.status = 'completed';
+    task.completedAt = new Date();
+    task.actualDurationSec = Math.round(elapsedSec);
+    task.verificationMeta = {
+      ip: req.ip || '',
+      userAgent: req.headers['user-agent'] || '',
+      deviceId: deviceId || 'web-simulated',
+      overlayConfirmed: !!overlayConfirmed,
+    };
+    await task.save();
+
+    // Calculate watch credits (1 credit per second watched)
+    const creditsEarned = task.requiredDurationSec;
+
+    // Atomic reward credits to viewer
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user!._id,
+      { $inc: { credits: creditsEarned, totalCreditsEarned: creditsEarned } },
+      { new: true }
+    );
+
+    // Atomic delivery count increment on campaign
+    const campaign = await Campaign.findByIdAndUpdate(
+      task.campaignId,
+      { $inc: { viewsDelivered: 1 } },
+      { new: true }
+    );
+
+    if (campaign && campaign.viewsDelivered >= campaign.targetViews) {
+      campaign.status = 'completed';
+      await campaign.save();
+    }
+
+    // Record earning transaction
+    await Transaction.create({
+      userId: req.user!._id,
+      type: 'watch_credit',
+      amount: 0,
+      balanceAfter: updatedUser?.balance || 0,
+      status: 'completed',
+      referenceId: task._id.toString(),
+      notes: `+${creditsEarned} Watch Credits earned from ${task.requiredDurationSec}s video view (${task.videoId})`,
+    });
+
+    // Enforce 1-hour cooldown in Redis/Cache
+    await cacheService.setCooldown(
+      req.user!._id.toString(),
+      task.videoId,
+      config.videoCooldownSeconds
+    );
+
+    res.json({
+      success: true,
+      data: {
+        creditsEarned,
+        newCredits: updatedUser?.credits || 0,
+        newBalance: updatedUser?.balance || 0,
+        actualDurationSec: task.actualDurationSec,
+        message: `Task successfully verified! +${creditsEarned} Watch Credits credited.`,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/tasks/history - Viewer's completed tasks
+router.get('/history', requireAuth, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const tasks = await Task.find({ viewerId: req.user!._id })
+      .populate('campaignId', 'title')
+      .sort({ createdAt: -1 })
+      .limit(50);
+    res.json({ success: true, data: tasks });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+export const tasksRouter = router;
