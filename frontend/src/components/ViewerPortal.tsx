@@ -411,129 +411,135 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
 
           {/* TAB 1: OVERVIEW */}
           {activeTab === 'overview' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
 
               {/* Quick Actions Row */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-                <h1 className="font-display" style={{ fontSize: '1.4rem', color: '#0f172a', margin: 0 }}>
-                  VIEWER OVERVIEW
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                <h1 className="font-display" style={{ fontSize: '1.85rem', color: '#0f172a', margin: 0, letterSpacing: '0.01em' }}>
+                  VIEWER STUDIO
                 </h1>
 
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 10 }}>
                   <button
                     onClick={() => setActiveTab('watch')}
                     className="btn btn-neon glow-neon"
-                    style={{ padding: '7px 14px', fontSize: '0.75rem', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 5 }}
+                    style={{ padding: '9px 18px', fontSize: '0.88rem', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 6 }}
                   >
-                    <Play size={13} fill="currentColor" /> Watch & Earn
+                    <Play size={15} fill="currentColor" /> Watch & Earn
                   </button>
                   <button
                     onClick={() => setActiveTab('withdraw')}
                     className="btn btn-cyan"
-                    style={{ padding: '7px 14px', fontSize: '0.75rem', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 5 }}
+                    style={{ padding: '9px 18px', fontSize: '0.88rem', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 6 }}
                   >
-                    <ArrowUpRight size={13} /> Withdraw Cash
+                    <ArrowUpRight size={15} /> Withdraw Cash
                   </button>
                 </div>
               </div>
 
               {/* 3 Metric Cards Grid (No Deposit) */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 14 }}>
                 {/* 1. Cash Balance */}
-                <div className="glass-card" style={{ padding: '16px', border: '1.5px solid rgba(14, 165, 233, 0.35)', borderRadius: 14 }}>
+                <div className="glass-card" style={{ padding: '20px', border: '1.5px solid rgba(14, 165, 233, 0.4)', borderRadius: 16 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span className="font-mono" style={{ fontSize: '0.68rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 600 }}>Available Earnings</span>
-                    <Wallet size={15} color="var(--primary-neon)" />
+                    <span className="font-mono" style={{ fontSize: '0.84rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
+                      Available Earnings
+                    </span>
+                    <Wallet size={18} color="var(--primary-neon)" />
                   </div>
-                  <div className="font-mono" style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--primary-neon)', marginTop: 4 }}>
+                  <div className="font-mono" style={{ fontSize: '2.3rem', fontWeight: 800, color: 'var(--primary-neon)', marginTop: 6, lineHeight: 1 }}>
                     ${viewerBal.toFixed(4)}
                   </div>
-                  <div className="font-mono" style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 600, marginTop: 2 }}>
+                  <div className="font-mono" style={{ fontSize: '0.84rem', color: '#059669', fontWeight: 600, marginTop: 4 }}>
                     ≈ ৳{approxBDT} BDT
                   </div>
                   <button
                     onClick={() => setActiveTab('withdraw')}
-                    className="btn btn-neon glow-neon"
-                    style={{ width: '100%', padding: '6px', fontSize: '0.72rem', borderRadius: 6, marginTop: 10 }}
+                    className="btn btn-ghost"
+                    style={{ marginTop: 12, width: '100%', padding: '7px', fontSize: '0.82rem', borderRadius: 8, color: 'var(--primary-neon)' }}
                   >
-                    <ArrowUpRight size={12} /> Withdraw Cash
+                    <ArrowUpRight size={13} /> Withdraw Cash
                   </button>
                 </div>
 
                 {/* 2. Total Earned */}
-                <div className="glass-card" style={{ padding: '16px', borderRadius: 14 }}>
+                <div className="glass-card" style={{ padding: '20px', borderRadius: 16 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span className="font-mono" style={{ fontSize: '0.68rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 600 }}>Total Earned</span>
-                    <TrendingUp size={15} color="#059669" />
+                    <span className="font-mono" style={{ fontSize: '0.84rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
+                      Total Earned
+                    </span>
+                    <TrendingUp size={18} color="#059669" />
                   </div>
-                  <div className="font-mono" style={{ fontSize: '1.75rem', fontWeight: 800, color: '#059669', marginTop: 4 }}>
+                  <div className="font-mono" style={{ fontSize: '2.3rem', fontWeight: 800, color: '#059669', marginTop: 6, lineHeight: 1 }}>
                     ${(user.totalEarned || 0).toFixed(4)}
                   </div>
-                  <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: 8 }}>
+                  <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: 10 }}>
                     Lifetime watch rewards
                   </div>
                 </div>
 
                 {/* 3. Total Withdrawn */}
-                <div className="glass-card" style={{ padding: '16px', borderRadius: 14 }}>
+                <div className="glass-card" style={{ padding: '20px', borderRadius: 16 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span className="font-mono" style={{ fontSize: '0.68rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 600 }}>Total Withdrawn</span>
-                    <CreditCard size={15} color="#7c3aed" />
+                    <span className="font-mono" style={{ fontSize: '0.84rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
+                      Total Withdrawn
+                    </span>
+                    <CreditCard size={18} color="#7c3aed" />
                   </div>
-                  <div className="font-mono" style={{ fontSize: '1.75rem', fontWeight: 800, color: '#7c3aed', marginTop: 4 }}>
+                  <div className="font-mono" style={{ fontSize: '2.3rem', fontWeight: 800, color: '#7c3aed', marginTop: 6, lineHeight: 1 }}>
                     ${(user.totalWithdrawn || 0).toFixed(2)}
                   </div>
-                  <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: 8 }}>
+                  <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: 10 }}>
                     Disbursed to bKash/Nagad/Crypto
                   </div>
                 </div>
               </div>
 
               {/* Recent Transactions Table */}
-              <div className="glass-card" style={{ padding: '16px', borderRadius: 14 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                  <h3 className="font-display" style={{ fontSize: '0.95rem', color: '#0f172a', margin: 0 }}>
+              <div className="glass-card" style={{ padding: '20px', borderRadius: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                  <h3 className="font-display" style={{ fontSize: '1.18rem', color: '#0f172a', margin: 0 }}>
                     RECENT TRANSACTIONS
                   </h3>
                   <button
                     onClick={() => setActiveTab('transactions')}
                     className="btn btn-ghost"
-                    style={{ padding: '3px 8px', fontSize: '0.68rem', borderRadius: 6 }}
+                    style={{ padding: '4px 10px', fontSize: '0.82rem', borderRadius: 8 }}
                   >
                     View All →
                   </button>
                 </div>
 
                 {!transactions.length ? (
-                  <div style={{ textAlign: 'center', padding: '16px', color: '#64748b', fontSize: '0.78rem' }}>
+                  <div style={{ textAlign: 'center', padding: '24px', color: '#64748b', fontSize: '0.92rem' }}>
                     No transactions yet. Click "Watch & Earn" to start!
                   </div>
                 ) : (
                   <div className="responsive-table-wrapper">
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
                       <thead>
-                        <tr style={{ borderBottom: '1px solid #e2e8f0', color: 'var(--on-surface-variant)', textAlign: 'left' }}>
-                          <th style={{ padding: '6px 8px', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.64rem' }}>Type</th>
-                          <th style={{ padding: '6px 8px', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.64rem' }}>Amount</th>
-                          <th style={{ padding: '6px 8px', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.64rem' }}>Status</th>
-                          <th style={{ padding: '6px 8px', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.64rem' }}>Date</th>
+                        <tr style={{ borderBottom: '1.5px solid #e2e8f0', color: 'var(--on-surface-variant)', textAlign: 'left' }}>
+                          <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Type</th>
+                          <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Amount</th>
+                          <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Status</th>
+                          <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Date</th>
                         </tr>
                       </thead>
                       <tbody>
                         {transactions.slice(0, 4).map((tx) => (
                           <tr key={tx._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                            <td style={{ padding: '7px 8px' }}>
-                              <span className="badge-pill badge-cyan" style={{ padding: '1px 6px', fontSize: '0.58rem', textTransform: 'uppercase' }}>
+                            <td style={{ padding: '10px 12px' }}>
+                              <span className="badge-pill badge-cyan" style={{ padding: '2px 8px', fontSize: '0.72rem', textTransform: 'uppercase' }}>
                                 {tx.type}
                               </span>
                             </td>
-                            <td className="font-mono" style={{ padding: '7px 8px', fontWeight: 700, color: tx.amount > 0 ? 'var(--primary-neon)' : '#ef4444' }}>
+                            <td className="font-mono" style={{ padding: '10px 12px', fontWeight: 700, fontSize: '0.92rem', color: tx.amount > 0 ? 'var(--primary-neon)' : '#ef4444' }}>
                               {tx.amount > 0 ? `+$${tx.amount.toFixed(4)}` : `-$${Math.abs(tx.amount).toFixed(2)}`}
                             </td>
-                            <td style={{ padding: '7px 8px', color: tx.status === 'completed' ? '#059669' : '#d97706', fontWeight: 600 }}>
+                            <td style={{ padding: '10px 12px', color: tx.status === 'completed' ? '#059669' : '#d97706', fontWeight: 600 }}>
                               {tx.status}
                             </td>
-                            <td style={{ padding: '7px 8px', color: 'var(--on-surface-variant)' }}>
+                            <td style={{ padding: '10px 12px', color: 'var(--on-surface-variant)' }}>
                               {new Date(tx.createdAt).toLocaleDateString()}
                             </td>
                           </tr>
@@ -548,30 +554,30 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
 
           {/* TAB 2: WATCH & EARN */}
           {activeTab === 'watch' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 className="font-display" style={{ fontSize: '1.2rem', color: '#0f172a', margin: 0 }}>
+                <h3 className="font-display" style={{ fontSize: '1.45rem', color: '#0f172a', margin: 0 }}>
                   WATCH & EARN
                 </h3>
                 <button
                   onClick={fetchTasks}
                   className="btn btn-ghost"
-                  style={{ padding: '5px 10px', fontSize: '0.72rem', borderRadius: 6 }}
+                  style={{ padding: '6px 12px', fontSize: '0.84rem', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6 }}
                 >
-                  <RefreshCw size={12} /> Refresh
+                  <RefreshCw size={14} /> Refresh
                 </button>
               </div>
 
               {activeTask ? (
-                <div className="glass-card" style={{ padding: 16, borderRadius: 14, border: '1.5px solid var(--primary-neon)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                    <span style={{ fontWeight: 700, fontSize: '0.88rem', color: '#0f172a' }}>{activeTask.title}</span>
-                    <span className="font-mono" style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary-neon)' }}>
+                <div className="glass-card" style={{ padding: 20, borderRadius: 16, border: '1.5px solid var(--primary-neon)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                    <span style={{ fontWeight: 700, fontSize: '1.1rem', color: '#0f172a' }}>{activeTask.title}</span>
+                    <span className="font-mono" style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--primary-neon)' }}>
                       ⏱ {timerRemaining}s
                     </span>
                   </div>
 
-                  <div style={{ width: '100%', height: 320, borderRadius: 10, overflow: 'hidden', background: '#000', marginBottom: 12 }}>
+                  <div style={{ width: '100%', height: 360, borderRadius: 12, overflow: 'hidden', background: '#000', marginBottom: 14 }}>
                     <iframe
                       width="100%"
                       height="100%"
@@ -587,7 +593,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                     <button
                       onClick={() => setActiveTask(null)}
                       className="btn btn-ghost"
-                      style={{ padding: '5px 10px', fontSize: '0.72rem', borderRadius: 6 }}
+                      style={{ padding: '7px 14px', fontSize: '0.84rem', borderRadius: 8 }}
                     >
                       Cancel
                     </button>
@@ -596,42 +602,42 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                       onClick={handleCompleteTask}
                       disabled={!canClaim || taskSubmitting}
                       className="btn btn-neon glow-neon"
-                      style={{ padding: '9px 18px', fontSize: '0.8rem', borderRadius: 8, opacity: canClaim ? 1 : 0.5 }}
+                      style={{ padding: '10px 22px', fontSize: '0.92rem', borderRadius: 10, opacity: canClaim ? 1 : 0.5 }}
                     >
                       {taskSubmitting ? 'Verifying...' : canClaim ? `Claim +$${(activeTask.rewardUsd || 0.0035).toFixed(4)} USD` : `Wait ${timerRemaining}s`}
                     </button>
                   </div>
                 </div>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 220px), 1fr))', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 240px), 1fr))', gap: 14 }}>
                   {tasksLoading ? (
-                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '24px', color: '#64748b' }}>Loading queue...</div>
+                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '28px', color: '#64748b', fontSize: '0.92rem' }}>Loading queue...</div>
                   ) : !tasks.length ? (
-                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '24px', color: '#64748b' }}>No tasks currently available.</div>
+                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '28px', color: '#64748b', fontSize: '0.92rem' }}>No tasks currently available.</div>
                   ) : (
                     tasks.map((t) => (
-                      <div key={t._id} className="glass-card" style={{ borderRadius: 12, overflow: 'hidden', padding: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        <div style={{ position: 'relative', width: '100%', height: 110, borderRadius: 8, overflow: 'hidden' }}>
+                      <div key={t._id} className="glass-card" style={{ borderRadius: 14, overflow: 'hidden', padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div style={{ position: 'relative', width: '100%', height: 130, borderRadius: 10, overflow: 'hidden' }}>
                           <img
                             src={t.thumbnailUrl || `https://img.youtube.com/vi/${t.videoId}/hqdefault.jpg`}
                             alt={t.title}
                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                           />
-                          <div style={{ position: 'absolute', bottom: 4, right: 4, background: 'rgba(0,0,0,0.8)', color: '#fff', padding: '1px 5px', borderRadius: 4, fontSize: '0.62rem' }}>
+                          <div style={{ position: 'absolute', bottom: 6, right: 6, background: 'rgba(0,0,0,0.85)', color: '#fff', padding: '2px 7px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 600 }}>
                             {t.requiredDurationSec || 15}s
                           </div>
                         </div>
-                        <div style={{ fontSize: '0.78rem', fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {t.title || `Video ${t.videoId}`}
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span className="font-mono" style={{ fontWeight: 800, color: 'var(--primary-neon)', fontSize: '0.82rem' }}>
+                          <span className="font-mono" style={{ fontWeight: 800, color: 'var(--primary-neon)', fontSize: '0.96rem' }}>
                             +${(t.rewardUsd || 0.0035).toFixed(4)}
                           </span>
                           <button
                             onClick={() => handleSelectTask(t)}
                             className="btn btn-neon glow-neon"
-                            style={{ padding: '4px 10px', fontSize: '0.7rem', borderRadius: 6 }}
+                            style={{ padding: '6px 14px', fontSize: '0.82rem', borderRadius: 8 }}
                           >
                             Watch
                           </button>
@@ -648,7 +654,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
               TAB 3: WITHDRAW WITH INDIVIDUAL METHOD CARDS
               ========================================================================= */}
           {activeTab === 'withdraw' && (
-            <div className="glass-card" style={{ padding: '20px', borderRadius: 16, border: '1.5px solid var(--primary-neon)' }}>
+            <div className="glass-card" style={{ padding: '24px', borderRadius: 18, border: '1.5px solid var(--primary-neon)' }}>
 
               {/* Header */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
@@ -667,7 +673,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
 
               {/* INDIVIDUAL METHOD CARDS - LOGO PLACEHOLDER + NAME ONLY */}
               <div style={{ marginBottom: 18 }}>
-                <label className="font-mono" style={{ fontSize: '0.82rem', color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: 10, fontWeight: 700 }}>
+                <label className="font-mono" style={{ fontSize: '0.84rem', color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: 10, fontWeight: 700 }}>
                   Select Withdrawal Method:
                 </label>
 
@@ -753,10 +759,10 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                   {/* Amount Input */}
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                      <label className="font-mono" style={{ fontSize: '0.84rem', color: '#475569', fontWeight: 600 }}>
+                      <label className="font-mono" style={{ fontSize: '0.84rem', color: '#475569', fontWeight: 700 }}>
                         Amount (USD):
                       </label>
-                      <span className="font-mono" style={{ fontSize: '0.76rem', color: 'var(--primary-neon)' }}>
+                      <span className="font-mono" style={{ fontSize: '0.82rem', color: 'var(--primary-neon)', fontWeight: 700 }}>
                         Max: ${viewerBal.toFixed(4)}
                       </span>
                     </div>
@@ -782,8 +788,8 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                           onClick={() => setWithdrawAmount(preset)}
                           className="btn btn-ghost"
                           style={{
-                            padding: '4px 10px',
-                            fontSize: '0.78rem',
+                            padding: '5px 12px',
+                            fontSize: '0.84rem',
                             borderRadius: 8,
                             background: withdrawAmount === preset ? '#e0f2fe' : '#ffffff',
                             color: withdrawAmount === preset ? 'var(--primary-neon)' : '#64748b',
@@ -798,8 +804,8 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                         onClick={() => setWithdrawAmount(parseFloat(viewerBal.toFixed(4)))}
                         className="btn btn-ghost"
                         style={{
-                          padding: '4px 10px',
-                          fontSize: '0.78rem',
+                          padding: '5px 12px',
+                          fontSize: '0.84rem',
                           borderRadius: 8,
                           color: '#059669',
                           fontWeight: 700,
@@ -810,9 +816,9 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                     </div>
                   </div>
 
-                  {/* Recipient Account Details Input */}
+                  {/* Account Details */}
                   <div>
-                    <label className="font-mono" style={{ fontSize: '0.84rem', color: '#475569', fontWeight: 600, display: 'block', marginBottom: 6 }}>
+                    <label className="font-mono" style={{ fontSize: '0.84rem', color: '#475569', fontWeight: 700, display: 'block', marginBottom: 6 }}>
                       {selectedConfig.inputLabel}:
                     </label>
                     <input
@@ -824,7 +830,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                       style={{ padding: '11px 14px', fontSize: '0.98rem' }}
                       required
                     />
-                    <span style={{ fontSize: '0.74rem', color: '#64748b', display: 'block', marginTop: 4 }}>
+                    <span style={{ fontSize: '0.78rem', color: '#64748b', display: 'block', marginTop: 4 }}>
                       Ensure correct details for instant disbursement.
                     </span>
                   </div>
@@ -834,8 +840,8 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                 <div
                   style={{
                     background: '#f0f9ff',
-                    padding: '14px 18px',
-                    borderRadius: 12,
+                    padding: '16px 20px',
+                    borderRadius: 14,
                     border: '1px solid rgba(14, 165, 233, 0.25)',
                     display: 'flex',
                     justifyContent: 'space-between',
@@ -843,17 +849,17 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                   }}
                 >
                   <div>
-                    <span style={{ fontSize: '0.9rem', color: '#334155' }}>
+                    <span style={{ fontSize: '0.94rem', color: '#334155' }}>
                       Payout Method: <strong>{selectedConfig.name}</strong>
                     </span>
-                    <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                    <div style={{ fontSize: '0.82rem', color: '#64748b' }}>
                       {selectedConfig.rateText}
                     </div>
                   </div>
 
                   <div style={{ textAlign: 'right' }}>
-                    <span style={{ fontSize: '0.74rem', color: '#64748b', display: 'block' }}>You Receive:</span>
-                    <strong className="font-mono" style={{ fontSize: '1.35rem', color: '#059669' }}>
+                    <span style={{ fontSize: '0.82rem', color: '#64748b', display: 'block' }}>You Receive:</span>
+                    <strong className="font-mono" style={{ fontSize: '1.5rem', color: '#059669' }}>
                       {selectedConfig.isBDT
                         ? `৳${(withdrawAmount * bdtRate).toFixed(0)} BDT`
                         : `$${withdrawAmount.toFixed(2)} USD`}
@@ -877,54 +883,54 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
 
           {/* TAB 4: TRANSACTIONS */}
           {activeTab === 'transactions' && (
-            <div className="glass-card" style={{ padding: '18px', borderRadius: 14 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <h3 className="font-display" style={{ fontSize: '1.05rem', color: '#0f172a', margin: 0 }}>
+            <div className="glass-card" style={{ padding: '22px', borderRadius: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                <h3 className="font-display" style={{ fontSize: '1.35rem', color: '#0f172a', margin: 0 }}>
                   TRANSACTION LEDGER
                 </h3>
                 <button
                   onClick={fetchTransactions}
                   className="btn btn-ghost"
-                  style={{ padding: '4px 10px', fontSize: '0.72rem', borderRadius: 6 }}
+                  style={{ padding: '5px 12px', fontSize: '0.84rem', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6 }}
                 >
-                  <RefreshCw size={12} /> Refresh
+                  <RefreshCw size={14} /> Refresh
                 </button>
               </div>
 
               {!transactions.length ? (
-                <div style={{ textAlign: 'center', padding: '24px', color: '#64748b', fontSize: '0.78rem' }}>
-                  No transactions recorded yet.
+                <div style={{ textAlign: 'center', padding: '28px', color: '#64748b', fontSize: '0.92rem' }}>
+                  No transactions recorded yet. Click "Watch & Earn" to start!
                 </div>
               ) : (
                 <div className="responsive-table-wrapper">
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
                     <thead>
-                      <tr style={{ borderBottom: '1px solid #e2e8f0', color: '#64748b', textAlign: 'left' }}>
-                        <th style={{ padding: '8px', textTransform: 'uppercase', fontSize: '0.64rem' }}>Type</th>
-                        <th style={{ padding: '8px', textTransform: 'uppercase', fontSize: '0.64rem' }}>Amount</th>
-                        <th style={{ padding: '8px', textTransform: 'uppercase', fontSize: '0.64rem' }}>Balance</th>
-                        <th style={{ padding: '8px', textTransform: 'uppercase', fontSize: '0.64rem' }}>Status</th>
-                        <th style={{ padding: '8px', textTransform: 'uppercase', fontSize: '0.64rem' }}>Date</th>
+                      <tr style={{ borderBottom: '1.5px solid #e2e8f0', color: '#64748b', textAlign: 'left' }}>
+                        <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Type</th>
+                        <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Amount</th>
+                        <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Balance</th>
+                        <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Status</th>
+                        <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Date</th>
                       </tr>
                     </thead>
                     <tbody>
                       {transactions.map((tx) => (
                         <tr key={tx._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                          <td style={{ padding: '8px' }}>
-                            <span className="badge-pill badge-cyan" style={{ padding: '1px 6px', fontSize: '0.58rem', textTransform: 'uppercase' }}>
+                          <td style={{ padding: '10px 12px' }}>
+                            <span className="badge-pill badge-cyan" style={{ padding: '2px 8px', fontSize: '0.72rem', textTransform: 'uppercase' }}>
                               {tx.type}
                             </span>
                           </td>
-                          <td className="font-mono" style={{ padding: '8px', fontWeight: 700, color: tx.amount > 0 ? 'var(--primary-neon)' : '#ef4444' }}>
+                          <td className="font-mono" style={{ padding: '10px 12px', fontWeight: 700, fontSize: '0.92rem', color: tx.amount > 0 ? 'var(--primary-neon)' : '#ef4444' }}>
                             {tx.amount > 0 ? `+$${tx.amount.toFixed(4)}` : `-$${Math.abs(tx.amount).toFixed(2)}`}
                           </td>
-                          <td className="font-mono" style={{ padding: '8px', color: '#0f172a' }}>
+                          <td className="font-mono" style={{ padding: '10px 12px', color: '#0f172a', fontSize: '0.92rem' }}>
                             ${(tx.balanceAfter || 0).toFixed(4)}
                           </td>
-                          <td style={{ padding: '8px', color: tx.status === 'completed' ? '#059669' : '#d97706', fontWeight: 600 }}>
+                          <td style={{ padding: '10px 12px', color: tx.status === 'completed' ? '#059669' : '#d97706', fontWeight: 600 }}>
                             {tx.status}
                           </td>
-                          <td style={{ padding: '8px', color: '#64748b' }}>
+                          <td style={{ padding: '10px 12px', color: '#64748b' }}>
                             {new Date(tx.createdAt).toLocaleDateString()}
                           </td>
                         </tr>
