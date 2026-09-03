@@ -16,6 +16,10 @@ import {
   LayoutDashboard,
   PlaySquare,
   Check,
+  Wallet,
+  Globe,
+  Users,
+  Activity,
 } from 'lucide-react';
 import { Campaign, User, Transaction } from '../types';
 import { apiRequest } from '../api';
@@ -72,6 +76,104 @@ const DEPOSIT_METHODS: DepositMethodConfig[] = [
   },
 ];
 
+// Helper to render smooth SVG curve for creator spend volume
+const renderSpendCurve = (data: number[], labels: string[]) => {
+  if (!data || data.length < 2) return null;
+  const width = 480;
+  const height = 150;
+  const paddingX = 35;
+  const paddingY = 25;
+  const highest = Math.max(...data, 0);
+  const maxVal = highest > 0 ? highest * 1.25 : 10;
+  const minVal = 0;
+
+  const points = data.map((val, i) => {
+    const x = paddingX + i * ((width - paddingX * 2) / (data.length - 1));
+    const y = height - paddingY - ((val - minVal) / (maxVal - minVal)) * (height - paddingY * 2);
+    return { x, y, val };
+  });
+
+  let pathD = `M ${points[0].x},${points[0].y}`;
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i];
+    const p1 = points[i + 1];
+    const midX = (p0.x + p1.x) / 2;
+    pathD += ` C ${midX},${p0.y} ${midX},${p1.y} ${p1.x},${p1.y}`;
+  }
+
+  const areaD = `${pathD} L ${points[points.length - 1].x},${height - 18} L ${points[0].x},${height - 18} Z`;
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
+      <defs>
+        <linearGradient id="creatorSpendGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#0ea5e9" stopOpacity="0.32" />
+          <stop offset="100%" stopColor="#0ea5e9" stopOpacity="0.01" />
+        </linearGradient>
+      </defs>
+      <line x1="20" y1="35" x2={width - 20} y2="35" stroke="#f1f5f9" strokeDasharray="4 4" strokeWidth="1" />
+      <line x1="20" y1="75" x2={width - 20} y2="75" stroke="#f1f5f9" strokeDasharray="4 4" strokeWidth="1" />
+      <line x1="20" y1="115" x2={width - 20} y2="115" stroke="#f1f5f9" strokeDasharray="4 4" strokeWidth="1" />
+      <path d={areaD} fill="url(#creatorSpendGrad)" />
+      <path d={pathD} fill="none" stroke="var(--primary-neon)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+      {points.map((p, i) => (
+        <g key={i}>
+          <circle cx={p.x} cy={p.y} r="4.5" fill="#ffffff" stroke="var(--primary-neon)" strokeWidth="2.5" />
+          <text x={p.x} y={p.y - 9} textAnchor="middle" fill="#0f172a" fontSize="10.5" fontWeight="700" fontFamily="monospace">
+            ${p.val}
+          </text>
+          <text x={p.x} y={height - 4} textAnchor="middle" fill="#64748b" fontSize="10.5" fontWeight="600">
+            {labels[i] || ''}
+          </text>
+        </g>
+      ))}
+    </svg>
+  );
+};
+
+// Helper to render SVG bars for daily video views delivered
+const renderViewsBarChart = (data: number[], labels: string[]) => {
+  if (!data || data.length < 2) return null;
+  const width = 480;
+  const height = 150;
+  const paddingX = 25;
+  const highest = Math.max(...data, 0);
+  const maxVal = highest > 0 ? highest * 1.25 : 10;
+  const barWidth = 32;
+  const availableW = width - paddingX * 2;
+  const step = availableW / data.length;
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
+      <defs>
+        <linearGradient id="creatorViewsBarGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#38bdf8" />
+          <stop offset="100%" stopColor="#0284c7" />
+        </linearGradient>
+      </defs>
+      <line x1="15" y1="35" x2={width - 15} y2="35" stroke="#f1f5f9" strokeDasharray="4 4" strokeWidth="1" />
+      <line x1="15" y1="75" x2={width - 15} y2="75" stroke="#f1f5f9" strokeDasharray="4 4" strokeWidth="1" />
+      <line x1="15" y1="115" x2={width - 15} y2="115" stroke="#f1f5f9" strokeDasharray="4 4" strokeWidth="1" />
+      {data.map((val, i) => {
+        const barH = (val / maxVal) * 95;
+        const x = paddingX + i * step + (step - barWidth) / 2;
+        const y = height - 26 - barH;
+        return (
+          <g key={i}>
+            <rect x={x} y={y} width={barWidth} height={barH} rx="5" fill="url(#creatorViewsBarGrad)" />
+            <text x={x + barWidth / 2} y={y - 6} textAnchor="middle" fill="#0284c7" fontSize="10" fontWeight="700" fontFamily="monospace">
+              {val}
+            </text>
+            <text x={x + barWidth / 2} y={height - 6} textAnchor="middle" fill="#64748b" fontSize="10.5" fontWeight="600">
+              {labels[i] || ''}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+};
+
 export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
   user,
   onRefreshUser,
@@ -92,6 +194,28 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Spend Ledger Sub-Tab state
+  const [ledgerTab, setLedgerTab] = useState<'my_tx' | 'platform'>('my_tx');
+  const [platformStats, setPlatformStats] = useState<{
+    totalViewsDelivered: number;
+    activeCampaigns: number;
+    totalCampaigns: number;
+    totalSpendUsd: number;
+    chartLabels: string[];
+    dailySpend: number[];
+    dailyViews: number[];
+  } | null>(null);
+  const [platformStatsLoading, setPlatformStatsLoading] = useState<boolean>(false);
+
+  const fetchPlatformStats = async () => {
+    setPlatformStatsLoading(true);
+    const res = await apiRequest<any>('/campaigns/platform-stats');
+    if (res.success && res.data) {
+      setPlatformStats(res.data);
+    }
+    setPlatformStatsLoading(false);
+  };
 
   const fetchCampaigns = async () => {
     const res = await apiRequest<Campaign[]>('/campaigns/mine');
@@ -767,62 +891,248 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
             </div>
           )}
 
-          {/* TAB 4: LEDGER */}
+          {/* TAB 4: SPEND LEDGER (2 SUB-TABS) */}
           {activeTab === 'ledger' && (
-            <div className="glass-card" style={{ padding: '22px', borderRadius: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                <h3 className="font-display" style={{ fontSize: '1.35rem', color: '#0f172a', margin: 0 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Header with Sub-tab Switcher */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                <h3 className="font-display" style={{ fontSize: '1.5rem', color: '#0f172a', margin: 0 }}>
                   SPEND LEDGER
                 </h3>
-                <button
-                  onClick={fetchTransactions}
-                  className="btn btn-ghost"
-                  style={{ padding: '5px 12px', fontSize: '0.84rem', borderRadius: 8 }}
-                >
-                  <RefreshCw size={14} /> Refresh
-                </button>
+
+                {/* Sub-Tab Selector */}
+                <div style={{ display: 'flex', gap: 6, background: '#f1f5f9', padding: '4px', borderRadius: 12, border: '1px solid #e2e8f0' }}>
+                  <button
+                    onClick={() => setLedgerTab('my_tx')}
+                    style={{
+                      padding: '7px 16px',
+                      fontSize: '0.84rem',
+                      fontWeight: 700,
+                      borderRadius: 10,
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: ledgerTab === 'my_tx' ? '#ffffff' : 'transparent',
+                      color: ledgerTab === 'my_tx' ? 'var(--primary-neon)' : '#64748b',
+                      boxShadow: ledgerTab === 'my_tx' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <Wallet size={15} /> My Transactions ({transactions.length})
+                  </button>
+
+                  <button
+                    onClick={() => { setLedgerTab('platform'); fetchPlatformStats(); }}
+                    style={{
+                      padding: '7px 16px',
+                      fontSize: '0.84rem',
+                      fontWeight: 700,
+                      borderRadius: 10,
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: ledgerTab === 'platform' ? '#ffffff' : 'transparent',
+                      color: ledgerTab === 'platform' ? '#0284c7' : '#64748b',
+                      boxShadow: ledgerTab === 'platform' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <Globe size={15} /> Total Spend & Stats
+                  </button>
+                </div>
               </div>
 
-              {!transactions.length ? (
-                <div style={{ textAlign: 'center', padding: '28px', color: '#64748b', fontSize: '0.92rem' }}>
-                  No transaction history recorded yet.
+              {/* SUB-TAB 1: MY TRANSACTIONS */}
+              {ledgerTab === 'my_tx' && (
+                <div className="glass-card" style={{ padding: '22px', borderRadius: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                    <h4 className="font-display" style={{ fontSize: '1.15rem', color: '#0f172a', margin: 0 }}>
+                      MY TRANSACTIONS
+                    </h4>
+                    <button
+                      onClick={fetchTransactions}
+                      className="btn btn-ghost"
+                      style={{ padding: '5px 12px', fontSize: '0.82rem', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6 }}
+                    >
+                      <RefreshCw size={14} /> Refresh
+                    </button>
+                  </div>
+
+                  {!transactions.length ? (
+                    <div style={{ textAlign: 'center', padding: '36px', color: '#64748b', fontSize: '0.9rem' }}>
+                      No transaction history recorded yet.
+                    </div>
+                  ) : (
+                    <div className="responsive-table-wrapper">
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                        <thead>
+                          <tr style={{ borderBottom: '1.5px solid #e2e8f0', color: '#64748b', textAlign: 'left' }}>
+                            <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Type</th>
+                            <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Amount</th>
+                            <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Balance</th>
+                            <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Status</th>
+                            <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Date</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {transactions.map((tx) => (
+                            <tr key={tx._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                              <td style={{ padding: '10px 12px' }}>
+                                <span className="badge-pill badge-cyan" style={{ padding: '2px 8px', fontSize: '0.72rem', textTransform: 'uppercase' }}>
+                                  {tx.type}
+                                </span>
+                              </td>
+                              <td className="font-mono" style={{ padding: '10px 12px', fontWeight: 700, color: tx.amount > 0 ? 'var(--primary-neon)' : '#ef4444' }}>
+                                {tx.amount > 0 ? `+$${tx.amount.toFixed(2)}` : `-$${Math.abs(tx.amount).toFixed(2)}`}
+                              </td>
+                              <td className="font-mono" style={{ padding: '10px 12px', color: '#0f172a' }}>
+                                ${(tx.balanceAfter || 0).toFixed(2)}
+                              </td>
+                              <td style={{ padding: '10px 12px', color: tx.status === 'completed' ? '#059669' : '#d97706', fontWeight: 600 }}>
+                                {tx.status}
+                              </td>
+                              <td style={{ padding: '10px 12px', color: '#64748b' }}>
+                                {new Date(tx.createdAt).toLocaleDateString()}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="responsive-table-wrapper">
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                    <thead>
-                      <tr style={{ borderBottom: '1.5px solid #e2e8f0', color: '#64748b', textAlign: 'left' }}>
-                        <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Type</th>
-                        <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Amount</th>
-                        <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Balance</th>
-                        <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Status</th>
-                        <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Date</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {transactions.map((tx) => (
-                        <tr key={tx._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                          <td style={{ padding: '10px 12px' }}>
-                            <span className="badge-pill badge-cyan" style={{ padding: '2px 8px', fontSize: '0.72rem', textTransform: 'uppercase' }}>
-                              {tx.type}
-                            </span>
-                          </td>
-                          <td className="font-mono" style={{ padding: '10px 12px', fontWeight: 700, color: tx.amount > 0 ? 'var(--primary-neon)' : '#ef4444' }}>
-                            {tx.amount > 0 ? `+$${tx.amount.toFixed(2)}` : `-$${Math.abs(tx.amount).toFixed(2)}`}
-                          </td>
-                          <td className="font-mono" style={{ padding: '10px 12px', color: '#0f172a' }}>
-                            ${(tx.balanceAfter || 0).toFixed(2)}
-                          </td>
-                          <td style={{ padding: '10px 12px', color: tx.status === 'completed' ? '#059669' : '#d97706', fontWeight: 600 }}>
-                            {tx.status}
-                          </td>
-                          <td style={{ padding: '10px 12px', color: '#64748b' }}>
-                            {new Date(tx.createdAt).toLocaleDateString()}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              )}
+
+              {/* SUB-TAB 2: TOTAL SPEND & CAMPAIGN STATS */}
+              {ledgerTab === 'platform' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {/* 4 Real Data Metric Cards */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 14 }}>
+                    {/* 1. Total Views Delivered */}
+                    <div className="glass-card" style={{ padding: '18px', borderRadius: 16, border: '1.5px solid rgba(14, 165, 233, 0.3)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span className="font-mono" style={{ fontSize: '0.8rem', color: 'var(--primary-neon)', textTransform: 'uppercase', fontWeight: 700 }}>
+                          Views Delivered
+                        </span>
+                        <PlaySquare size={18} color="var(--primary-neon)" />
+                      </div>
+                      <div className="font-mono" style={{ fontSize: '2.1rem', fontWeight: 800, color: 'var(--primary-neon)', marginTop: 6, lineHeight: 1 }}>
+                        {(platformStats?.totalViewsDelivered || 0).toLocaleString()}
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 4 }}>
+                        Total real YouTube views
+                      </div>
+                    </div>
+
+                    {/* 2. Total Ad Spend */}
+                    <div className="glass-card" style={{ padding: '18px', borderRadius: 16, border: '1.5px solid rgba(16, 185, 129, 0.3)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span className="font-mono" style={{ fontSize: '0.8rem', color: '#059669', textTransform: 'uppercase', fontWeight: 700 }}>
+                          Total Ad Spend
+                        </span>
+                        <CreditCard size={18} color="#059669" />
+                      </div>
+                      <div className="font-mono" style={{ fontSize: '2.1rem', fontWeight: 800, color: '#059669', marginTop: 6, lineHeight: 1 }}>
+                        ${(platformStats?.totalSpendUsd || 0).toFixed(2)}
+                      </div>
+                      <div className="font-mono" style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600, marginTop: 4 }}>
+                        ≈ ৳{Math.round((platformStats?.totalSpendUsd || 0) * 122).toLocaleString()} BDT
+                      </div>
+                    </div>
+
+                    {/* 3. Active Campaigns */}
+                    <div className="glass-card" style={{ padding: '18px', borderRadius: 16 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span className="font-mono" style={{ fontSize: '0.8rem', color: '#7c3aed', textTransform: 'uppercase', fontWeight: 700 }}>
+                          Active Campaigns
+                        </span>
+                        <Activity size={18} color="#7c3aed" />
+                      </div>
+                      <div className="font-mono" style={{ fontSize: '2.1rem', fontWeight: 800, color: '#7c3aed', marginTop: 6, lineHeight: 1 }}>
+                        {(platformStats?.activeCampaigns || 0).toLocaleString()}
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 4 }}>
+                        Promotions running now
+                      </div>
+                    </div>
+
+                    {/* 4. Total Campaigns Created */}
+                    <div className="glass-card" style={{ padding: '18px', borderRadius: 16 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span className="font-mono" style={{ fontSize: '0.8rem', color: '#d97706', textTransform: 'uppercase', fontWeight: 700 }}>
+                          Total Campaigns
+                        </span>
+                        <Megaphone size={18} color="#d97706" />
+                      </div>
+                      <div className="font-mono" style={{ fontSize: '2.1rem', fontWeight: 800, color: '#d97706', marginTop: 6, lineHeight: 1 }}>
+                        {(platformStats?.totalCampaigns || 0).toLocaleString()}
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 4 }}>
+                        Platform promotions
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 2 Interactive Real Graphs Grid */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 350px), 1fr))', gap: 14 }}>
+                    {/* Graph 1: Daily Creator Spend Volume */}
+                    <div className="glass-card" style={{ padding: '18px', borderRadius: 16 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <BarChart3 size={16} color="var(--primary-neon)" />
+                          <h4 className="font-display" style={{ fontSize: '1.05rem', color: '#0f172a', margin: 0 }}>
+                            Daily Ad Spend ($ USD)
+                          </h4>
+                        </div>
+                        <button
+                          onClick={fetchPlatformStats}
+                          className="btn btn-ghost"
+                          style={{ padding: '4px 8px', fontSize: '0.78rem', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}
+                        >
+                          <RefreshCw size={12} className={platformStatsLoading ? 'animate-spin' : ''} />
+                        </button>
+                      </div>
+                      {platformStats ? (
+                        renderSpendCurve(
+                          platformStats.dailySpend || [0, 0, 0, 0, 0, 0, 0],
+                          platformStats.chartLabels || ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+                        )
+                      ) : (
+                        <div style={{ height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>Loading...</div>
+                      )}
+                    </div>
+
+                    {/* Graph 2: Daily YouTube Views Delivered */}
+                    <div className="glass-card" style={{ padding: '18px', borderRadius: 16 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <PlaySquare size={16} color="#0284c7" />
+                          <h4 className="font-display" style={{ fontSize: '1.05rem', color: '#0f172a', margin: 0 }}>
+                            Daily Views Delivered
+                          </h4>
+                        </div>
+                        <button
+                          onClick={fetchPlatformStats}
+                          className="btn btn-ghost"
+                          style={{ padding: '4px 8px', fontSize: '0.78rem', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}
+                        >
+                          <RefreshCw size={12} className={platformStatsLoading ? 'animate-spin' : ''} />
+                        </button>
+                      </div>
+                      {platformStats ? (
+                        renderViewsBarChart(
+                          platformStats.dailyViews || [0, 0, 0, 0, 0, 0, 0],
+                          platformStats.chartLabels || ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+                        )
+                      ) : (
+                        <div style={{ height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>Loading...</div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

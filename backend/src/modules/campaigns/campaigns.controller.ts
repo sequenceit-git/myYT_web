@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import { Campaign } from '../../models/Campaign.js';
 import { User } from '../../models/User.js';
 import { Transaction } from '../../models/Transaction.js';
+import { Task } from '../../models/Task.js';
 import { config } from '../../config/index.js';
 import { requireAuth, AuthRequest } from '../../middleware/auth.middleware.js';
 
@@ -165,6 +166,72 @@ router.post('/:id/resume', requireAuth, async (req: AuthRequest, res: Response):
       return;
     }
     res.json({ success: true, data: campaign });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/campaigns/platform-stats - 100% Real database campaign stats for creator spend ledger
+router.get('/platform-stats', async (_req, res: Response): Promise<void> => {
+  try {
+    // 1. Real Delivered Views across all campaigns
+    const deliveredAgg = await Campaign.aggregate([
+      { $group: { _id: null, totalViews: { $sum: '$viewsDelivered' } } },
+    ]);
+    const totalViewsDelivered = deliveredAgg[0]?.totalViews || 0;
+
+    // 2. Real Active & Total Campaigns
+    const activeCampaigns = await Campaign.countDocuments({ status: 'active' });
+    const totalCampaigns = await Campaign.countDocuments();
+
+    // 3. Real Total Spend ($ USD) across all campaigns
+    const spendAgg = await Campaign.aggregate([
+      { $group: { _id: null, totalCost: { $sum: '$totalCost' } } },
+    ]);
+    const totalSpendUsd = Number((spendAgg[0]?.totalCost || 0).toFixed(2));
+
+    // 4. Real 7-Day Trend Charts from Database
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const now = new Date();
+    const chartLabels: string[] = [];
+    const dailySpend: number[] = [];
+    const dailyViews: number[] = [];
+
+    for (let i = 6; i >= 0; i--) {
+      const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i, 0, 0, 0);
+      const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i, 23, 59, 59, 999);
+      chartLabels.push(days[dayStart.getDay()]);
+
+      // Real campaign budget created on that day
+      const daySpendAgg = await Campaign.aggregate([
+        { $match: { createdAt: { $gte: dayStart, $lte: dayEnd } } },
+        { $group: { _id: null, totalCost: { $sum: '$totalCost' } } },
+      ]);
+      dailySpend.push(Number((daySpendAgg[0]?.totalCost || 0).toFixed(2)));
+
+      // Real views completed on that day
+      const dayTasks = await Task.countDocuments({
+        status: 'completed',
+        $or: [
+          { completedAt: { $gte: dayStart, $lte: dayEnd } },
+          { completedAt: { $exists: false }, updatedAt: { $gte: dayStart, $lte: dayEnd } },
+        ],
+      });
+      dailyViews.push(dayTasks);
+    }
+
+    res.json({
+      success: true,
+      data: {
+        totalViewsDelivered,
+        activeCampaigns,
+        totalCampaigns,
+        totalSpendUsd,
+        chartLabels,
+        dailySpend,
+        dailyViews,
+      },
+    });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
