@@ -53,6 +53,8 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
       role: role || 'viewer',
       avatar: randomAvatar,
       balance: 1.0, // Free starter credit for testing both viewing and campaigns!
+      creatorBalance: 1.0,
+      viewerBalance: 0,
     });
 
     const tokens = generateTokens(user._id.toString(), user.role);
@@ -166,6 +168,8 @@ router.post('/google', async (req: Request, res: Response): Promise<void> => {
         avatar: generatedAvatar,
         role: role === 'campaigner' ? 'campaigner' : 'viewer',
         balance: 1.0,
+        creatorBalance: 1.0,
+        viewerBalance: 0,
       });
     } else {
       let updated = false;
