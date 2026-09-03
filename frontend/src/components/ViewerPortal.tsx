@@ -108,7 +108,8 @@ const renderWithdrawalCurve = (data: number[], labels: string[]) => {
   const height = 150;
   const paddingX = 35;
   const paddingY = 25;
-  const maxVal = Math.max(...data, 100) * 1.18;
+  const highest = Math.max(...data, 0);
+  const maxVal = highest > 0 ? highest * 1.25 : 10;
   const minVal = 0;
 
   const points = data.map((val, i) => {
@@ -169,7 +170,8 @@ const renderViewsBarChart = (data: number[], labels: string[]) => {
   const width = 480;
   const height = 150;
   const paddingX = 25;
-  const maxVal = Math.max(...data, 1000) * 1.2;
+  const highest = Math.max(...data, 0);
+  const maxVal = highest > 0 ? highest * 1.25 : 10;
   const barWidth = 32;
   const availableW = width - paddingX * 2;
   const step = availableW / data.length;
@@ -1133,61 +1135,55 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
 
           {/* TAB 4: TRANSACTIONS & PLATFORM LEDGER (2 SUB-TABS) */}
           {activeTab === 'transactions' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-              {/* Header with Sub-tab Switcher Pills */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
-                <div>
-                  <h3 className="font-display" style={{ fontSize: '1.65rem', color: '#0f172a', margin: 0, letterSpacing: '0.01em' }}>
-                    FINANCIAL & ACTIVITY LEDGER
-                  </h3>
-                  <span style={{ fontSize: '0.86rem', color: '#64748b' }}>
-                    Inspect your personal cashflow audits or view live platform-wide withdrawal statistics and watch metrics.
-                  </span>
-                </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Header with Sub-tab Switcher */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                <h3 className="font-display" style={{ fontSize: '1.5rem', color: '#0f172a', margin: 0 }}>
+                  PAYOUT LEDGER
+                </h3>
 
                 {/* Sub-Tab Selector */}
                 <div style={{ display: 'flex', gap: 6, background: '#f1f5f9', padding: '4px', borderRadius: 12, border: '1px solid #e2e8f0' }}>
                   <button
                     onClick={() => setLedgerTab('my_tx')}
                     style={{
-                      padding: '8px 18px',
-                      fontSize: '0.88rem',
+                      padding: '7px 16px',
+                      fontSize: '0.84rem',
                       fontWeight: 700,
                       borderRadius: 10,
                       border: 'none',
                       cursor: 'pointer',
                       background: ledgerTab === 'my_tx' ? '#ffffff' : 'transparent',
                       color: ledgerTab === 'my_tx' ? 'var(--primary-neon)' : '#64748b',
-                      boxShadow: ledgerTab === 'my_tx' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
+                      boxShadow: ledgerTab === 'my_tx' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
                       display: 'flex',
                       alignItems: 'center',
                       gap: 6,
                       transition: 'all 0.15s ease',
                     }}
                   >
-                    <Wallet size={16} /> My Transactions ({transactions.length})
+                    <Wallet size={15} /> My Transactions ({transactions.length})
                   </button>
 
                   <button
                     onClick={() => { setLedgerTab('platform'); fetchPlatformStats(); }}
                     style={{
-                      padding: '8px 18px',
-                      fontSize: '0.88rem',
+                      padding: '7px 16px',
+                      fontSize: '0.84rem',
                       fontWeight: 700,
                       borderRadius: 10,
                       border: 'none',
                       cursor: 'pointer',
                       background: ledgerTab === 'platform' ? '#ffffff' : 'transparent',
                       color: ledgerTab === 'platform' ? '#059669' : '#64748b',
-                      boxShadow: ledgerTab === 'platform' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
+                      boxShadow: ledgerTab === 'platform' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
                       display: 'flex',
                       alignItems: 'center',
                       gap: 6,
                       transition: 'all 0.15s ease',
                     }}
                   >
-                    <Globe size={16} /> Total Withdrawals & Stats
-                    <span className="badge-pill badge-active" style={{ fontSize: '0.66rem', padding: '1px 6px', fontWeight: 800 }}>LIVE</span>
+                    <Globe size={15} /> Total Withdrawals & Stats
                   </button>
                 </div>
               </div>
@@ -1195,27 +1191,22 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
               {/* SUB-TAB 1: MY TRANSACTIONS */}
               {ledgerTab === 'my_tx' && (
                 <div className="glass-card" style={{ padding: '22px', borderRadius: 16 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                    <div>
-                      <h4 className="font-display" style={{ fontSize: '1.25rem', color: '#0f172a', margin: 0 }}>
-                        MY TRANSACTION HISTORY
-                      </h4>
-                      <span style={{ fontSize: '0.82rem', color: '#64748b' }}>
-                        Individual deposits, rewards claimed, and disbursements for {user.email}
-                      </span>
-                    </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                    <h4 className="font-display" style={{ fontSize: '1.15rem', color: '#0f172a', margin: 0 }}>
+                      MY TRANSACTIONS
+                    </h4>
                     <button
                       onClick={fetchTransactions}
                       className="btn btn-ghost"
-                      style={{ padding: '6px 14px', fontSize: '0.84rem', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6 }}
+                      style={{ padding: '5px 12px', fontSize: '0.82rem', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6 }}
                     >
                       <RefreshCw size={14} /> Refresh
                     </button>
                   </div>
 
                   {!transactions.length ? (
-                    <div style={{ textAlign: 'center', padding: '38px', color: '#64748b', fontSize: '0.92rem' }}>
-                      No personal transactions recorded yet. Click "Watch & Earn" or deposit to get started!
+                    <div style={{ textAlign: 'center', padding: '36px', color: '#64748b', fontSize: '0.9rem' }}>
+                      No personal transactions recorded yet.
                     </div>
                   ) : (
                     <div className="responsive-table-wrapper">
@@ -1260,213 +1251,128 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
 
               {/* SUB-TAB 2: TOTAL WITHDRAWALS & ALL WEBSITE DATA */}
               {ledgerTab === 'platform' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                  {/* 4 Platform Metric Cards */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 210px), 1fr))', gap: 14 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {/* 4 Real Data Metric Cards */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 14 }}>
                     {/* 1. Total Withdrawals Done */}
-                    <div className="glass-card" style={{ padding: '20px', borderRadius: 16, border: '1.5px solid rgba(16, 185, 129, 0.35)' }}>
+                    <div className="glass-card" style={{ padding: '18px', borderRadius: 16, border: '1.5px solid rgba(16, 185, 129, 0.3)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span className="font-mono" style={{ fontSize: '0.82rem', color: '#059669', textTransform: 'uppercase', fontWeight: 700 }}>
+                        <span className="font-mono" style={{ fontSize: '0.8rem', color: '#059669', textTransform: 'uppercase', fontWeight: 700 }}>
                           Total Paid Out
                         </span>
                         <CreditCard size={18} color="#059669" />
                       </div>
-                      <div className="font-mono" style={{ fontSize: '2.2rem', fontWeight: 800, color: '#059669', marginTop: 6, lineHeight: 1 }}>
-                        ${(platformStats?.totalWithdrawnUsd || 12840.50).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      <div className="font-mono" style={{ fontSize: '2.1rem', fontWeight: 800, color: '#059669', marginTop: 6, lineHeight: 1 }}>
+                        ${(platformStats?.totalWithdrawnUsd || 0).toFixed(2)}
                       </div>
-                      <div className="font-mono" style={{ fontSize: '0.82rem', color: '#047857', fontWeight: 600, marginTop: 4 }}>
-                        ≈ ৳{Math.round((platformStats?.totalWithdrawnUsd || 12840.50) * bdtRate).toLocaleString()} BDT
-                      </div>
-                      <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 8 }}>
-                        {platformStats?.totalPayoutsCount || 1420}+ verified withdrawals completed
+                      <div className="font-mono" style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600, marginTop: 4 }}>
+                        ≈ ৳{Math.round((platformStats?.totalWithdrawnUsd || 0) * bdtRate).toLocaleString()} BDT
                       </div>
                     </div>
 
                     {/* 2. Total Times Watched */}
-                    <div className="glass-card" style={{ padding: '20px', borderRadius: 16, border: '1.5px solid rgba(14, 165, 233, 0.35)' }}>
+                    <div className="glass-card" style={{ padding: '18px', borderRadius: 16, border: '1.5px solid rgba(14, 165, 233, 0.3)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span className="font-mono" style={{ fontSize: '0.82rem', color: 'var(--primary-neon)', textTransform: 'uppercase', fontWeight: 700 }}>
-                          Times Watched
+                        <span className="font-mono" style={{ fontSize: '0.8rem', color: 'var(--primary-neon)', textTransform: 'uppercase', fontWeight: 700 }}>
+                          Videos Watched
                         </span>
                         <PlaySquare size={18} color="var(--primary-neon)" />
                       </div>
-                      <div className="font-mono" style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--primary-neon)', marginTop: 6, lineHeight: 1 }}>
-                        {(platformStats?.totalTimesWatched || 48500).toLocaleString()}+
+                      <div className="font-mono" style={{ fontSize: '2.1rem', fontWeight: 800, color: 'var(--primary-neon)', marginTop: 6, lineHeight: 1 }}>
+                        {(platformStats?.totalTimesWatched || 0).toLocaleString()}
                       </div>
-                      <div style={{ fontSize: '0.82rem', color: '#0284c7', fontWeight: 600, marginTop: 4 }}>
-                        Videos viewed & rewarded
-                      </div>
-                      <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 8 }}>
-                        100% verified real viewer watch sessions
+                      <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 4 }}>
+                        Completed views
                       </div>
                     </div>
 
                     {/* 3. Active Community Earners */}
-                    <div className="glass-card" style={{ padding: '20px', borderRadius: 16 }}>
+                    <div className="glass-card" style={{ padding: '18px', borderRadius: 16 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span className="font-mono" style={{ fontSize: '0.82rem', color: '#7c3aed', textTransform: 'uppercase', fontWeight: 700 }}>
-                          Active Earners
+                        <span className="font-mono" style={{ fontSize: '0.8rem', color: '#7c3aed', textTransform: 'uppercase', fontWeight: 700 }}>
+                          Total Members
                         </span>
                         <Users size={18} color="#7c3aed" />
                       </div>
-                      <div className="font-mono" style={{ fontSize: '2.2rem', fontWeight: 800, color: '#7c3aed', marginTop: 6, lineHeight: 1 }}>
-                        {(platformStats?.activeEarnersCount || 3200).toLocaleString()}+
+                      <div className="font-mono" style={{ fontSize: '2.1rem', fontWeight: 800, color: '#7c3aed', marginTop: 6, lineHeight: 1 }}>
+                        {(platformStats?.activeEarnersCount || 0).toLocaleString()}
                       </div>
-                      <div style={{ fontSize: '0.82rem', color: '#6d28d9', fontWeight: 600, marginTop: 4 }}>
-                        Registered Members
-                      </div>
-                      <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 8 }}>
-                        Growing daily active mobile viewership
+                      <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 4 }}>
+                        Registered users
                       </div>
                     </div>
 
                     {/* 4. Average Payout Turnaround */}
-                    <div className="glass-card" style={{ padding: '20px', borderRadius: 16 }}>
+                    <div className="glass-card" style={{ padding: '18px', borderRadius: 16 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span className="font-mono" style={{ fontSize: '0.82rem', color: '#d97706', textTransform: 'uppercase', fontWeight: 700 }}>
+                        <span className="font-mono" style={{ fontSize: '0.8rem', color: '#d97706', textTransform: 'uppercase', fontWeight: 700 }}>
                           Avg Payout Time
                         </span>
                         <Activity size={18} color="#d97706" />
                       </div>
-                      <div className="font-mono" style={{ fontSize: '2.2rem', fontWeight: 800, color: '#d97706', marginTop: 6, lineHeight: 1 }}>
+                      <div className="font-mono" style={{ fontSize: '2.1rem', fontWeight: 800, color: '#d97706', marginTop: 6, lineHeight: 1 }}>
                         &lt; 15 min
                       </div>
-                      <div style={{ fontSize: '0.82rem', color: '#b45309', fontWeight: 600, marginTop: 4 }}>
-                        Fast Disbursement
-                      </div>
-                      <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 8 }}>
-                        Instant to bKash, Nagad & Crypto wallets
+                      <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 4 }}>
+                        Disbursement speed
                       </div>
                     </div>
                   </div>
 
-                  {/* 2 Interactive Graphs Grid */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))', gap: 16 }}>
+                  {/* 2 Interactive Real Graphs Grid */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 350px), 1fr))', gap: 14 }}>
                     {/* Graph 1: Daily Withdrawal Volume */}
-                    <div className="glass-card" style={{ padding: '20px', borderRadius: 16 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <BarChart3 size={16} color="#059669" />
-                            <h4 className="font-display" style={{ fontSize: '1.08rem', color: '#0f172a', margin: 0 }}>
-                              Daily Withdrawal Volume ($ USD)
-                            </h4>
-                          </div>
-                          <span style={{ fontSize: '0.78rem', color: '#64748b' }}>Last 7 days total money disbursed to viewers</span>
+                    <div className="glass-card" style={{ padding: '18px', borderRadius: 16 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <BarChart3 size={16} color="#059669" />
+                          <h4 className="font-display" style={{ fontSize: '1.05rem', color: '#0f172a', margin: 0 }}>
+                            Daily Withdrawals ($ USD)
+                          </h4>
                         </div>
-                        <span className="badge-pill badge-active" style={{ fontSize: '0.7rem', padding: '2px 8px' }}>
-                          Trend +14%
-                        </span>
+                        <button
+                          onClick={fetchPlatformStats}
+                          className="btn btn-ghost"
+                          style={{ padding: '4px 8px', fontSize: '0.78rem', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}
+                        >
+                          <RefreshCw size={12} className={platformStatsLoading ? 'animate-spin' : ''} />
+                        </button>
                       </div>
                       {platformStats ? (
                         renderWithdrawalCurve(
-                          platformStats.dailyWithdrawals || [380, 420, 390, 510, 480, 550, 620],
+                          platformStats.dailyWithdrawals || [0, 0, 0, 0, 0, 0, 0],
                           platformStats.chartLabels || ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
                         )
                       ) : (
-                        <div style={{ height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>Loading chart...</div>
+                        <div style={{ height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>Loading...</div>
                       )}
                     </div>
 
                     {/* Graph 2: Daily Videos Watched */}
-                    <div className="glass-card" style={{ padding: '20px', borderRadius: 16 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <PlaySquare size={16} color="var(--primary-neon)" />
-                            <h4 className="font-display" style={{ fontSize: '1.08rem', color: '#0f172a', margin: 0 }}>
-                              Daily YouTube Videos Watched
-                            </h4>
-                          </div>
-                          <span style={{ fontSize: '0.78rem', color: '#64748b' }}>Last 7 days views completed across all campaigns</span>
+                    <div className="glass-card" style={{ padding: '18px', borderRadius: 16 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <PlaySquare size={16} color="var(--primary-neon)" />
+                          <h4 className="font-display" style={{ fontSize: '1.05rem', color: '#0f172a', margin: 0 }}>
+                            Daily Videos Watched
+                          </h4>
                         </div>
-                        <span className="badge-pill badge-cyan" style={{ fontSize: '0.7rem', padding: '2px 8px' }}>
-                          Verified Views
-                        </span>
+                        <button
+                          onClick={fetchPlatformStats}
+                          className="btn btn-ghost"
+                          style={{ padding: '4px 8px', fontSize: '0.78rem', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}
+                        >
+                          <RefreshCw size={12} className={platformStatsLoading ? 'animate-spin' : ''} />
+                        </button>
                       </div>
                       {platformStats ? (
                         renderViewsBarChart(
-                          platformStats.dailyViews || [1650, 1820, 1740, 2100, 1950, 2300, 2450],
+                          platformStats.dailyViews || [0, 0, 0, 0, 0, 0, 0],
                           platformStats.chartLabels || ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
                         )
                       ) : (
-                        <div style={{ height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>Loading chart...</div>
+                        <div style={{ height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>Loading...</div>
                       )}
-                    </div>
-                  </div>
-
-                  {/* Live Recent Platform Withdrawals Table */}
-                  <div className="glass-card" style={{ padding: '22px', borderRadius: 16 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <h4 className="font-display" style={{ fontSize: '1.25rem', color: '#0f172a', margin: 0 }}>
-                            LIVE WEBSITE WITHDRAWALS LEDGER
-                          </h4>
-                          <span className="badge-pill badge-active" style={{ fontSize: '0.68rem', padding: '2px 8px' }}>
-                            REAL-TIME
-                          </span>
-                        </div>
-                        <span style={{ fontSize: '0.82rem', color: '#64748b' }}>
-                          Live feed of recent cashouts completed across bKash, Nagad, Crypto and FaucetPay.
-                        </span>
-                      </div>
-                      <button
-                        onClick={fetchPlatformStats}
-                        className="btn btn-ghost"
-                        style={{ padding: '6px 14px', fontSize: '0.84rem', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6 }}
-                      >
-                        <RefreshCw size={14} className={platformStatsLoading ? 'animate-spin' : ''} /> Refresh Feed
-                      </button>
-                    </div>
-
-                    <div className="responsive-table-wrapper">
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                        <thead>
-                          <tr style={{ borderBottom: '1.5px solid #e2e8f0', color: '#64748b', textAlign: 'left' }}>
-                            <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Recipient</th>
-                            <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Method</th>
-                            <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Amount Disbursed</th>
-                            <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Status</th>
-                            <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Disbursed Time</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(platformStats?.recentPayouts || []).map((p: any) => (
-                            <tr key={p._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                              <td style={{ padding: '10px 12px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                  <div style={{ width: 28, height: 28, borderRadius: 8, background: '#e0f2fe', color: '#0369a1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800 }}>
-                                    {p.user.slice(0, 2).toUpperCase()}
-                                  </div>
-                                  <span className="font-mono" style={{ fontWeight: 600, color: '#0f172a' }}>
-                                    {p.user}
-                                  </span>
-                                </div>
-                              </td>
-                              <td style={{ padding: '10px 12px' }}>
-                                <span className="badge-pill badge-cyan" style={{ padding: '3px 9px', fontSize: '0.74rem', textTransform: 'uppercase', fontWeight: 700 }}>
-                                  {p.method}
-                                </span>
-                              </td>
-                              <td className="font-mono" style={{ padding: '10px 12px', fontWeight: 700, fontSize: '0.94rem', color: '#059669' }}>
-                                +${Number(p.amount).toFixed(2)} USD
-                                <span style={{ fontSize: '0.76rem', color: '#64748b', display: 'block', fontWeight: 500 }}>
-                                  ≈ ৳{Math.round(Number(p.amount) * bdtRate).toLocaleString()} BDT
-                                </span>
-                              </td>
-                              <td style={{ padding: '10px 12px' }}>
-                                <span className="badge-pill badge-active" style={{ padding: '3px 9px', fontSize: '0.72rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                  <CheckCircle2 size={12} /> Disbursed
-                                </span>
-                              </td>
-                              <td style={{ padding: '10px 12px', color: '#64748b', fontSize: '0.84rem' }}>
-                                {new Date(p.createdAt).toLocaleString()}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
                     </div>
                   </div>
                 </div>

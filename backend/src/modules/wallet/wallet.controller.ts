@@ -221,78 +221,30 @@ router.get('/payouts/live', async (_req, res) => {
   }
 });
 
-// GET /api/wallet/platform-stats - Platform-wide statistics & live withdrawal ledger
+// GET /api/wallet/platform-stats - Platform-wide statistics (100% real database data)
 router.get('/platform-stats', async (_req, res: Response): Promise<void> => {
   try {
-    // 1. Total Platform Withdrawals
+    // 1. Real Total Platform Withdrawals
     const payoutAgg = await Payout.aggregate([
-      { $match: { status: { $in: ['approved', 'completed', 'pending'] } } },
+      { $match: { status: { $in: ['approved', 'completed'] } } },
       { $group: { _id: null, totalWithdrawn: { $sum: '$amount' }, count: { $sum: 1 } } },
     ]);
-    const actualWithdrawn = payoutAgg[0]?.totalWithdrawn || 0;
-    const actualPayoutCount = payoutAgg[0]?.count || 0;
+    const totalWithdrawnUsd = Number((payoutAgg[0]?.totalWithdrawn || 0).toFixed(2));
+    const totalPayoutsCount = payoutAgg[0]?.count || 0;
 
-    const totalWithdrawnUsd = Number((12840.50 + actualWithdrawn).toFixed(2));
-    const totalPayoutsCount = 1420 + actualPayoutCount;
-
-    // 2. Total Times Watched (Tasks + Delivered Views)
+    // 2. Real Total Times Watched (Completed tasks + delivered campaign views)
     const tasksCompleted = await Task.countDocuments({ status: 'completed' });
     const deliveredViewsAgg = await Campaign.aggregate([
       { $group: { _id: null, total: { $sum: '$viewsDelivered' } } },
     ]);
     const campaignDelivered = deliveredViewsAgg[0]?.total || 0;
-    const totalTimesWatched = 48500 + tasksCompleted + campaignDelivered;
+    const totalTimesWatched = tasksCompleted + campaignDelivered;
 
-    // 3. Total Members
+    // 3. Real Total Members
     const totalMembers = await User.countDocuments();
-    const activeEarnersCount = Math.max(3200, 3100 + totalMembers);
+    const activeEarnersCount = totalMembers;
 
-    // 4. Recent Platform Withdrawals (Masked for privacy)
-    const recentPayouts = await Payout.find()
-      .populate('viewerId', 'email name')
-      .sort({ createdAt: -1 })
-      .limit(15)
-      .lean();
-
-    const maskedPayouts: any[] = recentPayouts.map((p: any) => {
-      const email = p.viewerId?.email || '';
-      let maskedUser = 'User';
-      if (email && email.includes('@')) {
-        const parts = email.split('@');
-        maskedUser = `${parts[0].slice(0, 3)}***@${parts[1]}`;
-      } else if (p.accountDetails && p.accountDetails.length > 5) {
-        maskedUser = `${p.accountDetails.slice(0, 3)}***${p.accountDetails.slice(-3)}`;
-      }
-
-      return {
-        _id: p._id,
-        user: maskedUser,
-        amount: p.amount,
-        method: p.method,
-        status: p.status === 'pending' ? 'completed' : p.status,
-        createdAt: p.processedAt || p.createdAt,
-      };
-    });
-
-    // Seed realistic entries if database is new
-    const sampleMethods = ['bkash', 'nagad', 'crypto', 'faucetpay', 'bkash', 'nagad'] as const;
-    const sampleAmounts = [12.50, 25.00, 5.00, 50.00, 15.00, 30.00, 8.50, 20.00, 10.00, 18.00];
-    const sampleUsers = ['017***882', '019***419', 'TEx***9a2', 'moh***@gmail.com', '018***331', '016***704', 'LTC***18f', 'rah***@yahoo.com'];
-    
-    while (maskedPayouts.length < 10) {
-      const idx = maskedPayouts.length;
-      const d = new Date(Date.now() - (idx * 48 + 15) * 60 * 1000);
-      maskedPayouts.push({
-        _id: `seed-${idx}`,
-        user: sampleUsers[idx % sampleUsers.length],
-        amount: sampleAmounts[idx % sampleAmounts.length],
-        method: sampleMethods[idx % sampleMethods.length],
-        status: 'completed',
-        createdAt: d,
-      });
-    }
-
-    // 5. 7-Day Trend Charts
+    // 4. Real 7-Day Trend Charts from Database
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const now = new Date();
     const chartLabels: string[] = [];
@@ -300,11 +252,29 @@ router.get('/platform-stats', async (_req, res: Response): Promise<void> => {
     const dailyViews: number[] = [];
 
     for (let i = 6; i >= 0; i--) {
-      const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-      chartLabels.push(days[d.getDay()]);
-      const variance = 0.85 + ((d.getDate() * 7) % 30) / 100;
-      dailyWithdrawals.push(Math.round(420 * variance));
-      dailyViews.push(Math.round(1850 * variance));
+      const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i, 0, 0, 0);
+      const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i, 23, 59, 59, 999);
+      chartLabels.push(days[dayStart.getDay()]);
+
+      const dayWithdrawals = await Payout.aggregate([
+        {
+          $match: {
+            status: { $in: ['approved', 'completed'] },
+            createdAt: { $gte: dayStart, $lte: dayEnd },
+          },
+        },
+        { $group: { _id: null, total: { $sum: '$amount' } } },
+      ]);
+      dailyWithdrawals.push(Number((dayWithdrawals[0]?.total || 0).toFixed(2)));
+
+      const dayTasks = await Task.countDocuments({
+        status: 'completed',
+        $or: [
+          { completedAt: { $gte: dayStart, $lte: dayEnd } },
+          { completedAt: { $exists: false }, updatedAt: { $gte: dayStart, $lte: dayEnd } },
+        ],
+      });
+      dailyViews.push(dayTasks);
     }
 
     res.json({
@@ -317,7 +287,6 @@ router.get('/platform-stats', async (_req, res: Response): Promise<void> => {
         chartLabels,
         dailyWithdrawals,
         dailyViews,
-        recentPayouts: maskedPayouts,
       },
     });
   } catch (error: any) {
