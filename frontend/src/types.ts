@@ -49,15 +49,24 @@ export interface Task {
 export interface Payout {
   _id: string;
   viewerId?: {
+    _id?: string;
+    id?: string;
     name: string;
     email: string;
+    balance?: number;
+    viewerBalance?: number;
+    totalEarned?: number;
+    totalWithdrawn?: number;
   };
   amount: number;
   method: 'bkash' | 'nagad' | 'crypto' | 'faucetpay' | 'webmoney';
   accountDetails: string;
   status: 'pending' | 'processing' | 'approved' | 'rejected';
   transactionRef?: string;
-  requestedAt: string;
+  adminNotes?: string;
+  requestedAt?: string;
+  createdAt?: string;
+  processedAt?: string;
 }
 
 export interface Transaction {

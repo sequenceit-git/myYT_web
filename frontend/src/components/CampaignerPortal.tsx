@@ -20,10 +20,14 @@ import {
   Globe,
   Users,
   Activity,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
 } from 'lucide-react';
 import { Campaign, User, Transaction } from '../types';
 import { apiRequest } from '../api';
 import { ProfileSwitchBanner } from './ProfileSwitchBanner';
+import { useExchangeRate } from '../context/ExchangeRateContext';
 
 interface CampaignerPortalProps {
   user: User | null;
@@ -39,40 +43,53 @@ interface DepositMethodConfig {
   name: string;
   logoBg: string;
   logoMark: string;
+  logoUrl: string;
   rateText: string;
   isBDT?: boolean;
 }
 
-const DEPOSIT_METHODS: DepositMethodConfig[] = [
+const getDepositMethods = (usdToBdt: number): DepositMethodConfig[] => [
   {
     id: 'faucetpay',
     name: 'FaucetPay',
-    logoBg: '#0284c7',
+    logoBg: '#ffffff',
     logoMark: 'FP',
+    logoUrl: '/payment-methods/faucetpay.svg',
     rateText: 'Instant Automated • Zero Fee (USDT / LTC / BTC)',
   },
   {
     id: 'crypto',
-    name: 'Crypto',
-    logoBg: '#10b981',
+    name: 'Crypto (USDT)',
+    logoBg: '#ffffff',
     logoMark: '₮',
+    logoUrl: '/payment-methods/crypto.svg',
     rateText: 'Direct Blockchain (USDT TRC20 / BEP20)',
   },
   {
     id: 'bkash',
     name: 'bKash',
-    logoBg: '#e2136e',
+    logoBg: '#ffffff',
     logoMark: 'bK',
-    rateText: '1 USD = 122 BDT (Personal / Merchant MFS)',
+    logoUrl: '/payment-methods/bkash.svg',
+    rateText: `1 USD = ${usdToBdt} BDT (Personal / Merchant MFS)`,
     isBDT: true,
   },
   {
     id: 'nagad',
     name: 'Nagad',
-    logoBg: '#f7941d',
+    logoBg: '#ffffff',
     logoMark: 'Nagad',
-    rateText: '1 USD = 122 BDT (Personal / Merchant MFS)',
+    logoUrl: '/payment-methods/nagad.svg',
+    rateText: `1 USD = ${usdToBdt} BDT (Personal / Merchant MFS)`,
     isBDT: true,
+  },
+  {
+    id: 'webmoney',
+    name: 'WebMoney',
+    logoBg: '#ffffff',
+    logoMark: 'WM',
+    logoUrl: '/payment-methods/webmoney.svg',
+    rateText: 'USD Purse (WMZ) • Instant Deposit',
   },
 ];
 
@@ -192,7 +209,13 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
   const [depositLoading, setDepositLoading] = useState<boolean>(false);
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+
+  // Transactions State (Spend Ledger - Deposits & Campaign Spends) & Pagination State (10 per page)
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [txLoading, setTxLoading] = useState<boolean>(false);
+  const [txPage, setTxPage] = useState<number>(1);
+  const TX_PAGE_SIZE = 10;
+
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // Spend Ledger Sub-Tab state
@@ -224,11 +247,142 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
     }
   };
 
+  // Fetch Creator Transactions (Deposits & Campaign Spends only)
   const fetchTransactions = async () => {
-    const res = await apiRequest<Transaction[]>('/wallet/transactions');
+    setTxLoading(true);
+    const res = await apiRequest<Transaction[]>('/wallet/transactions?role=creator');
+    setTxLoading(false);
     if (res.success && res.data) {
-      setTransactions(res.data);
+      const creatorTx = res.data.filter((tx) =>
+        ['deposit', 'campaign_spend'].includes(tx.type)
+      );
+      setTransactions(creatorTx);
+      setTxPage(1);
     }
+  };
+
+  // Reusable pagination toolbar
+  const renderPagination = (
+    currentPage: number,
+    totalPages: number,
+    totalItems: number,
+    pageSize: number,
+    onPageChange: (page: number) => void,
+    itemName = 'records'
+  ) => {
+    if (totalItems === 0) return null;
+    const start = (currentPage - 1) * pageSize + 1;
+    const end = Math.min(currentPage * pageSize, totalItems);
+
+    const pages: (number | string)[] = [];
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (currentPage > 3) pages.push('...');
+      const startP = Math.max(2, currentPage - 1);
+      const endP = Math.min(totalPages - 1, currentPage + 1);
+      for (let i = startP; i <= endP; i++) pages.push(i);
+      if (currentPage < totalPages - 2) pages.push('...');
+      pages.push(totalPages);
+    }
+
+    return (
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 12,
+          paddingTop: 14,
+          marginTop: 14,
+          borderTop: '1px solid #f1f5f9',
+          fontSize: '0.84rem',
+          color: '#64748b',
+        }}
+      >
+        <div>
+          Showing <strong style={{ color: '#0f172a' }}>{start}</strong> to{' '}
+          <strong style={{ color: '#0f172a' }}>{end}</strong> of{' '}
+          <strong style={{ color: '#0f172a' }}>{totalItems}</strong> {itemName}
+        </div>
+
+        {totalPages > 1 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <button
+              onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                padding: '6px 12px',
+                borderRadius: 8,
+                border: '1px solid #e2e8f0',
+                background: currentPage === 1 ? '#f8fafc' : '#ffffff',
+                color: currentPage === 1 ? '#94a3b8' : '#334155',
+                cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                fontWeight: 600,
+                fontSize: '0.8rem',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <ChevronLeft size={14} /> Prev
+            </button>
+
+            {pages.map((p, idx) =>
+              typeof p === 'number' ? (
+                <button
+                  key={idx}
+                  onClick={() => onPageChange(p)}
+                  style={{
+                    minWidth: 32,
+                    height: 32,
+                    padding: '0 8px',
+                    borderRadius: 8,
+                    border: p === currentPage ? '1.5px solid var(--primary-neon)' : '1px solid #e2e8f0',
+                    background: p === currentPage ? 'var(--primary-neon)' : '#ffffff',
+                    color: p === currentPage ? '#ffffff' : '#334155',
+                    fontWeight: p === currentPage ? 700 : 600,
+                    fontSize: '0.8rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {p}
+                </button>
+              ) : (
+                <span key={idx} style={{ padding: '0 4px', color: '#94a3b8' }}>
+                  …
+                </span>
+              )
+            )}
+
+            <button
+              onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+              disabled={currentPage === totalPages}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                padding: '6px 12px',
+                borderRadius: 8,
+                border: '1px solid #e2e8f0',
+                background: currentPage === totalPages ? '#f8fafc' : '#ffffff',
+                color: currentPage === totalPages ? '#94a3b8' : '#334155',
+                cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                fontWeight: 600,
+                fontSize: '0.8rem',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              Next <ChevronRight size={14} />
+            </button>
+          </div>
+        )}
+      </div>
+    );
   };
 
   useEffect(() => {
@@ -284,20 +438,22 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
   const totalViewsDelivered = campaigns.reduce((acc, c) => acc + (c.viewsDelivered || 0), 0);
   const totalViewsTargeted = campaigns.reduce((acc, c) => acc + (c.targetViews || 0), 0);
   const activeCampaignsCount = campaigns.filter((c) => c.status === 'active').length;
-
-  const bdtRate = 122;
-  const selectedMethod = DEPOSIT_METHODS.find((m) => m.id === depositGateway) || DEPOSIT_METHODS[0];
+  const { usdToBdt } = useExchangeRate();
+  const bdtRate = usdToBdt;
+  const depositMethods = getDepositMethods(usdToBdt);
+  const selectedMethod = depositMethods.find((m) => m.id === depositGateway) || depositMethods[0];
 
   return (
     <div className="responsive-container">
       <div className="dashboard-layout">
         
         {/* =========================================================================
-            SIDEBAR (LARGER TEXT - 1 SIZE UP)
+        {/* =========================================================================
+            SIDEBAR (CLEAN ON MOBILE: ONLY TABS SHOWN, PROFILES ON TOP BAR)
             ========================================================================= */}
         <aside className="dashboard-sidebar">
           {/* User Header */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 14, borderBottom: '1px solid #f1f5f9' }}>
+          <div className="dashboard-sidebar-profile" style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 14, borderBottom: '1px solid #f1f5f9' }}>
             <img
               src={user?.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(user?.email || 'creator')}`}
               alt="avatar"
@@ -367,8 +523,8 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
             </button>
           </nav>
 
-          {/* Profile Switch Button */}
-          <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: 14 }}>
+          {/* Profile Switch Button (Desktop Only) */}
+          <div className="dashboard-switch-widget" style={{ borderTop: '1px solid #f1f5f9', paddingTop: 14 }}>
             <button
               onClick={() => onSwitchProfile && onSwitchProfile('viewer')}
               className="btn btn-ghost"
@@ -391,8 +547,8 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
             </button>
           </div>
 
-          {/* Budget Display */}
-          <div style={{ background: '#f0f9ff', padding: '14px 16px', borderRadius: 14, border: '1px solid rgba(14, 165, 233, 0.22)', marginTop: 'auto' }}>
+          {/* Budget Display (Desktop Only) */}
+          <div className="dashboard-sidebar-footer" style={{ background: '#f0f9ff', padding: '14px 16px', borderRadius: 14, border: '1px solid rgba(14, 165, 233, 0.22)', marginTop: 'auto' }}>
             <div className="font-mono" style={{ fontSize: '0.78rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>
               Ad Budget
             </div>
@@ -440,11 +596,11 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
               
               {/* Header Row */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-                <h1 className="font-display" style={{ fontSize: '1.85rem', color: '#0f172a', margin: 0, letterSpacing: '0.01em' }}>
+                <h1 className="font-display" style={{ fontSize: 'clamp(1.4rem, 5vw, 1.85rem)', color: '#0f172a', margin: 0, letterSpacing: '0.01em' }}>
                   CREATOR STUDIO
                 </h1>
 
-                <div style={{ display: 'flex', gap: 10 }}>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                   <button
                     onClick={() => navigate('/buy-views')}
                     className="btn btn-neon glow-neon"
@@ -462,17 +618,17 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                 </div>
               </div>
 
-              {/* 4 Metric Cards Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 14 }}>
-                {/* 1. Campaign Balance */}
-                <div className="glass-card" style={{ padding: '20px', border: '1.5px solid rgba(14, 165, 233, 0.4)', borderRadius: 16 }}>
+              {/* 4 Metric Cards Grid (Responsive Grid with Featured Balance) */}
+              <div className="responsive-kpi-grid">
+                {/* 1. Campaign Balance (Featured on Phones) */}
+                <div className="glass-card responsive-kpi-card responsive-kpi-featured" style={{ padding: '20px', border: '1.5px solid rgba(14, 165, 233, 0.4)', borderRadius: 16 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span className="font-mono" style={{ fontSize: '0.84rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
+                    <span className="font-mono" style={{ fontSize: '0.82rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
                       Ad Balance
                     </span>
                     <CreditCard size={18} color="var(--primary-neon)" />
                   </div>
-                  <div className="font-mono" style={{ fontSize: '2.3rem', fontWeight: 800, color: 'var(--primary-neon)', marginTop: 6, lineHeight: 1 }}>
+                  <div className="font-mono responsive-kpi-val" style={{ fontSize: '2.3rem', fontWeight: 800, color: 'var(--primary-neon)', marginTop: 6, lineHeight: 1 }}>
                     ${creatorBal.toFixed(2)}
                   </div>
                   <button
@@ -485,49 +641,49 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                 </div>
 
                 {/* 2. Views Delivered */}
-                <div className="glass-card" style={{ padding: '20px', borderRadius: 16 }}>
+                <div className="glass-card responsive-kpi-card" style={{ padding: '20px', borderRadius: 16 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span className="font-mono" style={{ fontSize: '0.84rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
+                    <span className="font-mono" style={{ fontSize: '0.82rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
                       Delivered
                     </span>
                     <Eye size={18} color="#059669" />
                   </div>
-                  <div className="font-mono" style={{ fontSize: '2.3rem', fontWeight: 800, color: '#0f172a', marginTop: 6, lineHeight: 1 }}>
+                  <div className="font-mono responsive-kpi-val" style={{ fontSize: '2.3rem', fontWeight: 800, color: '#0f172a', marginTop: 6, lineHeight: 1 }}>
                     {totalViewsDelivered.toLocaleString()}
                   </div>
-                  <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: 10 }}>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 10 }}>
                     of {totalViewsTargeted.toLocaleString()} targeted views
                   </div>
                 </div>
 
                 {/* 3. Total Invested */}
-                <div className="glass-card" style={{ padding: '20px', borderRadius: 16 }}>
+                <div className="glass-card responsive-kpi-card" style={{ padding: '20px', borderRadius: 16 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span className="font-mono" style={{ fontSize: '0.84rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
+                    <span className="font-mono" style={{ fontSize: '0.82rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
                       Invested
                     </span>
                     <BarChart3 size={18} color="#7c3aed" />
                   </div>
-                  <div className="font-mono" style={{ fontSize: '2.3rem', fontWeight: 800, color: '#7c3aed', marginTop: 6, lineHeight: 1 }}>
+                  <div className="font-mono responsive-kpi-val" style={{ fontSize: '2.3rem', fontWeight: 800, color: '#7c3aed', marginTop: 6, lineHeight: 1 }}>
                     ${(user?.totalSpent || 0).toFixed(2)}
                   </div>
-                  <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: 10 }}>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 10 }}>
                     Total promotion spend
                   </div>
                 </div>
 
                 {/* 4. Active Campaigns */}
-                <div className="glass-card" style={{ padding: '20px', borderRadius: 16 }}>
+                <div className="glass-card responsive-kpi-card" style={{ padding: '20px', borderRadius: 16 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span className="font-mono" style={{ fontSize: '0.84rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
+                    <span className="font-mono" style={{ fontSize: '0.82rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
                       Active
                     </span>
                     <Megaphone size={18} color="#d97706" />
                   </div>
-                  <div className="font-mono" style={{ fontSize: '2.3rem', fontWeight: 800, color: '#d97706', marginTop: 6, lineHeight: 1 }}>
+                  <div className="font-mono responsive-kpi-val" style={{ fontSize: '2.3rem', fontWeight: 800, color: '#d97706', marginTop: 6, lineHeight: 1 }}>
                     {activeCampaignsCount}
                   </div>
-                  <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: 10 }}>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 10 }}>
                     Running in viewer queue
                   </div>
                 </div>
@@ -559,54 +715,121 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                     </button>!
                   </div>
                 ) : (
-                  <div className="responsive-table-wrapper">
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                      <thead>
-                        <tr style={{ borderBottom: '1.5px solid #e2e8f0', color: 'var(--on-surface-variant)', textAlign: 'left' }}>
-                          <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Video</th>
-                          <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Delivered</th>
-                          <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Status</th>
-                          <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {campaigns.slice(0, 4).map((camp) => (
-                          <tr key={camp._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                            <td style={{ padding: '10px 12px' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <>
+                    {/* Desktop Table View */}
+                    <div className="desktop-only-table responsive-table-wrapper">
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                        <thead>
+                          <tr style={{ borderBottom: '1.5px solid #e2e8f0', color: 'var(--on-surface-variant)', textAlign: 'left' }}>
+                            <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Video</th>
+                            <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Delivered</th>
+                            <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Status</th>
+                            <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {campaigns.slice(0, 4).map((camp) => (
+                            <tr key={camp._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                              <td style={{ padding: '10px 12px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                  <img
+                                    src={camp.thumbnailUrl || `https://img.youtube.com/vi/${camp.videoId}/default.jpg`}
+                                    alt="thumbnail"
+                                    style={{ width: 44, height: 32, borderRadius: 6, objectFit: 'cover' }}
+                                  />
+                                  <span style={{ fontWeight: 600, color: '#0f172a', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {camp.title || `Video ${camp.videoId}`}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="font-mono" style={{ padding: '10px 12px', color: 'var(--primary-neon)', fontWeight: 700 }}>
+                                {camp.viewsDelivered.toLocaleString()} / {camp.targetViews.toLocaleString()}
+                              </td>
+                              <td style={{ padding: '10px 12px' }}>
+                                <span className="badge-pill" style={{ padding: '2px 8px', fontSize: '0.72rem', textTransform: 'uppercase', background: camp.status === 'active' ? '#e0f2fe' : '#f1f5f9', color: camp.status === 'active' ? 'var(--primary-neon)' : '#64748b' }}>
+                                  {camp.status}
+                                </span>
+                              </td>
+                              <td style={{ padding: '10px 12px' }}>
+                                <button
+                                  onClick={() => togglePause(camp)}
+                                  className="btn btn-ghost"
+                                  style={{ padding: '4px 10px', fontSize: '0.76rem', borderRadius: 6 }}
+                                >
+                                  {camp.status === 'active' ? <Pause size={13} /> : <Play size={13} />}
+                                  <span>{camp.status === 'active' ? 'Pause' : 'Resume'}</span>
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Mobile Card List View */}
+                    <div className="mobile-card-list">
+                      {campaigns.slice(0, 4).map((camp) => {
+                        const pct = Math.min(100, Math.round((camp.viewsDelivered / (camp.targetViews || 1)) * 100));
+                        return (
+                          <div key={camp._id} className="mobile-data-card">
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                                 <img
                                   src={camp.thumbnailUrl || `https://img.youtube.com/vi/${camp.videoId}/default.jpg`}
                                   alt="thumbnail"
-                                  style={{ width: 44, height: 32, borderRadius: 6, objectFit: 'cover' }}
+                                  style={{ width: 46, height: 32, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }}
                                 />
-                                <span style={{ fontWeight: 600, color: '#0f172a', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                <span style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.88rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                   {camp.title || `Video ${camp.videoId}`}
                                 </span>
                               </div>
-                            </td>
-                            <td className="font-mono" style={{ padding: '10px 12px', color: 'var(--primary-neon)', fontWeight: 700 }}>
-                              {camp.viewsDelivered.toLocaleString()} / {camp.targetViews.toLocaleString()}
-                            </td>
-                            <td style={{ padding: '10px 12px' }}>
-                              <span className="badge-pill" style={{ padding: '2px 8px', fontSize: '0.72rem', textTransform: 'uppercase', background: camp.status === 'active' ? '#e0f2fe' : '#f1f5f9', color: camp.status === 'active' ? 'var(--primary-neon)' : '#64748b' }}>
+                              <span
+                                className="badge-pill"
+                                style={{
+                                  padding: '2px 8px',
+                                  fontSize: '0.72rem',
+                                  textTransform: 'uppercase',
+                                  flexShrink: 0,
+                                  background: camp.status === 'active' ? '#e0f2fe' : '#f1f5f9',
+                                  color: camp.status === 'active' ? 'var(--primary-neon)' : '#64748b'
+                                }}
+                              >
                                 {camp.status}
                               </span>
-                            </td>
-                            <td style={{ padding: '10px 12px' }}>
-                              <button
-                                onClick={() => togglePause(camp)}
-                                className="btn btn-ghost"
-                                style={{ padding: '4px 10px', fontSize: '0.76rem', borderRadius: 6 }}
-                              >
-                                {camp.status === 'active' ? <Pause size={13} /> : <Play size={13} />}
-                                <span>{camp.status === 'active' ? 'Pause' : 'Resume'}</span>
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.82rem', color: '#64748b' }}>
+                              <span>Views Delivered:</span>
+                              <span className="font-mono" style={{ fontWeight: 700, color: 'var(--primary-neon)' }}>
+                                {camp.viewsDelivered.toLocaleString()} / {camp.targetViews.toLocaleString()} ({pct}%)
+                              </span>
+                            </div>
+
+                            {/* Mini Progress Bar */}
+                            <div style={{ height: 5, background: '#f1f5f9', borderRadius: 9999, overflow: 'hidden' }}>
+                              <div
+                                style={{
+                                  height: '100%',
+                                  background: 'var(--primary-neon)',
+                                  borderRadius: 9999,
+                                  width: `${pct}%`,
+                                }}
+                              />
+                            </div>
+
+                            <button
+                              onClick={() => togglePause(camp)}
+                              className="btn btn-ghost mobile-btn-full"
+                              style={{ padding: '7px 12px', fontSize: '0.8rem', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6, border: '1px solid #e2e8f0', background: '#f8fafc' }}
+                            >
+                              {camp.status === 'active' ? <Pause size={13} /> : <Play size={13} />}
+                              <span>{camp.status === 'active' ? 'Pause Campaign' : 'Resume Campaign'}</span>
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
                 )}
               </div>
             </div>
@@ -633,73 +856,168 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                   No campaigns yet.
                 </div>
               ) : (
-                <div className="responsive-table-wrapper">
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                    <thead>
-                      <tr style={{ borderBottom: '1.5px solid #e2e8f0', color: '#64748b', textAlign: 'left' }}>
-                        <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Video</th>
-                        <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Duration</th>
-                        <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Progress</th>
-                        <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Cost</th>
-                        <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Status</th>
-                        <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {campaigns.map((camp) => (
-                        <tr key={camp._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                          <td style={{ padding: '10px 12px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <>
+                  {/* Desktop Table View */}
+                  <div className="desktop-only-table responsive-table-wrapper">
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1.5px solid #e2e8f0', color: '#64748b', textAlign: 'left' }}>
+                          <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Video</th>
+                          <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Duration</th>
+                          <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Progress</th>
+                          <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Cost</th>
+                          <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Status</th>
+                          <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {campaigns.map((camp) => (
+                          <tr key={camp._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '10px 12px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <img
+                                  src={camp.thumbnailUrl || `https://img.youtube.com/vi/${camp.videoId}/default.jpg`}
+                                  alt="thumbnail"
+                                  style={{ width: 48, height: 34, borderRadius: 6, objectFit: 'cover' }}
+                                />
+                                <div>
+                                  <div style={{ fontWeight: 600, color: '#0f172a', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {camp.title || `Video ${camp.videoId}`}
+                                  </div>
+                                  <a
+                                    href={`https://youtube.com/watch?v=${camp.videoId}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    style={{ fontSize: '0.74rem', color: 'var(--primary-neon)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 3, marginTop: 2 }}
+                                  >
+                                    YouTube <ExternalLink size={10} />
+                                  </a>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="font-mono" style={{ padding: '10px 12px', color: '#0f172a' }}>
+                              {camp.watchDurationSec}s
+                            </td>
+                            <td style={{ padding: '10px 12px' }}>
+                              <div className="font-mono" style={{ fontWeight: 700, color: 'var(--primary-neon)' }}>
+                                {camp.viewsDelivered.toLocaleString()} / {camp.targetViews.toLocaleString()}
+                              </div>
+                            </td>
+                            <td className="font-mono" style={{ padding: '10px 12px', color: '#0f172a', fontWeight: 700 }}>
+                              ${camp.totalCost.toFixed(2)}
+                            </td>
+                            <td style={{ padding: '10px 12px' }}>
+                              <span className="badge-pill" style={{ padding: '2px 8px', fontSize: '0.72rem', textTransform: 'uppercase', background: camp.status === 'active' ? '#e0f2fe' : '#f1f5f9', color: camp.status === 'active' ? 'var(--primary-neon)' : '#64748b' }}>
+                                {camp.status}
+                              </span>
+                            </td>
+                            <td style={{ padding: '10px 12px' }}>
+                              <button
+                                onClick={() => togglePause(camp)}
+                                className="btn btn-ghost"
+                                style={{ padding: '4px 10px', fontSize: '0.76rem', borderRadius: 6 }}
+                              >
+                                {camp.status === 'active' ? 'Pause' : 'Resume'}
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile Card List View */}
+                  <div className="mobile-card-list">
+                    {campaigns.map((camp) => {
+                      const percent = Math.min(100, Math.round((camp.viewsDelivered / (camp.targetViews || 1)) * 100));
+                      return (
+                        <div key={camp._id} className="mobile-data-card">
+                          {/* Top: Thumb + Title + Status */}
+                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                               <img
                                 src={camp.thumbnailUrl || `https://img.youtube.com/vi/${camp.videoId}/default.jpg`}
                                 alt="thumbnail"
-                                style={{ width: 48, height: 34, borderRadius: 6, objectFit: 'cover' }}
+                                style={{ width: 54, height: 38, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }}
                               />
-                              <div>
-                                <div style={{ fontWeight: 600, color: '#0f172a', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <div style={{ minWidth: 0 }}>
+                                <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.88rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                   {camp.title || `Video ${camp.videoId}`}
                                 </div>
                                 <a
                                   href={`https://youtube.com/watch?v=${camp.videoId}`}
                                   target="_blank"
                                   rel="noreferrer"
-                                  style={{ fontSize: '0.74rem', color: 'var(--primary-neon)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 3, marginTop: 2 }}
+                                  style={{ fontSize: '0.74rem', color: 'var(--primary-neon)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 3, marginTop: 2 }}
                                 >
                                   YouTube <ExternalLink size={10} />
                                 </a>
                               </div>
                             </div>
-                          </td>
-                          <td className="font-mono" style={{ padding: '10px 12px', color: '#0f172a' }}>
-                            {camp.watchDurationSec}s
-                          </td>
-                          <td style={{ padding: '10px 12px' }}>
-                            <div className="font-mono" style={{ fontWeight: 700, color: 'var(--primary-neon)' }}>
-                              {camp.viewsDelivered.toLocaleString()} / {camp.targetViews.toLocaleString()}
-                            </div>
-                          </td>
-                          <td className="font-mono" style={{ padding: '10px 12px', color: '#0f172a', fontWeight: 700 }}>
-                            ${camp.totalCost.toFixed(2)}
-                          </td>
-                          <td style={{ padding: '10px 12px' }}>
-                            <span className="badge-pill" style={{ padding: '2px 8px', fontSize: '0.72rem', textTransform: 'uppercase', background: camp.status === 'active' ? '#e0f2fe' : '#f1f5f9', color: camp.status === 'active' ? 'var(--primary-neon)' : '#64748b' }}>
+                            <span
+                              className="badge-pill"
+                              style={{
+                                padding: '2px 8px',
+                                fontSize: '0.72rem',
+                                textTransform: 'uppercase',
+                                flexShrink: 0,
+                                background: camp.status === 'active' ? '#e0f2fe' : '#f1f5f9',
+                                color: camp.status === 'active' ? 'var(--primary-neon)' : '#64748b'
+                              }}
+                            >
                               {camp.status}
                             </span>
-                          </td>
-                          <td style={{ padding: '10px 12px' }}>
-                            <button
-                              onClick={() => togglePause(camp)}
-                              className="btn btn-ghost"
-                              style={{ padding: '4px 10px', fontSize: '0.76rem', borderRadius: 6 }}
-                            >
-                              {camp.status === 'active' ? 'Pause' : 'Resume'}
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                          </div>
+
+                          {/* Badges: Duration & Cost */}
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#f8fafc', padding: '8px 12px', borderRadius: 8, fontSize: '0.82rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#475569' }}>
+                              <Clock size={13} color="var(--primary-neon)" />
+                              <span>Duration: <strong style={{ color: '#0f172a' }}>{camp.watchDurationSec}s</strong></span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#059669', fontWeight: 700, fontFamily: 'monospace' }}>
+                              <span>${camp.totalCost.toFixed(2)}</span>
+                              <span style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 500 }}>
+                                (≈ ৳{Math.round(camp.totalCost * bdtRate)})
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Progress Bar & Count */}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem' }}>
+                              <span style={{ color: '#64748b' }}>Views Delivered</span>
+                              <span className="font-mono" style={{ fontWeight: 700, color: 'var(--primary-neon)' }}>
+                                {camp.viewsDelivered.toLocaleString()} / {camp.targetViews.toLocaleString()} ({percent}%)
+                              </span>
+                            </div>
+                            <div style={{ height: 6, background: '#f1f5f9', borderRadius: 9999, overflow: 'hidden' }}>
+                              <div
+                                style={{
+                                  height: '100%',
+                                  background: 'linear-gradient(90deg, #0ea5e9, #0284c7)',
+                                  borderRadius: 9999,
+                                  width: `${percent}%`,
+                                  transition: 'width 0.3s ease'
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Touch-Friendly Action Button */}
+                          <button
+                            onClick={() => togglePause(camp)}
+                            className="btn btn-ghost mobile-btn-full"
+                            style={{ padding: '8px 14px', fontSize: '0.82rem', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6, border: '1px solid #e2e8f0', background: '#ffffff', fontWeight: 600 }}
+                          >
+                            {camp.status === 'active' ? <Pause size={14} /> : <Play size={14} />}
+                            <span>{camp.status === 'active' ? 'Pause Campaign' : 'Resume Campaign'}</span>
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
               )}
             </div>
           )}
@@ -721,7 +1039,7 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                   </span>
                 </div>
                 <span className="badge-pill badge-neon" style={{ fontSize: '0.74rem', padding: '4px 12px' }}>
-                  Min Deposit: $5.00 USD (≈ ৳610 BDT)
+                  Min Deposit: $5.00 USD (≈ ৳{5 * bdtRate} BDT)
                 </span>
               </div>
 
@@ -731,8 +1049,8 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                   Select Deposit Method:
                 </label>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12 }}>
-                  {DEPOSIT_METHODS.map((m) => {
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 120px), 1fr))', gap: 12 }}>
+                  {depositMethods.map((m) => {
                     const isSelected = depositGateway === m.id;
                     return (
                       <div
@@ -777,28 +1095,36 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                           </div>
                         )}
 
-                        {/* Logo Placeholder */}
+                        {/* Official Brand Logo */}
                         <div
                           style={{
-                            width: 44,
-                            height: 44,
-                            borderRadius: 12,
-                            background: m.logoBg,
+                            width: 52,
+                            height: 52,
+                            borderRadius: 14,
+                            background: '#ffffff',
+                            border: isSelected ? '1.5px solid var(--primary-neon)' : '1px solid #e2e8f0',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            color: '#ffffff',
-                            fontWeight: 800,
-                            fontSize: m.logoMark.length > 2 ? '0.78rem' : '1.1rem',
-                            letterSpacing: '0.02em',
-                            boxShadow: `0 3px 10px ${m.logoBg}40`,
+                            padding: 8,
+                            boxShadow: isSelected ? '0 4px 14px rgba(14, 165, 233, 0.22)' : '0 2px 6px rgba(0,0,0,0.04)',
+                            transition: 'all 0.18s ease',
                           }}
                         >
-                          {m.logoMark}
+                          <img
+                            src={m.logoUrl}
+                            alt={m.name}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'contain',
+                              display: 'block',
+                            }}
+                          />
                         </div>
 
-                        {/* Simple Text: Just Name Only */}
-                        <span style={{ fontSize: '1.02rem', fontWeight: 800, color: '#0f172a', textAlign: 'center' }}>
+                        {/* Brand Name */}
+                        <span style={{ fontSize: '0.96rem', fontWeight: 800, color: '#0f172a', textAlign: 'center' }}>
                           {m.name}
                         </span>
                       </div>
@@ -848,7 +1174,7 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                   />
                 </div>
 
-                {/* Real-Time Summary Box */}
+                {/* Real-Time Summary Box (Responsive Wrap) */}
                 <div
                   style={{
                     background: '#f0f9ff',
@@ -858,18 +1184,43 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: 14,
                   }}
                 >
-                  <div>
-                    <span style={{ fontSize: '0.9rem', color: '#334155' }}>
-                      Deposit Method: <strong>{selectedMethod.name}</strong>
-                    </span>
-                    <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
-                      {selectedMethod.rateText}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: 12,
+                        background: '#ffffff',
+                        border: '1px solid #e2e8f0',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: 6,
+                        flexShrink: 0,
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+                      }}
+                    >
+                      <img
+                        src={selectedMethod.logoUrl}
+                        alt={selectedMethod.name}
+                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                      />
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.94rem', color: '#334155' }}>
+                        Deposit Method: <strong>{selectedMethod.name}</strong>
+                      </span>
+                      <div style={{ fontSize: '0.82rem', color: '#64748b' }}>
+                        {selectedMethod.rateText}
+                      </div>
                     </div>
                   </div>
 
-                  <div style={{ textAlign: 'right' }}>
+                  <div style={{ minWidth: 140 }}>
                     <span style={{ fontSize: '0.74rem', color: '#64748b', display: 'block' }}>Total To Pay:</span>
                     <strong className="font-mono" style={{ fontSize: '1.35rem', color: 'var(--primary-neon)' }}>
                       {selectedMethod.isBDT
@@ -900,8 +1251,20 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                   SPEND LEDGER
                 </h3>
 
-                {/* Sub-Tab Selector */}
-                <div style={{ display: 'flex', gap: 6, background: '#f1f5f9', padding: '4px', borderRadius: 12, border: '1px solid #e2e8f0' }}>
+                {/* Sub-Tab Selector (Touch-Scrollable on Mobile) */}
+                <div
+                  className="mobile-scroll-x"
+                  style={{
+                    display: 'flex',
+                    gap: 6,
+                    background: '#f1f5f9',
+                    padding: '4px',
+                    borderRadius: 12,
+                    border: '1px solid #e2e8f0',
+                    maxWidth: '100%',
+                    overflowX: 'auto',
+                  }}
+                >
                   <button
                     onClick={() => setLedgerTab('my_tx')}
                     style={{
@@ -917,6 +1280,8 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                       display: 'flex',
                       alignItems: 'center',
                       gap: 6,
+                      flexShrink: 0,
+                      whiteSpace: 'nowrap',
                       transition: 'all 0.15s ease',
                     }}
                   >
@@ -938,6 +1303,8 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                       display: 'flex',
                       alignItems: 'center',
                       gap: 6,
+                      flexShrink: 0,
+                      whiteSpace: 'nowrap',
                       transition: 'all 0.15s ease',
                     }}
                   >
@@ -951,58 +1318,172 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                 <div className="glass-card" style={{ padding: '22px', borderRadius: 16 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                     <h4 className="font-display" style={{ fontSize: '1.15rem', color: '#0f172a', margin: 0 }}>
-                      MY TRANSACTIONS
+                      SPEND LEDGER
                     </h4>
                     <button
                       onClick={fetchTransactions}
                       className="btn btn-ghost"
                       style={{ padding: '5px 12px', fontSize: '0.82rem', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6 }}
                     >
-                      <RefreshCw size={14} /> Refresh
+                      <RefreshCw size={14} className={txLoading ? 'animate-spin' : ''} /> Refresh
                     </button>
                   </div>
 
                   {!transactions.length ? (
                     <div style={{ textAlign: 'center', padding: '36px', color: '#64748b', fontSize: '0.9rem' }}>
-                      No transaction history recorded yet.
+                      No deposit or spend history recorded yet.
                     </div>
                   ) : (
-                    <div className="responsive-table-wrapper">
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                        <thead>
-                          <tr style={{ borderBottom: '1.5px solid #e2e8f0', color: '#64748b', textAlign: 'left' }}>
-                            <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Type</th>
-                            <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Amount</th>
-                            <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Balance</th>
-                            <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Status</th>
-                            <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Date</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {transactions.map((tx) => (
-                            <tr key={tx._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                              <td style={{ padding: '10px 12px' }}>
-                                <span className="badge-pill badge-cyan" style={{ padding: '2px 8px', fontSize: '0.72rem', textTransform: 'uppercase' }}>
-                                  {tx.type}
-                                </span>
-                              </td>
-                              <td className="font-mono" style={{ padding: '10px 12px', fontWeight: 700, color: tx.amount > 0 ? 'var(--primary-neon)' : '#ef4444' }}>
-                                {tx.amount > 0 ? `+$${tx.amount.toFixed(2)}` : `-$${Math.abs(tx.amount).toFixed(2)}`}
-                              </td>
-                              <td className="font-mono" style={{ padding: '10px 12px', color: '#0f172a' }}>
-                                ${(tx.balanceAfter || 0).toFixed(2)}
-                              </td>
-                              <td style={{ padding: '10px 12px', color: tx.status === 'completed' ? '#059669' : '#d97706', fontWeight: 600 }}>
-                                {tx.status}
-                              </td>
-                              <td style={{ padding: '10px 12px', color: '#64748b' }}>
-                                {new Date(tx.createdAt).toLocaleDateString()}
-                              </td>
+                    <>
+                      {/* Desktop Table View */}
+                      <div className="desktop-only-table responsive-table-wrapper">
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                          <thead>
+                            <tr style={{ borderBottom: '1.5px solid #e2e8f0', color: '#64748b', textAlign: 'left' }}>
+                              <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Type</th>
+                              <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Amount</th>
+                              <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Balance</th>
+                              <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Status</th>
+                              <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Date</th>
                             </tr>
+                          </thead>
+                          <tbody>
+                            {transactions
+                              .slice((txPage - 1) * TX_PAGE_SIZE, txPage * TX_PAGE_SIZE)
+                              .map((tx) => (
+                                <tr key={tx._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                  <td style={{ padding: '10px 12px' }}>
+                                    {tx.type === 'deposit' ? (
+                                      <span
+                                        className="badge-pill"
+                                        style={{
+                                          padding: '2px 8px',
+                                          fontSize: '0.72rem',
+                                          fontWeight: 700,
+                                          background: '#ecfdf5',
+                                          color: '#059669',
+                                          border: '1px solid rgba(16, 185, 129, 0.3)',
+                                          textTransform: 'uppercase',
+                                        }}
+                                      >
+                                        Deposit {tx.gateway ? `(${tx.gateway.toUpperCase()})` : ''}
+                                      </span>
+                                    ) : (
+                                      <span
+                                        className="badge-pill"
+                                        style={{
+                                          padding: '2px 8px',
+                                          fontSize: '0.72rem',
+                                          fontWeight: 700,
+                                          background: '#f0f9ff',
+                                          color: '#0284c7',
+                                          border: '1px solid rgba(14, 165, 233, 0.3)',
+                                          textTransform: 'uppercase',
+                                        }}
+                                      >
+                                        Campaign Spend
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="font-mono" style={{ padding: '10px 12px', fontWeight: 700, color: tx.type === 'deposit' || tx.amount > 0 ? '#059669' : '#ef4444' }}>
+                                    {tx.type === 'deposit' || tx.amount > 0
+                                      ? `+$${tx.amount.toFixed(2)}`
+                                      : `-$${Math.abs(tx.amount).toFixed(2)}`}
+                                  </td>
+                                  <td className="font-mono" style={{ padding: '10px 12px', color: '#0f172a' }}>
+                                    ${(tx.balanceAfter || 0).toFixed(2)}
+                                  </td>
+                                  <td style={{ padding: '10px 12px', color: tx.status === 'completed' ? '#059669' : '#d97706', fontWeight: 600 }}>
+                                    {tx.status}
+                                  </td>
+                                  <td style={{ padding: '10px 12px', color: '#64748b' }}>
+                                    {new Date(tx.createdAt).toLocaleDateString()}
+                                  </td>
+                                </tr>
+                              ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Mobile Card List View */}
+                      <div className="mobile-card-list">
+                        {transactions
+                          .slice((txPage - 1) * TX_PAGE_SIZE, txPage * TX_PAGE_SIZE)
+                          .map((tx) => (
+                            <div key={tx._id} className="mobile-data-card">
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                                {tx.type === 'deposit' ? (
+                                  <span
+                                    className="badge-pill"
+                                    style={{
+                                      padding: '2px 8px',
+                                      fontSize: '0.72rem',
+                                      fontWeight: 700,
+                                      background: '#ecfdf5',
+                                      color: '#059669',
+                                      border: '1px solid rgba(16, 185, 129, 0.3)',
+                                      textTransform: 'uppercase',
+                                    }}
+                                  >
+                                    Deposit {tx.gateway ? `(${tx.gateway.toUpperCase()})` : ''}
+                                  </span>
+                                ) : (
+                                  <span
+                                    className="badge-pill"
+                                    style={{
+                                      padding: '2px 8px',
+                                      fontSize: '0.72rem',
+                                      fontWeight: 700,
+                                      background: '#f0f9ff',
+                                      color: '#0284c7',
+                                      border: '1px solid rgba(14, 165, 233, 0.3)',
+                                      textTransform: 'uppercase',
+                                    }}
+                                  >
+                                    Campaign Spend
+                                  </span>
+                                )}
+
+                                <div
+                                  className="font-mono"
+                                  style={{
+                                    fontWeight: 800,
+                                    fontSize: '1rem',
+                                    color: tx.type === 'deposit' || tx.amount > 0 ? '#059669' : '#ef4444',
+                                  }}
+                                >
+                                  {tx.type === 'deposit' || tx.amount > 0
+                                    ? `+$${tx.amount.toFixed(2)}`
+                                    : `-$${Math.abs(tx.amount).toFixed(2)}`}
+                                </div>
+                              </div>
+
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.82rem', color: '#64748b' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <span>Status:</span>
+                                  <span style={{ color: tx.status === 'completed' ? '#059669' : '#d97706', fontWeight: 700, textTransform: 'capitalize' }}>
+                                    {tx.status}
+                                  </span>
+                                  <span>•</span>
+                                  <span>{new Date(tx.createdAt).toLocaleDateString()}</span>
+                                </div>
+                                <div className="font-mono" style={{ color: '#0f172a', fontWeight: 600 }}>
+                                  Bal: ${(tx.balanceAfter || 0).toFixed(2)}
+                                </div>
+                              </div>
+                            </div>
                           ))}
-                        </tbody>
-                      </table>
-                    </div>
+                      </div>
+
+                      {renderPagination(
+                        txPage,
+                        Math.ceil(transactions.length / TX_PAGE_SIZE) || 1,
+                        transactions.length,
+                        TX_PAGE_SIZE,
+                        setTxPage,
+                        'transactions'
+                      )}
+                    </>
                   )}
                 </div>
               )}
@@ -1010,17 +1491,17 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
               {/* SUB-TAB 2: TOTAL SPEND & CAMPAIGN STATS */}
               {ledgerTab === 'platform' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  {/* 4 Real Data Metric Cards */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 14 }}>
+                  {/* 4 Real Data Metric Cards in Responsive Fluid Grid */}
+                  <div className="responsive-kpi-grid">
                     {/* 1. Total Views Delivered */}
-                    <div className="glass-card" style={{ padding: '18px', borderRadius: 16, border: '1.5px solid rgba(14, 165, 233, 0.3)' }}>
+                    <div className="glass-card responsive-kpi-card" style={{ padding: '18px', borderRadius: 16, border: '1.5px solid rgba(14, 165, 233, 0.3)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span className="font-mono" style={{ fontSize: '0.8rem', color: 'var(--primary-neon)', textTransform: 'uppercase', fontWeight: 700 }}>
                           Views Delivered
                         </span>
                         <PlaySquare size={18} color="var(--primary-neon)" />
                       </div>
-                      <div className="font-mono" style={{ fontSize: '2.1rem', fontWeight: 800, color: 'var(--primary-neon)', marginTop: 6, lineHeight: 1 }}>
+                      <div className="font-mono responsive-kpi-val" style={{ fontSize: '2.1rem', fontWeight: 800, color: 'var(--primary-neon)', marginTop: 6, lineHeight: 1 }}>
                         {(platformStats?.totalViewsDelivered || 0).toLocaleString()}
                       </div>
                       <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 4 }}>
@@ -1029,30 +1510,30 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                     </div>
 
                     {/* 2. Total Ad Spend */}
-                    <div className="glass-card" style={{ padding: '18px', borderRadius: 16, border: '1.5px solid rgba(16, 185, 129, 0.3)' }}>
+                    <div className="glass-card responsive-kpi-card" style={{ padding: '18px', borderRadius: 16, border: '1.5px solid rgba(16, 185, 129, 0.3)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span className="font-mono" style={{ fontSize: '0.8rem', color: '#059669', textTransform: 'uppercase', fontWeight: 700 }}>
                           Total Ad Spend
                         </span>
                         <CreditCard size={18} color="#059669" />
                       </div>
-                      <div className="font-mono" style={{ fontSize: '2.1rem', fontWeight: 800, color: '#059669', marginTop: 6, lineHeight: 1 }}>
+                      <div className="font-mono responsive-kpi-val" style={{ fontSize: '2.1rem', fontWeight: 800, color: '#059669', marginTop: 6, lineHeight: 1 }}>
                         ${(platformStats?.totalSpendUsd || 0).toFixed(2)}
                       </div>
                       <div className="font-mono" style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600, marginTop: 4 }}>
-                        ≈ ৳{Math.round((platformStats?.totalSpendUsd || 0) * 122).toLocaleString()} BDT
+                        ≈ ৳{Math.round((platformStats?.totalSpendUsd || 0) * bdtRate).toLocaleString()} BDT
                       </div>
                     </div>
 
                     {/* 3. Active Campaigns */}
-                    <div className="glass-card" style={{ padding: '18px', borderRadius: 16 }}>
+                    <div className="glass-card responsive-kpi-card" style={{ padding: '18px', borderRadius: 16 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span className="font-mono" style={{ fontSize: '0.8rem', color: '#7c3aed', textTransform: 'uppercase', fontWeight: 700 }}>
                           Active Campaigns
                         </span>
                         <Activity size={18} color="#7c3aed" />
                       </div>
-                      <div className="font-mono" style={{ fontSize: '2.1rem', fontWeight: 800, color: '#7c3aed', marginTop: 6, lineHeight: 1 }}>
+                      <div className="font-mono responsive-kpi-val" style={{ fontSize: '2.1rem', fontWeight: 800, color: '#7c3aed', marginTop: 6, lineHeight: 1 }}>
                         {(platformStats?.activeCampaigns || 0).toLocaleString()}
                       </div>
                       <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 4 }}>
@@ -1061,14 +1542,14 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                     </div>
 
                     {/* 4. Total Campaigns Created */}
-                    <div className="glass-card" style={{ padding: '18px', borderRadius: 16 }}>
+                    <div className="glass-card responsive-kpi-card" style={{ padding: '18px', borderRadius: 16 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span className="font-mono" style={{ fontSize: '0.8rem', color: '#d97706', textTransform: 'uppercase', fontWeight: 700 }}>
                           Total Campaigns
                         </span>
                         <Megaphone size={18} color="#d97706" />
                       </div>
-                      <div className="font-mono" style={{ fontSize: '2.1rem', fontWeight: 800, color: '#d97706', marginTop: 6, lineHeight: 1 }}>
+                      <div className="font-mono responsive-kpi-val" style={{ fontSize: '2.1rem', fontWeight: 800, color: '#d97706', marginTop: 6, lineHeight: 1 }}>
                         {(platformStats?.totalCampaigns || 0).toLocaleString()}
                       </div>
                       <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 4 }}>

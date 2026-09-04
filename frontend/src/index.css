@@ -255,6 +255,25 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+.ticker-feed-label {
+  padding-left: 18px;
+  padding-right: 24px;
+}
+
+.ticker-content {
+  padding-left: 110px;
+}
+
+@media (max-width: 640px) {
+  .ticker-feed-label {
+    padding-left: 10px !important;
+    padding-right: 14px !important;
+  }
+  .ticker-content {
+    padding-left: 78px !important;
+  }
+}
+
 /* ==========================================================================
    RESPONSIVE LAYOUT & MEDIA QUERIES
    ========================================================================== */
@@ -591,5 +610,211 @@ h1, h2, h3, h4, h5, h6 {
 
   .dashboard-sidebar-footer {
     display: none !important;
+  }
+}
+
+/* Responsive Table Wrappers & Touch Optimizations */
+.responsive-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 12px;
+}
+
+.responsive-table-wrapper::-webkit-scrollbar {
+  height: 5px;
+}
+
+.responsive-table-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(14, 165, 233, 0.25);
+  border-radius: 9999px;
+}
+
+/* Fluid Responsive Grid Utilities */
+.responsive-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.responsive-kpi-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.mobile-scroll-x {
+  display: flex;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.mobile-scroll-x::-webkit-scrollbar {
+  display: none;
+}
+
+.mobile-scroll-x > * {
+  flex-shrink: 0;
+}
+
+@media (max-width: 1100px) {
+  .responsive-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+}
+
+@media (max-width: 640px) {
+  .responsive-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .responsive-kpi-featured {
+    grid-column: span 2;
+  }
+
+  .responsive-kpi-card {
+    padding: 14px 12px !important;
+    border-radius: 14px !important;
+  }
+
+  .responsive-kpi-val {
+    font-size: 1.5rem !important;
+  }
+
+  .glass-card {
+    padding: 16px !important;
+    border-radius: 14px !important;
+  }
+
+  .modal-card {
+    max-width: 95vw !important;
+    width: 95vw !important;
+    padding: 18px !important;
+    border-radius: 16px !important;
+  }
+
+  .mobile-wrap {
+    flex-wrap: wrap !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .responsive-kpi-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .responsive-kpi-featured {
+    grid-column: span 1;
+  }
+
+  .responsive-kpi-val {
+    font-size: 1.35rem !important;
+  }
+}
+
+/* ==========================================================================
+   Mobile-Optimized Card Lists for Ledger, Campaigns & Watch History
+   ========================================================================== */
+.desktop-only-table {
+  display: block;
+}
+
+.mobile-card-list {
+  display: none;
+}
+
+.mobile-data-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: all 0.15s ease;
+}
+
+.mobile-data-card:active {
+  background: #f8fafc;
+}
+
+/* Viewer Watch & Earn 3-KPI Grid */
+.viewer-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+@media (max-width: 800px) {
+  .viewer-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .viewer-stats-featured {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 640px) {
+  .desktop-only-table {
+    display: none !important;
+  }
+
+  .mobile-card-list {
+    display: flex !important;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .mobile-btn-full {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .mobile-text-center {
+    text-align: center !important;
+  }
+
+  .viewer-stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .viewer-stats-featured {
+    grid-column: span 2;
+  }
+
+  .viewer-stats-card {
+    padding: 12px 14px !important;
+  }
+
+  .viewer-stats-card .kpi-number {
+    font-size: 1.35rem !important;
+  }
+
+  .apk-banner-container {
+    padding: 14px !important;
+  }
+
+  .apk-banner-title {
+    font-size: 1.1rem !important;
+  }
+
+  .apk-download-btn {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .viewer-stats-grid {
+    grid-template-columns: 1fr;
+  }
+  .viewer-stats-featured {
+    grid-column: span 1;
   }
 }

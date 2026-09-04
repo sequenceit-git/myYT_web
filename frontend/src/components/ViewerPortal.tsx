@@ -20,10 +20,14 @@ import {
   BarChart3,
   Globe,
   Activity,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
 } from 'lucide-react';
 import { User, Task, Transaction } from '../types';
 import { apiRequest } from '../api';
 import { ProfileSwitchBanner } from './ProfileSwitchBanner';
+import { useExchangeRate } from '../context/ExchangeRateContext';
 
 interface ViewerPortalProps {
   user: User | null;
@@ -42,38 +46,42 @@ interface PayoutMethodConfig {
   name: string;
   logoBg: string;
   logoMark: string;
+  logoUrl: string;
   inputLabel: string;
   placeholder: string;
   rateText: string;
   isBDT: boolean;
 }
 
-const PAYOUT_METHODS: PayoutMethodConfig[] = [
+const getPayoutMethods = (usdToBdt: number): PayoutMethodConfig[] => [
   {
     id: 'bkash',
     name: 'bKash',
-    logoBg: '#e2136e',
+    logoBg: '#ffffff',
     logoMark: 'bK',
+    logoUrl: '/payment-methods/bkash.svg',
     inputLabel: 'bKash Personal Mobile Number',
     placeholder: '017XXXXXXXX or 019XXXXXXXX',
-    rateText: '1 USD = 122 BDT',
+    rateText: `1 USD = ${usdToBdt} BDT`,
     isBDT: true,
   },
   {
     id: 'nagad',
     name: 'Nagad',
-    logoBg: '#f7941d',
+    logoBg: '#ffffff',
     logoMark: 'Nagad',
+    logoUrl: '/payment-methods/nagad.svg',
     inputLabel: 'Nagad Personal Mobile Number',
     placeholder: '017XXXXXXXX or 018XXXXXXXX',
-    rateText: '1 USD = 122 BDT',
+    rateText: `1 USD = ${usdToBdt} BDT`,
     isBDT: true,
   },
   {
     id: 'faucetpay',
     name: 'FaucetPay',
-    logoBg: '#0284c7',
+    logoBg: '#ffffff',
     logoMark: 'FP',
+    logoUrl: '/payment-methods/faucetpay.svg',
     inputLabel: 'FaucetPay Registered Email',
     placeholder: 'your-email@example.com',
     rateText: 'Instant USDT / LTC • Zero Fee',
@@ -81,9 +89,10 @@ const PAYOUT_METHODS: PayoutMethodConfig[] = [
   },
   {
     id: 'crypto',
-    name: 'Crypto',
-    logoBg: '#10b981',
+    name: 'Crypto (USDT)',
+    logoBg: '#ffffff',
     logoMark: '₮',
+    logoUrl: '/payment-methods/crypto.svg',
     inputLabel: 'Crypto Wallet Address (USDT TRC20 / LTC)',
     placeholder: 'T... or L... or 0x...',
     rateText: 'Direct Blockchain (TRC20 / BEP20)',
@@ -92,8 +101,9 @@ const PAYOUT_METHODS: PayoutMethodConfig[] = [
   {
     id: 'webmoney',
     name: 'WebMoney',
-    logoBg: '#3b82f6',
+    logoBg: '#ffffff',
     logoMark: 'WM',
+    logoUrl: '/payment-methods/webmoney.svg',
     inputLabel: 'WebMoney WMZ Purse ID',
     placeholder: 'Z123456789012',
     rateText: 'USD Purse (WMZ)',
@@ -217,10 +227,17 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<ViewerTab>('overview');
 
-  // Watch History & Transactions State
+  // Watch History & Pagination State (10 per page)
   const [watchHistory, setWatchHistory] = useState<any[]>([]);
   const [watchHistoryLoading, setWatchHistoryLoading] = useState<boolean>(false);
+  const [watchPage, setWatchPage] = useState<number>(1);
+  const WATCH_PAGE_SIZE = 10;
+
+  // Personal Withdrawals (Payout Ledger) & Pagination State (10 per page)
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [txLoading, setTxLoading] = useState<boolean>(false);
+  const [txPage, setTxPage] = useState<number>(1);
+  const TX_PAGE_SIZE = 10;
 
   // Withdraw State
   const [withdrawMethod, setWithdrawMethod] = useState<PayoutMethodType>('bkash');
@@ -242,14 +259,19 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
     setWatchHistoryLoading(false);
     if (res.success && res.data) {
       setWatchHistory(res.data);
+      setWatchPage(1);
     }
   };
 
-  // Fetch Personal Transactions
+  // Fetch Personal Withdrawals (Payout Ledger - withdrawal history only)
   const fetchTransactions = async () => {
-    const res = await apiRequest<Transaction[]>('/wallet/transactions');
+    setTxLoading(true);
+    const res = await apiRequest<Transaction[]>('/wallet/transactions?type=payout');
+    setTxLoading(false);
     if (res.success && res.data) {
-      setTransactions(res.data);
+      const payoutTx = res.data.filter((tx) => tx.type === 'payout');
+      setTransactions(payoutTx);
+      setTxPage(1);
     }
   };
 
@@ -261,6 +283,130 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
     if (res.success && res.data) {
       setPlatformStats(res.data);
     }
+  };
+
+  // Reusable pagination toolbar
+  const renderPagination = (
+    currentPage: number,
+    totalPages: number,
+    totalItems: number,
+    pageSize: number,
+    onPageChange: (page: number) => void,
+    itemName = 'records'
+  ) => {
+    if (totalItems === 0) return null;
+    const start = (currentPage - 1) * pageSize + 1;
+    const end = Math.min(currentPage * pageSize, totalItems);
+
+    const pages: (number | string)[] = [];
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (currentPage > 3) pages.push('...');
+      const startP = Math.max(2, currentPage - 1);
+      const endP = Math.min(totalPages - 1, currentPage + 1);
+      for (let i = startP; i <= endP; i++) pages.push(i);
+      if (currentPage < totalPages - 2) pages.push('...');
+      pages.push(totalPages);
+    }
+
+    return (
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 12,
+          paddingTop: 14,
+          marginTop: 14,
+          borderTop: '1px solid #f1f5f9',
+          fontSize: '0.84rem',
+          color: '#64748b',
+        }}
+      >
+        <div>
+          Showing <strong style={{ color: '#0f172a' }}>{start}</strong> to{' '}
+          <strong style={{ color: '#0f172a' }}>{end}</strong> of{' '}
+          <strong style={{ color: '#0f172a' }}>{totalItems}</strong> {itemName}
+        </div>
+
+        {totalPages > 1 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <button
+              onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                padding: '6px 12px',
+                borderRadius: 8,
+                border: '1px solid #e2e8f0',
+                background: currentPage === 1 ? '#f8fafc' : '#ffffff',
+                color: currentPage === 1 ? '#94a3b8' : '#334155',
+                cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                fontWeight: 600,
+                fontSize: '0.8rem',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <ChevronLeft size={14} /> Prev
+            </button>
+
+            {pages.map((p, idx) =>
+              typeof p === 'number' ? (
+                <button
+                  key={idx}
+                  onClick={() => onPageChange(p)}
+                  style={{
+                    minWidth: 32,
+                    height: 32,
+                    padding: '0 8px',
+                    borderRadius: 8,
+                    border: p === currentPage ? '1.5px solid var(--primary-neon)' : '1px solid #e2e8f0',
+                    background: p === currentPage ? 'var(--primary-neon)' : '#ffffff',
+                    color: p === currentPage ? '#ffffff' : '#334155',
+                    fontWeight: p === currentPage ? 700 : 600,
+                    fontSize: '0.8rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {p}
+                </button>
+              ) : (
+                <span key={idx} style={{ padding: '0 4px', color: '#94a3b8' }}>
+                  …
+                </span>
+              )
+            )}
+
+            <button
+              onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+              disabled={currentPage === totalPages}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                padding: '6px 12px',
+                borderRadius: 8,
+                border: '1px solid #e2e8f0',
+                background: currentPage === totalPages ? '#f8fafc' : '#ffffff',
+                color: currentPage === totalPages ? '#94a3b8' : '#334155',
+                cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                fontWeight: 600,
+                fontSize: '0.8rem',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              Next <ChevronRight size={14} />
+            </button>
+          </div>
+        )}
+      </div>
+    );
   };
 
   useEffect(() => {
@@ -335,20 +481,22 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
   }
 
   const viewerBal = user.viewerBalance !== undefined ? user.viewerBalance : Math.max(0, (user.totalEarned || 0) - (user.totalWithdrawn || 0));
-  const bdtRate = 122;
+  const { usdToBdt } = useExchangeRate();
+  const bdtRate = usdToBdt;
   const approxBDT = (viewerBal * bdtRate).toFixed(0);
-  const selectedConfig = PAYOUT_METHODS.find((m) => m.id === withdrawMethod) || PAYOUT_METHODS[0];
+  const payoutMethods = getPayoutMethods(usdToBdt);
+  const selectedConfig = payoutMethods.find((m) => m.id === withdrawMethod) || payoutMethods[0];
 
   return (
     <div className="responsive-container">
       <div className="dashboard-layout">
 
         {/* =========================================================================
-            SIDEBAR (LARGER TEXT - 2 SIZES UP)
+            SIDEBAR (CLEAN ON MOBILE: ONLY TABS SHOWN, PROFILES ON TOP BAR)
             ========================================================================= */}
         <aside className="dashboard-sidebar">
           {/* User Header */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 14, borderBottom: '1px solid #f1f5f9' }}>
+          <div className="dashboard-sidebar-profile" style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 14, borderBottom: '1px solid #f1f5f9' }}>
             <img
               src={user.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(user.email || 'user')}`}
               alt="avatar"
@@ -408,8 +556,8 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
             </button>
           </nav>
 
-          {/* Profile Switch Button */}
-          <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: 14 }}>
+          {/* Profile Switch Button (Desktop Only) */}
+          <div className="dashboard-switch-widget" style={{ borderTop: '1px solid #f1f5f9', paddingTop: 14 }}>
             <button
               onClick={() => onSwitchProfile && onSwitchProfile('campaigner')}
               className="btn btn-ghost"
@@ -432,8 +580,8 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
             </button>
           </div>
 
-          {/* Balance Display */}
-          <div style={{ background: '#f0f9ff', padding: '14px 16px', borderRadius: 14, border: '1px solid rgba(14, 165, 233, 0.22)', marginTop: 'auto' }}>
+          {/* Balance Display (Desktop Only) */}
+          <div className="dashboard-sidebar-footer" style={{ background: '#f0f9ff', padding: '14px 16px', borderRadius: 14, border: '1px solid rgba(14, 165, 233, 0.22)', marginTop: 'auto' }}>
             <div className="font-mono" style={{ fontSize: '0.78rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>
               Available Earnings
             </div>
@@ -484,11 +632,11 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
 
               {/* Quick Actions Row */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-                <h1 className="font-display" style={{ fontSize: '1.85rem', color: '#0f172a', margin: 0, letterSpacing: '0.01em' }}>
+                <h1 className="font-display" style={{ fontSize: 'clamp(1.4rem, 5vw, 1.85rem)', color: '#0f172a', margin: 0, letterSpacing: '0.01em' }}>
                   VIEWER STUDIO
                 </h1>
 
-                <div style={{ display: 'flex', gap: 10 }}>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                   <button
                     onClick={() => setActiveTab('watch')}
                     className="btn btn-neon glow-neon"
@@ -506,17 +654,17 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                 </div>
               </div>
 
-              {/* 3 Metric Cards Grid (No Deposit) */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 14 }}>
-                {/* 1. Cash Balance */}
-                <div className="glass-card" style={{ padding: '20px', border: '1.5px solid rgba(14, 165, 233, 0.4)', borderRadius: 16 }}>
+              {/* 3 Metric Cards Grid (Responsive Grid with Featured Balance) */}
+              <div className="responsive-kpi-grid">
+                {/* 1. Cash Balance (Featured Full Width on Phones) */}
+                <div className="glass-card responsive-kpi-card responsive-kpi-featured" style={{ padding: '20px', border: '1.5px solid rgba(14, 165, 233, 0.4)', borderRadius: 16 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span className="font-mono" style={{ fontSize: '0.84rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
+                    <span className="font-mono" style={{ fontSize: '0.82rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
                       Available Earnings
                     </span>
                     <Wallet size={18} color="var(--primary-neon)" />
                   </div>
-                  <div className="font-mono" style={{ fontSize: '2.3rem', fontWeight: 800, color: 'var(--primary-neon)', marginTop: 6, lineHeight: 1 }}>
+                  <div className="font-mono responsive-kpi-val" style={{ fontSize: '2.3rem', fontWeight: 800, color: 'var(--primary-neon)', marginTop: 6, lineHeight: 1 }}>
                     ${viewerBal.toFixed(4)}
                   </div>
                   <div className="font-mono" style={{ fontSize: '0.84rem', color: '#059669', fontWeight: 600, marginTop: 4 }}>
@@ -532,33 +680,33 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                 </div>
 
                 {/* 2. Total Earned */}
-                <div className="glass-card" style={{ padding: '20px', borderRadius: 16 }}>
+                <div className="glass-card responsive-kpi-card" style={{ padding: '20px', borderRadius: 16 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span className="font-mono" style={{ fontSize: '0.84rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
+                    <span className="font-mono" style={{ fontSize: '0.82rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
                       Total Earned
                     </span>
                     <TrendingUp size={18} color="#059669" />
                   </div>
-                  <div className="font-mono" style={{ fontSize: '2.3rem', fontWeight: 800, color: '#059669', marginTop: 6, lineHeight: 1 }}>
+                  <div className="font-mono responsive-kpi-val" style={{ fontSize: '2.3rem', fontWeight: 800, color: '#059669', marginTop: 6, lineHeight: 1 }}>
                     ${(user.totalEarned || 0).toFixed(4)}
                   </div>
-                  <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: 10 }}>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 10 }}>
                     Lifetime watch rewards
                   </div>
                 </div>
 
                 {/* 3. Total Withdrawn */}
-                <div className="glass-card" style={{ padding: '20px', borderRadius: 16 }}>
+                <div className="glass-card responsive-kpi-card" style={{ padding: '20px', borderRadius: 16 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span className="font-mono" style={{ fontSize: '0.84rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
+                    <span className="font-mono" style={{ fontSize: '0.82rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
                       Total Withdrawn
                     </span>
                     <CreditCard size={18} color="#7c3aed" />
                   </div>
-                  <div className="font-mono" style={{ fontSize: '2.3rem', fontWeight: 800, color: '#7c3aed', marginTop: 6, lineHeight: 1 }}>
+                  <div className="font-mono responsive-kpi-val" style={{ fontSize: '2.3rem', fontWeight: 800, color: '#7c3aed', marginTop: 6, lineHeight: 1 }}>
                     ${(user.totalWithdrawn || 0).toFixed(2)}
                   </div>
-                  <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: 10 }}>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 10 }}>
                     Disbursed to bKash/Nagad/Crypto
                   </div>
                 </div>
@@ -611,46 +759,46 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                 </div>
               </div>
 
-              {/* Recent Transactions Table */}
+              {/* Recent Withdrawals Table */}
               <div className="glass-card" style={{ padding: '20px', borderRadius: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                   <h3 className="font-display" style={{ fontSize: '1.18rem', color: '#0f172a', margin: 0 }}>
-                    RECENT TRANSACTIONS
+                    RECENT WITHDRAWALS
                   </h3>
                   <button
                     onClick={() => setActiveTab('transactions')}
                     className="btn btn-ghost"
                     style={{ padding: '4px 10px', fontSize: '0.82rem', borderRadius: 8 }}
                   >
-                    View All →
+                    View Ledger →
                   </button>
                 </div>
 
                 {!transactions.length ? (
                   <div style={{ textAlign: 'center', padding: '24px', color: '#64748b', fontSize: '0.92rem' }}>
-                    No transactions yet. Click "Watch & Earn" to start!
+                    No payout requests yet. Click "Withdraw Cash" once your balance reaches $5.00!
                   </div>
                 ) : (
                   <div className="responsive-table-wrapper">
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
                       <thead>
                         <tr style={{ borderBottom: '1.5px solid #e2e8f0', color: 'var(--on-surface-variant)', textAlign: 'left' }}>
-                          <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Type</th>
+                          <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Method</th>
                           <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Amount</th>
                           <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Status</th>
                           <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Date</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {transactions.slice(0, 4).map((tx) => (
+                        {transactions.slice(0, 5).map((tx) => (
                           <tr key={tx._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                             <td style={{ padding: '10px 12px' }}>
                               <span className="badge-pill badge-cyan" style={{ padding: '2px 8px', fontSize: '0.72rem', textTransform: 'uppercase' }}>
-                                {tx.type}
+                                {tx.gateway || 'payout'}
                               </span>
                             </td>
-                            <td className="font-mono" style={{ padding: '10px 12px', fontWeight: 700, fontSize: '0.92rem', color: tx.amount > 0 ? 'var(--primary-neon)' : '#ef4444' }}>
-                              {tx.amount > 0 ? `+$${tx.amount.toFixed(4)}` : `-$${Math.abs(tx.amount).toFixed(2)}`}
+                            <td className="font-mono" style={{ padding: '10px 12px', fontWeight: 700, fontSize: '0.92rem', color: '#ef4444' }}>
+                              -${Math.abs(tx.amount).toFixed(2)}
                             </td>
                             <td style={{ padding: '10px 12px', color: tx.status === 'completed' ? '#059669' : '#d97706', fontWeight: 600 }}>
                               {tx.status}
@@ -692,12 +840,13 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
 
               {/* 1. Mobile App Download Banner (Simple & Elegant like Profile Switch) */}
               <div
+                className="apk-banner-container"
                 style={{
                   position: 'relative',
                   borderRadius: 14,
                   background: 'linear-gradient(135deg, #0369a1 0%, #0284c7 45%, #0ea5e9 100%)',
                   boxShadow: '0 6px 18px -3px rgba(2, 132, 199, 0.28)',
-                  padding: '12px 18px',
+                  padding: '14px 18px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
@@ -725,7 +874,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                   </div>
 
                   <div>
-                    <div className="font-display" style={{ fontSize: '1.25rem', color: '#ffffff', letterSpacing: '0.01em', margin: 0, lineHeight: 1.2 }}>
+                    <div className="font-display apk-banner-title" style={{ fontSize: '1.25rem', color: '#ffffff', letterSpacing: '0.01em', margin: 0, lineHeight: 1.2 }}>
                       WATCH & EARN ON THE <span style={{ color: '#bae6fd' }}>myYT ANDROID APP</span>
                     </div>
                     <div style={{ fontSize: '0.82rem', color: 'rgba(255, 255, 255, 0.88)', marginTop: 2 }}>
@@ -735,10 +884,11 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                 </div>
 
                 {/* Right: Download Buttons */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <div className="mobile-wrap" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <a
                     href="/downloads/myyt.apk"
                     download="myyt.apk"
+                    className="apk-download-btn"
                     style={{
                       padding: '10px 22px',
                       fontSize: '0.88rem',
@@ -796,23 +946,23 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                   </div>
                 </div>
 
-                {/* Summary Stats Row */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 18 }}>
-                  <div style={{ background: '#f8fafc', padding: '14px 18px', borderRadius: 14, border: '1px solid #e2e8f0' }}>
+                {/* Summary Stats Row in Fluid Grid */}
+                <div className="viewer-stats-grid">
+                  <div className="viewer-stats-card" style={{ background: '#f8fafc', padding: '14px 18px', borderRadius: 14, border: '1px solid #e2e8f0' }}>
                     <div style={{ fontSize: '0.78rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>Videos Watched</div>
-                    <div className="font-mono" style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', marginTop: 3 }}>
+                    <div className="font-mono kpi-number" style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', marginTop: 3 }}>
                       {watchHistory.length}
                     </div>
                   </div>
-                  <div style={{ background: '#f0fdf4', padding: '14px 18px', borderRadius: 14, border: '1px solid rgba(16, 185, 129, 0.25)' }}>
+                  <div className="viewer-stats-card viewer-stats-featured" style={{ background: '#f0fdf4', padding: '14px 18px', borderRadius: 14, border: '1px solid rgba(16, 185, 129, 0.25)' }}>
                     <div style={{ fontSize: '0.78rem', color: '#059669', textTransform: 'uppercase', fontWeight: 700 }}>Total Watch Rewards</div>
-                    <div className="font-mono" style={{ fontSize: '1.75rem', fontWeight: 800, color: '#059669', marginTop: 3 }}>
+                    <div className="font-mono kpi-number" style={{ fontSize: '1.75rem', fontWeight: 800, color: '#059669', marginTop: 3 }}>
                       +${watchHistory.reduce((sum, t) => sum + (t.rewardAmount || 0.0035), 0).toFixed(4)} USD
                     </div>
                   </div>
-                  <div style={{ background: '#f0f9ff', padding: '14px 18px', borderRadius: 14, border: '1px solid rgba(14, 165, 233, 0.25)' }}>
+                  <div className="viewer-stats-card" style={{ background: '#f0f9ff', padding: '14px 18px', borderRadius: 14, border: '1px solid rgba(14, 165, 233, 0.25)' }}>
                     <div style={{ fontSize: '0.78rem', color: 'var(--primary-neon)', textTransform: 'uppercase', fontWeight: 700 }}>Total Watch Seconds</div>
-                    <div className="font-mono" style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--primary-neon)', marginTop: 3 }}>
+                    <div className="font-mono kpi-number" style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--primary-neon)', marginTop: 3 }}>
                       {watchHistory.reduce((sum, t) => sum + (t.actualDurationSec || t.requiredDurationSec || 0), 0)}s
                     </div>
                   </div>
@@ -837,66 +987,124 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                     </a>
                   </div>
                 ) : (
-                  <div className="responsive-table-wrapper">
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                      <thead>
-                        <tr style={{ borderBottom: '1.5px solid #e2e8f0', color: '#64748b', textAlign: 'left' }}>
-                          <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Video</th>
-                          <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Watch Duration</th>
-                          <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Reward Earned</th>
-                          <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Status</th>
-                          <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Date & Time</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {watchHistory.map((item) => (
-                          <tr key={item._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                            <td style={{ padding: '10px 12px' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <>
+                    {/* Desktop Table View */}
+                    <div className="desktop-only-table responsive-table-wrapper">
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                        <thead>
+                          <tr style={{ borderBottom: '1.5px solid #e2e8f0', color: '#64748b', textAlign: 'left' }}>
+                            <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Video</th>
+                            <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Duration</th>
+                            <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Reward</th>
+                            <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Status</th>
+                            <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Date</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {watchHistory
+                            .slice((watchPage - 1) * WATCH_PAGE_SIZE, watchPage * WATCH_PAGE_SIZE)
+                            .map((item) => (
+                              <tr key={item._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                <td style={{ padding: '10px 12px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    <img
+                                      src={item.campaignId?.thumbnailUrl || `https://img.youtube.com/vi/${item.videoId}/default.jpg`}
+                                      alt="thumb"
+                                      style={{ width: 50, height: 34, borderRadius: 6, objectFit: 'cover', background: '#000' }}
+                                    />
+                                    <div style={{ minWidth: 0 }}>
+                                      <div style={{ fontWeight: 700, color: '#0f172a', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {item.campaignId?.title || `YouTube Video (${item.videoId})`}
+                                      </div>
+                                      <a
+                                        href={`https://www.youtube.com/watch?v=${item.videoId}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        style={{ fontSize: '0.75rem', color: 'var(--primary-neon)', textDecoration: 'none' }}
+                                      >
+                                        Watch on YouTube ↗
+                                      </a>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="font-mono" style={{ padding: '10px 12px', fontWeight: 600, color: '#334155' }}>
+                                  {item.actualDurationSec || item.requiredDurationSec}s
+                                </td>
+                                <td className="font-mono" style={{ padding: '10px 12px', fontWeight: 700, fontSize: '0.94rem', color: '#059669' }}>
+                                  +${(item.rewardAmount || 0.0035).toFixed(4)}
+                                </td>
+                                <td style={{ padding: '10px 12px' }}>
+                                  <span className="badge-pill badge-active" style={{ padding: '3px 9px', fontSize: '0.72rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                    <CheckCircle2 size={12} /> {item.status === 'completed' ? 'Verified' : item.status}
+                                  </span>
+                                </td>
+                                <td style={{ padding: '10px 12px', color: '#64748b', fontSize: '0.84rem' }}>
+                                  {new Date(item.completedAt || item.createdAt).toLocaleDateString()}
+                                </td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Mobile Watch History Cards */}
+                    <div className="mobile-card-list">
+                      {watchHistory
+                        .slice((watchPage - 1) * WATCH_PAGE_SIZE, watchPage * WATCH_PAGE_SIZE)
+                        .map((item) => (
+                          <div key={item._id} className="mobile-data-card">
+                            {/* Top: Thumb + Title + YouTube Link */}
+                            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                                 <img
                                   src={item.campaignId?.thumbnailUrl || `https://img.youtube.com/vi/${item.videoId}/default.jpg`}
                                   alt="thumb"
-                                  style={{ width: 50, height: 34, borderRadius: 6, objectFit: 'cover', background: '#000' }}
+                                  style={{ width: 50, height: 34, borderRadius: 6, objectFit: 'cover', background: '#000', flexShrink: 0 }}
                                 />
                                 <div style={{ minWidth: 0 }}>
-                                  <div style={{ fontWeight: 700, color: '#0f172a', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.88rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                     {item.campaignId?.title || `YouTube Video (${item.videoId})`}
                                   </div>
                                   <a
                                     href={`https://www.youtube.com/watch?v=${item.videoId}`}
                                     target="_blank"
                                     rel="noreferrer"
-                                    style={{ fontSize: '0.75rem', color: 'var(--primary-neon)', textDecoration: 'none' }}
+                                    style={{ fontSize: '0.75rem', color: 'var(--primary-neon)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 3, marginTop: 2 }}
                                   >
                                     Watch on YouTube ↗
                                   </a>
                                 </div>
                               </div>
-                            </td>
-                            <td style={{ padding: '10px 12px' }}>
-                              <span className="font-mono" style={{ fontWeight: 600, color: '#334155' }}>
-                                {item.actualDurationSec || item.requiredDurationSec}s
+                              <span className="badge-pill badge-active" style={{ padding: '3px 8px', fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
+                                <CheckCircle2 size={11} /> {item.status === 'completed' ? 'Verified' : item.status}
                               </span>
-                              <span style={{ fontSize: '0.74rem', color: '#94a3b8', display: 'block' }}>
-                                target {item.requiredDurationSec}s
-                              </span>
-                            </td>
-                            <td className="font-mono" style={{ padding: '10px 12px', fontWeight: 700, fontSize: '0.94rem', color: '#059669' }}>
-                              +${(item.rewardAmount || 0.0035).toFixed(4)} USD
-                            </td>
-                            <td style={{ padding: '10px 12px' }}>
-                              <span className="badge-pill badge-active" style={{ padding: '3px 9px', fontSize: '0.72rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                <CheckCircle2 size={12} /> {item.status === 'completed' ? 'Verified' : item.status}
-                              </span>
-                            </td>
-                            <td style={{ padding: '10px 12px', color: '#64748b', fontSize: '0.84rem' }}>
-                              {new Date(item.completedAt || item.createdAt).toLocaleString()}
-                            </td>
-                          </tr>
+                            </div>
+
+                            {/* Bottom Row: Duration, Date, and Reward */}
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#f8fafc', padding: '8px 12px', borderRadius: 8, fontSize: '0.82rem' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#64748b' }}>
+                                <Clock size={13} color="var(--primary-neon)" />
+                                <span>{item.actualDurationSec || item.requiredDurationSec}s</span>
+                                <span>•</span>
+                                <span>{new Date(item.completedAt || item.createdAt).toLocaleDateString()}</span>
+                              </div>
+                              <div className="font-mono" style={{ fontWeight: 800, fontSize: '0.96rem', color: '#059669' }}>
+                                +${(item.rewardAmount || 0.0035).toFixed(4)}
+                              </div>
+                            </div>
+                          </div>
                         ))}
-                      </tbody>
-                    </table>
-                  </div>
+                    </div>
+
+                    {renderPagination(
+                      watchPage,
+                      Math.ceil(watchHistory.length / WATCH_PAGE_SIZE) || 1,
+                      watchHistory.length,
+                      WATCH_PAGE_SIZE,
+                      setWatchPage,
+                      'videos watched'
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -929,8 +1137,8 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                   Select Withdrawal Method:
                 </label>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12 }}>
-                  {PAYOUT_METHODS.map((m) => {
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 120px), 1fr))', gap: 12 }}>
+                  {payoutMethods.map((m) => {
                     const isSelected = withdrawMethod === m.id;
                     return (
                       <div
@@ -975,28 +1183,36 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                           </div>
                         )}
 
-                        {/* Logo Placeholder */}
+                        {/* Official Brand Logo */}
                         <div
                           style={{
-                            width: 44,
-                            height: 44,
-                            borderRadius: 12,
-                            background: m.logoBg,
+                            width: 52,
+                            height: 52,
+                            borderRadius: 14,
+                            background: '#ffffff',
+                            border: isSelected ? '1.5px solid var(--primary-neon)' : '1px solid #e2e8f0',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            color: '#ffffff',
-                            fontWeight: 800,
-                            fontSize: m.logoMark.length > 2 ? '0.78rem' : '1.1rem',
-                            letterSpacing: '0.02em',
-                            boxShadow: `0 3px 10px ${m.logoBg}40`,
+                            padding: 8,
+                            boxShadow: isSelected ? '0 4px 14px rgba(14, 165, 233, 0.22)' : '0 2px 6px rgba(0,0,0,0.04)',
+                            transition: 'all 0.18s ease',
                           }}
                         >
-                          {m.logoMark}
+                          <img
+                            src={m.logoUrl}
+                            alt={m.name}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'contain',
+                              display: 'block',
+                            }}
+                          />
                         </div>
 
-                        {/* Simple Text: Just Name Only */}
-                        <span style={{ fontSize: '1.02rem', fontWeight: 800, color: '#0f172a', textAlign: 'center' }}>
+                        {/* Brand Name */}
+                        <span style={{ fontSize: '0.96rem', fontWeight: 800, color: '#0f172a', textAlign: 'center' }}>
                           {m.name}
                         </span>
                       </div>
@@ -1007,7 +1223,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
 
               {/* WITHDRAWAL FORM */}
               <form onSubmit={handleWithdraw} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: 14 }}>
                   {/* Amount Input */}
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
@@ -1032,7 +1248,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                     />
 
                     {/* Quick Amount Pills ($5 Minimum) */}
-                    <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
                       {[5, 10, 25, 50, 100].map((preset) => (
                         <button
                           key={preset}
@@ -1088,7 +1304,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                   </div>
                 </div>
 
-                {/* Real-Time Conversion Box */}
+                {/* Real-Time Conversion Box (Mobile Friendly Wrapping) */}
                 <div
                   style={{
                     background: '#f0f9ff',
@@ -1098,18 +1314,43 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: 14,
                   }}
                 >
-                  <div>
-                    <span style={{ fontSize: '0.94rem', color: '#334155' }}>
-                      Payout Method: <strong>{selectedConfig.name}</strong>
-                    </span>
-                    <div style={{ fontSize: '0.82rem', color: '#64748b' }}>
-                      {selectedConfig.rateText}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: 12,
+                        background: '#ffffff',
+                        border: '1px solid #e2e8f0',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: 6,
+                        flexShrink: 0,
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+                      }}
+                    >
+                      <img
+                        src={selectedConfig.logoUrl}
+                        alt={selectedConfig.name}
+                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                      />
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.94rem', color: '#334155' }}>
+                        Payout Method: <strong>{selectedConfig.name}</strong>
+                      </span>
+                      <div style={{ fontSize: '0.82rem', color: '#64748b' }}>
+                        {selectedConfig.rateText}
+                      </div>
                     </div>
                   </div>
 
-                  <div style={{ textAlign: 'right' }}>
+                  <div style={{ minWidth: 140 }}>
                     <span style={{ fontSize: '0.82rem', color: '#64748b', display: 'block' }}>You Receive:</span>
                     <strong className="font-mono" style={{ fontSize: '1.5rem', color: '#059669' }}>
                       {selectedConfig.isBDT
@@ -1142,8 +1383,20 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                   PAYOUT LEDGER
                 </h3>
 
-                {/* Sub-Tab Selector */}
-                <div style={{ display: 'flex', gap: 6, background: '#f1f5f9', padding: '4px', borderRadius: 12, border: '1px solid #e2e8f0' }}>
+                {/* Sub-Tab Selector (Touch-Scrollable on Mobile) */}
+                <div
+                  className="mobile-scroll-x"
+                  style={{
+                    display: 'flex',
+                    gap: 6,
+                    background: '#f1f5f9',
+                    padding: '4px',
+                    borderRadius: 12,
+                    border: '1px solid #e2e8f0',
+                    maxWidth: '100%',
+                    overflowX: 'auto',
+                  }}
+                >
                   <button
                     onClick={() => setLedgerTab('my_tx')}
                     style={{
@@ -1159,10 +1412,12 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                       display: 'flex',
                       alignItems: 'center',
                       gap: 6,
+                      flexShrink: 0,
+                      whiteSpace: 'nowrap',
                       transition: 'all 0.15s ease',
                     }}
                   >
-                    <Wallet size={15} /> My Transactions ({transactions.length})
+                    <CreditCard size={15} /> My Withdrawals ({transactions.length})
                   </button>
 
                   <button
@@ -1180,6 +1435,8 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                       display: 'flex',
                       alignItems: 'center',
                       gap: 6,
+                      flexShrink: 0,
+                      whiteSpace: 'nowrap',
                       transition: 'all 0.15s ease',
                     }}
                   >
@@ -1188,63 +1445,109 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                 </div>
               </div>
 
-              {/* SUB-TAB 1: MY TRANSACTIONS */}
+              {/* SUB-TAB 1: MY WITHDRAWALS */}
               {ledgerTab === 'my_tx' && (
                 <div className="glass-card" style={{ padding: '22px', borderRadius: 16 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                     <h4 className="font-display" style={{ fontSize: '1.15rem', color: '#0f172a', margin: 0 }}>
-                      MY TRANSACTIONS
+                      PAYOUT LEDGER
                     </h4>
                     <button
                       onClick={fetchTransactions}
                       className="btn btn-ghost"
                       style={{ padding: '5px 12px', fontSize: '0.82rem', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6 }}
                     >
-                      <RefreshCw size={14} /> Refresh
+                      <RefreshCw size={14} className={txLoading ? 'animate-spin' : ''} /> Refresh
                     </button>
                   </div>
 
                   {!transactions.length ? (
                     <div style={{ textAlign: 'center', padding: '36px', color: '#64748b', fontSize: '0.9rem' }}>
-                      No personal transactions recorded yet.
+                      No payout records found yet.
                     </div>
                   ) : (
-                    <div className="responsive-table-wrapper">
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                        <thead>
-                          <tr style={{ borderBottom: '1.5px solid #e2e8f0', color: '#64748b', textAlign: 'left' }}>
-                            <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Type</th>
-                            <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Amount</th>
-                            <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Balance</th>
-                            <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Status</th>
-                            <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Date</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {transactions.map((tx) => (
-                            <tr key={tx._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                              <td style={{ padding: '10px 12px' }}>
-                                <span className="badge-pill badge-cyan" style={{ padding: '2px 8px', fontSize: '0.72rem', textTransform: 'uppercase' }}>
-                                  {tx.type}
-                                </span>
-                              </td>
-                              <td className="font-mono" style={{ padding: '10px 12px', fontWeight: 700, fontSize: '0.92rem', color: tx.amount > 0 ? 'var(--primary-neon)' : '#ef4444' }}>
-                                {tx.amount > 0 ? `+$${tx.amount.toFixed(4)}` : `-$${Math.abs(tx.amount).toFixed(2)}`}
-                              </td>
-                              <td className="font-mono" style={{ padding: '10px 12px', color: '#0f172a', fontSize: '0.92rem' }}>
-                                ${(tx.balanceAfter || 0).toFixed(4)}
-                              </td>
-                              <td style={{ padding: '10px 12px', color: tx.status === 'completed' ? '#059669' : '#d97706', fontWeight: 600 }}>
-                                {tx.status}
-                              </td>
-                              <td style={{ padding: '10px 12px', color: '#64748b' }}>
-                                {new Date(tx.createdAt).toLocaleDateString()}
-                              </td>
+                    <>
+                      {/* Desktop Table View */}
+                      <div className="desktop-only-table responsive-table-wrapper">
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                          <thead>
+                            <tr style={{ borderBottom: '1.5px solid #e2e8f0', color: '#64748b', textAlign: 'left' }}>
+                              <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Type</th>
+                              <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Amount</th>
+                              <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Balance</th>
+                              <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Status</th>
+                              <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Date</th>
                             </tr>
+                          </thead>
+                          <tbody>
+                            {transactions
+                              .slice((txPage - 1) * TX_PAGE_SIZE, txPage * TX_PAGE_SIZE)
+                              .map((tx) => (
+                                <tr key={tx._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                  <td style={{ padding: '10px 12px' }}>
+                                    <span className="badge-pill badge-cyan" style={{ padding: '2px 8px', fontSize: '0.72rem', textTransform: 'uppercase' }}>
+                                      {tx.gateway || tx.type}
+                                    </span>
+                                  </td>
+                                  <td className="font-mono" style={{ padding: '10px 12px', fontWeight: 700, fontSize: '0.92rem', color: '#ef4444' }}>
+                                    -${Math.abs(tx.amount).toFixed(2)}
+                                  </td>
+                                  <td className="font-mono" style={{ padding: '10px 12px', color: '#0f172a', fontSize: '0.92rem' }}>
+                                    ${(tx.balanceAfter || 0).toFixed(4)}
+                                  </td>
+                                  <td style={{ padding: '10px 12px', color: tx.status === 'completed' ? '#059669' : tx.status === 'pending' ? '#d97706' : '#ef4444', fontWeight: 600 }}>
+                                    {tx.status}
+                                  </td>
+                                  <td style={{ padding: '10px 12px', color: '#64748b' }}>
+                                    {new Date(tx.createdAt).toLocaleDateString()}
+                                  </td>
+                                </tr>
+                              ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Mobile Card List View */}
+                      <div className="mobile-card-list">
+                        {transactions
+                          .slice((txPage - 1) * TX_PAGE_SIZE, txPage * TX_PAGE_SIZE)
+                          .map((tx) => (
+                            <div key={tx._id} className="mobile-data-card">
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                                <span className="badge-pill badge-cyan" style={{ padding: '2px 8px', fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700 }}>
+                                  {tx.gateway || tx.type}
+                                </span>
+                                <div className="font-mono" style={{ fontWeight: 800, fontSize: '1rem', color: '#ef4444' }}>
+                                  -${Math.abs(tx.amount).toFixed(2)}
+                                </div>
+                              </div>
+
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.82rem', color: '#64748b' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <span>Status:</span>
+                                  <span style={{ color: tx.status === 'completed' ? '#059669' : tx.status === 'pending' ? '#d97706' : '#ef4444', fontWeight: 700, textTransform: 'capitalize' }}>
+                                    {tx.status}
+                                  </span>
+                                  <span>•</span>
+                                  <span>{new Date(tx.createdAt).toLocaleDateString()}</span>
+                                </div>
+                                <div className="font-mono" style={{ color: '#0f172a', fontWeight: 600 }}>
+                                  Bal: ${(tx.balanceAfter || 0).toFixed(4)}
+                                </div>
+                              </div>
+                            </div>
                           ))}
-                        </tbody>
-                      </table>
-                    </div>
+                      </div>
+
+                      {renderPagination(
+                        txPage,
+                        Math.ceil(transactions.length / TX_PAGE_SIZE) || 1,
+                        transactions.length,
+                        TX_PAGE_SIZE,
+                        setTxPage,
+                        'withdrawals'
+                      )}
+                    </>
                   )}
                 </div>
               )}
@@ -1252,17 +1555,17 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
               {/* SUB-TAB 2: TOTAL WITHDRAWALS & ALL WEBSITE DATA */}
               {ledgerTab === 'platform' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  {/* 4 Real Data Metric Cards */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 14 }}>
+                  {/* 4 Real Data Metric Cards in Fluid Responsive Grid */}
+                  <div className="responsive-kpi-grid">
                     {/* 1. Total Withdrawals Done */}
-                    <div className="glass-card" style={{ padding: '18px', borderRadius: 16, border: '1.5px solid rgba(16, 185, 129, 0.3)' }}>
+                    <div className="glass-card responsive-kpi-card" style={{ padding: '18px', borderRadius: 16, border: '1.5px solid rgba(16, 185, 129, 0.3)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span className="font-mono" style={{ fontSize: '0.8rem', color: '#059669', textTransform: 'uppercase', fontWeight: 700 }}>
                           Total Paid Out
                         </span>
                         <CreditCard size={18} color="#059669" />
                       </div>
-                      <div className="font-mono" style={{ fontSize: '2.1rem', fontWeight: 800, color: '#059669', marginTop: 6, lineHeight: 1 }}>
+                      <div className="font-mono responsive-kpi-val" style={{ fontSize: '2.1rem', fontWeight: 800, color: '#059669', marginTop: 6, lineHeight: 1 }}>
                         ${(platformStats?.totalWithdrawnUsd || 0).toFixed(2)}
                       </div>
                       <div className="font-mono" style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600, marginTop: 4 }}>
@@ -1271,14 +1574,14 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                     </div>
 
                     {/* 2. Total Times Watched */}
-                    <div className="glass-card" style={{ padding: '18px', borderRadius: 16, border: '1.5px solid rgba(14, 165, 233, 0.3)' }}>
+                    <div className="glass-card responsive-kpi-card" style={{ padding: '18px', borderRadius: 16, border: '1.5px solid rgba(14, 165, 233, 0.3)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span className="font-mono" style={{ fontSize: '0.8rem', color: 'var(--primary-neon)', textTransform: 'uppercase', fontWeight: 700 }}>
                           Videos Watched
                         </span>
                         <PlaySquare size={18} color="var(--primary-neon)" />
                       </div>
-                      <div className="font-mono" style={{ fontSize: '2.1rem', fontWeight: 800, color: 'var(--primary-neon)', marginTop: 6, lineHeight: 1 }}>
+                      <div className="font-mono responsive-kpi-val" style={{ fontSize: '2.1rem', fontWeight: 800, color: 'var(--primary-neon)', marginTop: 6, lineHeight: 1 }}>
                         {(platformStats?.totalTimesWatched || 0).toLocaleString()}
                       </div>
                       <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 4 }}>
@@ -1287,14 +1590,14 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                     </div>
 
                     {/* 3. Active Community Earners */}
-                    <div className="glass-card" style={{ padding: '18px', borderRadius: 16 }}>
+                    <div className="glass-card responsive-kpi-card" style={{ padding: '18px', borderRadius: 16 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span className="font-mono" style={{ fontSize: '0.8rem', color: '#7c3aed', textTransform: 'uppercase', fontWeight: 700 }}>
                           Total Members
                         </span>
                         <Users size={18} color="#7c3aed" />
                       </div>
-                      <div className="font-mono" style={{ fontSize: '2.1rem', fontWeight: 800, color: '#7c3aed', marginTop: 6, lineHeight: 1 }}>
+                      <div className="font-mono responsive-kpi-val" style={{ fontSize: '2.1rem', fontWeight: 800, color: '#7c3aed', marginTop: 6, lineHeight: 1 }}>
                         {(platformStats?.activeEarnersCount || 0).toLocaleString()}
                       </div>
                       <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 4 }}>
@@ -1303,14 +1606,14 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                     </div>
 
                     {/* 4. Average Payout Turnaround */}
-                    <div className="glass-card" style={{ padding: '18px', borderRadius: 16 }}>
+                    <div className="glass-card responsive-kpi-card" style={{ padding: '18px', borderRadius: 16 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span className="font-mono" style={{ fontSize: '0.8rem', color: '#d97706', textTransform: 'uppercase', fontWeight: 700 }}>
                           Avg Payout Time
                         </span>
                         <Activity size={18} color="#d97706" />
                       </div>
-                      <div className="font-mono" style={{ fontSize: '2.1rem', fontWeight: 800, color: '#d97706', marginTop: 6, lineHeight: 1 }}>
+                      <div className="font-mono responsive-kpi-val" style={{ fontSize: '2.1rem', fontWeight: 800, color: '#d97706', marginTop: 6, lineHeight: 1 }}>
                         &lt; 15 min
                       </div>
                       <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 4 }}>

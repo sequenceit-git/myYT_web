@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 
 import { User } from '../types';
+import { useExchangeRate } from '../context/ExchangeRateContext';
 
 interface LandingPageProps {
   user?: User | null;
@@ -55,7 +56,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const rewardPerVideo = viewerRewardPerVideo[calcDuration] || 0.0052;
   const dailyEarningsUSD = calcVideosPerDay * rewardPerVideo;
   const monthlyEarningsUSD = dailyEarningsUSD * 30;
-  const usdToBdt = 122;
+  const { usdToBdt } = useExchangeRate();
   const monthlyEarningsBDT = monthlyEarningsUSD * usdToBdt;
 
   // Calculations for Campaigner from index.txt

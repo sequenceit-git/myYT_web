@@ -57,8 +57,28 @@ export const LivePayoutsTicker: React.FC = () => {
         return { background: 'rgba(5, 150, 105, 0.12)', color: '#059669', border: '1px solid rgba(5, 150, 105, 0.3)' };
       case 'faucetpay':
         return { background: '#e0f2fe', color: '#0284c7', border: '1px solid rgba(14, 165, 233, 0.35)' };
+      case 'webmoney':
+        return { background: '#e0f2fe', color: '#0369a1', border: '1px solid rgba(2, 132, 199, 0.3)' };
       default:
         return { background: '#f0f9ff', color: '#0284c7', border: '1px solid var(--glass-stroke)' };
+    }
+  };
+
+  const getMethodLogo = (method: string) => {
+    switch (method.toLowerCase()) {
+      case 'bkash':
+        return '/payment-methods/bkash.svg';
+      case 'nagad':
+        return '/payment-methods/nagad.svg';
+      case 'crypto':
+      case 'usdt':
+        return '/payment-methods/crypto.svg';
+      case 'faucetpay':
+        return '/payment-methods/faucetpay.svg';
+      case 'webmoney':
+        return '/payment-methods/webmoney.svg';
+      default:
+        return null;
     }
   };
 
@@ -79,6 +99,7 @@ export const LivePayoutsTicker: React.FC = () => {
     >
       {/* Sticky Fixed "Live Feed:" Label on the Left */}
       <div
+        className="ticker-feed-label"
         style={{
           position: 'absolute',
           left: 0,
@@ -86,8 +107,6 @@ export const LivePayoutsTicker: React.FC = () => {
           bottom: 0,
           zIndex: 10,
           background: 'linear-gradient(90deg, #f0f9ff 82%, rgba(240, 249, 255, 0) 100%)',
-          paddingLeft: 18,
-          paddingRight: 24,
           display: 'flex',
           alignItems: 'center',
           gap: 6,
@@ -133,10 +152,11 @@ export const LivePayoutsTicker: React.FC = () => {
       />
 
       {/* Smooth Continuous Animated Marquee Track */}
-      <div style={{ paddingLeft: 110, overflow: 'hidden', width: '100%' }}>
+      <div className="ticker-content" style={{ overflow: 'hidden', width: '100%' }}>
         <div className="ticker-track">
           {duplicatedPayouts.map((p, idx) => {
             const badgeStyle = getMethodBadgeStyle(p.method);
+            const logoUrl = getMethodLogo(p.method);
             return (
               <div
                 key={`${p.id}-${idx}`}
@@ -159,16 +179,33 @@ export const LivePayoutsTicker: React.FC = () => {
                 </span>
                 <span
                   style={{
-                    padding: '1px 7px',
-                    fontSize: '0.58rem',
+                    padding: '2px 8px',
+                    fontSize: '0.6rem',
                     borderRadius: 9999,
                     fontFamily: 'JetBrains Mono',
                     fontWeight: 700,
                     textTransform: 'uppercase',
                     letterSpacing: '0.04em',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5,
                     ...badgeStyle,
                   }}
                 >
+                  {logoUrl && (
+                    <img
+                      src={logoUrl}
+                      alt={p.method}
+                      style={{
+                        width: 12,
+                        height: 12,
+                        objectFit: 'contain',
+                        borderRadius: 2,
+                        background: '#ffffff',
+                        padding: 1,
+                      }}
+                    />
+                  )}
                   {p.method}
                 </span>
               </div>

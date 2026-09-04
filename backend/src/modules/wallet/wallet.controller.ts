@@ -17,7 +17,7 @@ const withdrawSchema = z.object({
 
 const depositSchema = z.object({
   amount: z.number().min(5, 'Minimum deposit is $5.00 USD'),
-  gateway: z.enum(['faucetpay', 'crypto', 'bkash', 'nagad']),
+  gateway: z.enum(['faucetpay', 'crypto', 'bkash', 'nagad', 'webmoney']),
   txHash: z.string().optional(),
 });
 
@@ -185,10 +185,45 @@ router.post('/convert-credits', requireAuth, async (req: AuthRequest, res: Respo
 // GET /api/wallet/transactions - User's financial history
 router.get('/transactions', requireAuth, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const transactions = await Transaction.find({ userId: req.user!._id })
-      .sort({ createdAt: -1 })
-      .limit(50);
-    res.json({ success: true, data: transactions });
+    const { role, type, page, limit } = req.query;
+    const query: any = { userId: req.user!._id };
+
+    if (type) {
+      const types = (type as string).split(',').map((t) => t.trim());
+      query.type = types.length === 1 ? types[0] : { $in: types };
+    } else if (role === 'viewer' || role === 'viewer_payout') {
+      // Viewer ledger shows withdrawal history
+      query.type = 'payout';
+    } else if (role === 'viewer_earning') {
+      // Earning transactions
+      query.type = { $in: ['earning', 'watch_credit', 'credit_conversion'] };
+    } else if (role === 'creator' || role === 'campaigner') {
+      // Creator spend ledger shows deposit and campaign_spend only
+      query.type = { $in: ['deposit', 'campaign_spend'] };
+    }
+
+    const pageSize = limit ? Math.min(Math.max(parseInt(limit as string, 10) || 10, 1), 500) : 500;
+    const pageNum = page ? Math.max(parseInt(page as string, 10) || 1, 1) : 1;
+    const skip = (pageNum - 1) * pageSize;
+
+    const [transactions, totalCount] = await Promise.all([
+      Transaction.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(pageSize),
+      Transaction.countDocuments(query),
+    ]);
+
+    res.json({
+      success: true,
+      data: transactions,
+      pagination: {
+        page: pageNum,
+        limit: pageSize,
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / pageSize),
+      },
+    });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }

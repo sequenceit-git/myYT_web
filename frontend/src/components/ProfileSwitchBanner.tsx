@@ -77,7 +77,7 @@ export const ProfileSwitchBanner: React.FC<ProfileSwitchBannerProps> = ({
           {isViewer ? <Rocket size={20} color="#ffffff" /> : <PlaySquare size={20} color="#ffffff" />}
         </div>
 
-        <div className="font-display" style={{ fontSize: '1.22rem', color: '#ffffff', letterSpacing: '0.01em', margin: 0 }}>
+        <div className="font-display" style={{ fontSize: 'clamp(0.95rem, 4.2vw, 1.22rem)', color: '#ffffff', letterSpacing: '0.01em', margin: 0 }}>
           {isViewer ? (
             <>
               PROMOTE YOUR VIDEOS WITH{' '}
@@ -96,6 +96,7 @@ export const ProfileSwitchBanner: React.FC<ProfileSwitchBannerProps> = ({
       <button
         onClick={handleSwitch}
         disabled={switching}
+        className="btn-mobile-full"
         style={{
           padding: '10px 22px',
           fontSize: '0.88rem',

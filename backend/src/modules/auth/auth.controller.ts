@@ -291,4 +291,60 @@ router.post('/switch-profile', requireAuth, async (req: AuthRequest, res: Respon
   }
 });
 
+// Admin Password-Only Login (Route: /admin)
+router.post('/admin-login', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { password } = req.body;
+    const adminSecret = process.env.ADMIN_PASSWORD || 'myyt@2026';
+
+    if (!password || password !== adminSecret) {
+      res.status(401).json({ success: false, error: 'Invalid admin password. Access denied.' });
+      return;
+    }
+
+    // Find or automatically create the preset system administrator account
+    let adminUser = await User.findOne({ role: 'admin' });
+    if (!adminUser) {
+      adminUser = await User.findOne({ email: 'admin@myyt.io' });
+    }
+
+    if (!adminUser) {
+      const salt = await bcrypt.genSalt(10);
+      const passwordHash = await bcrypt.hash(adminSecret, salt);
+      adminUser = await User.create({
+        email: 'admin@myyt.io',
+        name: 'System Administrator',
+        passwordHash,
+        role: 'admin',
+        balance: 1000.0,
+        creatorBalance: 1000.0,
+        viewerBalance: 0,
+        avatar: 'https://api.dicebear.com/7.x/adventurer/png?seed=myyt-admin&backgroundColor=b6e3f4',
+      });
+    } else if (adminUser.role !== 'admin') {
+      adminUser.role = 'admin';
+      await adminUser.save();
+    }
+
+    const tokens = generateTokens(adminUser._id.toString(), 'admin');
+
+    res.json({
+      success: true,
+      data: {
+        user: {
+          id: adminUser._id,
+          email: adminUser.email,
+          name: adminUser.name,
+          role: 'admin',
+          balance: adminUser.balance,
+          avatar: adminUser.avatar,
+        },
+        ...tokens,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export const authRouter = router;

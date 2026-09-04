@@ -202,7 +202,7 @@ export function App() {
           {/* Admin Backoffice Portal */}
           <Route
             path="/admin"
-            element={<AdminPortal user={user} />}
+            element={<AdminPortal user={user} onRefreshUser={fetchMe} />}
           />
 
           {/* Catch-all fallback */}
@@ -240,10 +240,36 @@ export function App() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <span className="font-mono" style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#0f172a', letterSpacing: '0.05em', fontWeight: 700 }}>Payout Rails</span>
-              <span style={{ color: 'var(--on-surface-variant)', fontSize: '0.78rem' }}>bKash & Nagad (MFS)</span>
-              <span style={{ color: 'var(--on-surface-variant)', fontSize: '0.78rem' }}>FaucetPay & WebMoney</span>
-              <span style={{ color: 'var(--on-surface-variant)', fontSize: '0.78rem' }}>Direct Crypto (USDT / LTC)</span>
+              <span className="font-mono" style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#0f172a', letterSpacing: '0.05em', fontWeight: 700 }}>Payout & Deposit Rails</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '2px 0' }}>
+                {[
+                  { name: 'bKash', src: '/payment-methods/bkash.svg' },
+                  { name: 'Nagad', src: '/payment-methods/nagad.svg' },
+                  { name: 'FaucetPay', src: '/payment-methods/faucetpay.svg' },
+                  { name: 'Crypto (USDT)', src: '/payment-methods/crypto.svg' },
+                  { name: 'WebMoney', src: '/payment-methods/webmoney.svg' },
+                ].map((pm) => (
+                  <div
+                    key={pm.name}
+                    title={pm.name}
+                    style={{
+                      width: 26,
+                      height: 26,
+                      borderRadius: 6,
+                      background: '#ffffff',
+                      border: '1px solid #e2e8f0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: 3,
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                    }}
+                  >
+                    <img src={pm.src} alt={pm.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                  </div>
+                ))}
+              </div>
+              <span style={{ color: 'var(--on-surface-variant)', fontSize: '0.76rem' }}>bKash, Nagad, FaucetPay, USDT, WebMoney</span>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

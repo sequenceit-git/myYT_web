@@ -5,7 +5,7 @@ import { authRouter } from './modules/auth/auth.controller.js';
 import { campaignsRouter } from './modules/campaigns/campaigns.controller.js';
 import { tasksRouter } from './modules/tasks/tasks.controller.js';
 import { walletRouter } from './modules/wallet/wallet.controller.js';
-import { adminRouter } from './modules/admin/admin.controller.js';
+import { adminRouter, getSystemExchangeRate } from './modules/admin/admin.controller.js';
 
 export const app = express();
 
@@ -21,6 +21,21 @@ app.get('/api/health', (_req, res) => {
     timestamp: new Date().toISOString(),
     pricingTiers: config.pricingTiers,
   });
+});
+
+// Public platform exchange rate (USD to BDT)
+app.get('/api/public/exchange-rate', async (_req, res) => {
+  try {
+    const usdToBdt = await getSystemExchangeRate();
+    res.json({
+      success: true,
+      data: {
+        usdToBdt,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
 // Mount Routes

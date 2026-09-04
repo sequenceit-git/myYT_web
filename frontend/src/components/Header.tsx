@@ -8,6 +8,7 @@ import {
   LogIn,
   Menu,
   X,
+  Shield,
 } from 'lucide-react';
 import { User } from '../types';
 
@@ -201,105 +202,159 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="desktop-only" style={{ alignItems: 'center', gap: 8 }}>
           {user ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {/* Profile Mode Switcher Pill */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  background: '#f0f9ff',
-                  padding: 2,
-                  borderRadius: 9999,
-                  border: '1px solid rgba(14, 165, 233, 0.22)',
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={() => onSwitchProfile ? onSwitchProfile('viewer') : navigate('/viewer')}
-                  style={{
-                    padding: '3px 10px',
-                    borderRadius: 9999,
-                    fontSize: '0.7rem',
-                    fontWeight: 700,
-                    border: 'none',
-                    cursor: 'pointer',
-                    background: isViewerMode ? '#0284c7' : 'transparent',
-                    color: isViewerMode ? '#ffffff' : 'var(--on-surface-variant)',
-                    transition: 'all 0.2s',
-                  }}
-                  title="Switch to Viewer Profile"
-                >
-                  Viewer
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onSwitchProfile ? onSwitchProfile('campaigner') : navigate('/creator')}
-                  style={{
-                    padding: '3px 10px',
-                    borderRadius: 9999,
-                    fontSize: '0.7rem',
-                    fontWeight: 700,
-                    border: 'none',
-                    cursor: 'pointer',
-                    background: isCreatorMode ? '#0284c7' : 'transparent',
-                    color: isCreatorMode ? '#ffffff' : 'var(--on-surface-variant)',
-                    transition: 'all 0.2s',
-                  }}
-                  title="Switch to Creator Profile"
-                >
-                  Creator
-                </button>
-              </div>
+              {/* If Admin: No Creator / Viewer profiles or balance */}
+              {user?.role === 'admin' ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/admin')}
+                    className="btn btn-neon glow-neon"
+                    style={{ padding: '6px 14px', fontSize: '0.76rem', borderRadius: 9999, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                    title="Open Admin Control Desk"
+                  >
+                    <Shield size={14} /> Admin Desk
+                  </button>
 
-              {/* Balance */}
-              <div
-                onClick={() => navigate(isCreatorMode ? '/creator' : '/viewer')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  background: '#f0f9ff',
-                  padding: '4px 10px',
-                  borderRadius: 10,
-                  border: '1px solid rgba(14, 165, 233, 0.28)',
-                  cursor: 'pointer',
-                }}
-                title={`Active Profile: ${isCreatorMode ? 'Creator Ad Budget' : 'Viewer Earnings'}`}
-              >
-                <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--primary-neon)' }} className="pulse-neon" />
-                <span className="font-mono" style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--primary-neon)' }}>
-                  ${activeProfileBalance.toFixed(2)} <span style={{ fontSize: '0.65rem', color: 'var(--on-surface-variant)' }}>{activeProfileLabel}</span>
-                </span>
-              </div>
+                  <div
+                    onClick={() => navigate('/admin')}
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: '50%',
+                      overflow: 'hidden',
+                      border: `1.5px solid var(--primary-neon)`,
+                      background: '#f0f9ff',
+                      cursor: 'pointer',
+                    }}
+                    title="System Administrator"
+                  >
+                    <img
+                      src={user.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=myyt-admin&backgroundColor=b6e3f4`}
+                      alt="admin avatar"
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  </div>
 
-              {/* Avatar */}
-              <div
-                onClick={() => navigate(user.role === 'campaigner' ? '/creator' : '/viewer')}
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: '50%',
-                  overflow: 'hidden',
-                  border: `1.5px solid var(--primary-neon)`,
-                  background: '#f0f9ff',
-                  cursor: 'pointer',
-                }}
-              >
-                <img
-                  src={user.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(user.email || user.name || 'user')}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`}
-                  alt="avatar"
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
-              </div>
+                  <button
+                    onClick={onLogout}
+                    className="btn btn-ghost"
+                    style={{ padding: '6px 10px', fontSize: '0.68rem', borderRadius: 8 }}
+                    title="Logout"
+                  >
+                    <LogOut size={13} />
+                  </button>
+                </>
+              ) : (
+                <>
+                  {/* Profile Mode Switcher Pill (Regular Users) */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      background: '#f0f9ff',
+                      padding: 2,
+                      borderRadius: 9999,
+                      border: '1px solid rgba(14, 165, 233, 0.22)',
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => onSwitchProfile ? onSwitchProfile('viewer') : navigate('/viewer')}
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: 9999,
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        border: 'none',
+                        cursor: 'pointer',
+                        background: isViewerMode ? '#0284c7' : 'transparent',
+                        color: isViewerMode ? '#ffffff' : 'var(--on-surface-variant)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        transition: 'all 0.2s',
+                      }}
+                      title="Switch to Viewer Profile"
+                    >
+                      <PlaySquare size={12} color={isViewerMode ? '#ffffff' : '#0284c7'} />
+                      <span>Viewer</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onSwitchProfile ? onSwitchProfile('campaigner') : navigate('/creator')}
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: 9999,
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        border: 'none',
+                        cursor: 'pointer',
+                        background: isCreatorMode ? '#0284c7' : 'transparent',
+                        color: isCreatorMode ? '#ffffff' : 'var(--on-surface-variant)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        transition: 'all 0.2s',
+                      }}
+                      title="Switch to Creator Profile"
+                    >
+                      <Megaphone size={12} color={isCreatorMode ? '#ffffff' : '#0284c7'} />
+                      <span>Creator</span>
+                    </button>
+                  </div>
 
-              {/* Logout */}
-              <button
-                onClick={onLogout}
-                className="btn btn-ghost"
-                style={{ padding: '6px 9px', fontSize: '0.68rem', borderRadius: 8 }}
-                title="Logout"
-              >
-                <LogOut size={13} />
-              </button>
+                  {/* Balance */}
+                  <div
+                    onClick={() => navigate(isCreatorMode ? '/creator' : '/viewer')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      background: '#f0f9ff',
+                      padding: '4px 10px',
+                      borderRadius: 10,
+                      border: '1px solid rgba(14, 165, 233, 0.28)',
+                      cursor: 'pointer',
+                    }}
+                    title={`Active Profile: ${isCreatorMode ? 'Creator Ad Budget' : 'Viewer Earnings'}`}
+                  >
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--primary-neon)' }} className="pulse-neon" />
+                    <span className="font-mono" style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--primary-neon)' }}>
+                      ${activeProfileBalance.toFixed(2)} <span style={{ fontSize: '0.65rem', color: 'var(--on-surface-variant)' }}>{activeProfileLabel}</span>
+                    </span>
+                  </div>
+
+                  {/* Avatar */}
+                  <div
+                    onClick={() => navigate(user.role === 'campaigner' ? '/creator' : '/viewer')}
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: '50%',
+                      overflow: 'hidden',
+                      border: `1.5px solid var(--primary-neon)`,
+                      background: '#f0f9ff',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <img
+                      src={user.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(user.email || user.name || 'user')}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`}
+                      alt="avatar"
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  </div>
+
+                  {/* Logout */}
+                  <button
+                    onClick={onLogout}
+                    className="btn btn-ghost"
+                    style={{ padding: '6px 9px', fontSize: '0.68rem', borderRadius: 8 }}
+                    title="Logout"
+                  >
+                    <LogOut size={13} />
+                  </button>
+                </>
+              )}
             </div>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -322,27 +377,38 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
 
-        {/* Mobile Header Right Controls: Balance + Hamburger Toggle */}
+        {/* Mobile Header Right Controls: Balance / Admin + Hamburger Toggle */}
         <div className="mobile-only" style={{ alignItems: 'center', gap: 8 }}>
           {user && (
-            <div
-              onClick={() => navigate(isCreatorMode ? '/creator' : '/viewer')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 5,
-                background: '#f0f9ff',
-                padding: '4px 8px',
-                borderRadius: 8,
-                border: '1px solid rgba(14, 165, 233, 0.28)',
-              }}
-              title={`Active Profile: ${isCreatorMode ? 'Creator Ad Budget' : 'Viewer Earnings'}`}
-            >
-              <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--primary-neon)' }} className="pulse-neon" />
-              <span className="font-mono" style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--primary-neon)' }}>
-                ${activeProfileBalance.toFixed(2)}
-              </span>
-            </div>
+            user.role === 'admin' ? (
+              <button
+                type="button"
+                onClick={() => navigate('/admin')}
+                className="btn btn-neon glow-neon"
+                style={{ padding: '4px 10px', fontSize: '0.72rem', borderRadius: 8, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+              >
+                <Shield size={12} /> Admin
+              </button>
+            ) : (
+              <div
+                onClick={() => navigate(isCreatorMode ? '/creator' : '/viewer')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  background: '#f0f9ff',
+                  padding: '4px 8px',
+                  borderRadius: 8,
+                  border: '1px solid rgba(14, 165, 233, 0.28)',
+                }}
+                title={`Active Profile: ${isCreatorMode ? 'Creator Ad Budget' : 'Viewer Earnings'}`}
+              >
+                <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--primary-neon)' }} className="pulse-neon" />
+                <span className="font-mono" style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--primary-neon)' }}>
+                  ${activeProfileBalance.toFixed(2)}
+                </span>
+              </div>
+            )
           )}
 
           <button
@@ -398,8 +464,8 @@ export const Header: React.FC<HeaderProps> = ({
             Home
           </Link>
 
-          {/* 2. Buy Views (hidden on viewer profile) */}
-          {showBuyViews && (
+          {/* 2. Buy Views (hidden on viewer profile and admin) */}
+          {showBuyViews && user?.role !== 'admin' && (
             <Link
               to="/buy-views"
               onClick={closeMenu}
@@ -420,8 +486,8 @@ export const Header: React.FC<HeaderProps> = ({
             </Link>
           )}
 
-          {/* 3. Watch App (hidden on creator profile) */}
-          {showWatchApp && (
+          {/* 3. Watch App (hidden on creator profile and admin) */}
+          {showWatchApp && user?.role !== 'admin' && (
             <Link
               to="/simulator"
               onClick={closeMenu}
@@ -446,51 +512,77 @@ export const Header: React.FC<HeaderProps> = ({
           <div style={{ borderTop: '1px solid rgba(14, 165, 233, 0.15)', paddingTop: 10, marginTop: 4 }}>
             {user ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {/* Mobile Profile Switcher Pill */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, background: '#f0f9ff', padding: 4, borderRadius: 12, border: '1px solid var(--glass-stroke)' }}>
+                {user.role === 'admin' ? (
                   <button
                     type="button"
                     onClick={() => {
-                      if (onSwitchProfile) onSwitchProfile('viewer');
-                      else navigate('/viewer');
+                      navigate('/admin');
                       closeMenu();
                     }}
-                    style={{
-                      padding: '8px 10px',
-                      borderRadius: 10,
-                      fontSize: '0.76rem',
-                      fontWeight: 700,
-                      border: 'none',
-                      cursor: 'pointer',
-                      background: isViewerMode ? 'var(--primary-neon)' : 'transparent',
-                      color: isViewerMode ? '#ffffff' : 'var(--on-surface-variant)',
-                      transition: 'all 0.2s',
-                    }}
+                    className="btn btn-neon glow-neon"
+                    style={{ width: '100%', padding: '12px', borderRadius: 10, fontSize: '0.86rem', justifyContent: 'center', gap: 6 }}
                   >
-                    🎬 Viewer Profile
+                    <Shield size={16} /> Open Admin Panel
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (onSwitchProfile) onSwitchProfile('campaigner');
-                      else navigate('/creator');
-                      closeMenu();
-                    }}
-                    style={{
-                      padding: '8px 10px',
-                      borderRadius: 10,
-                      fontSize: '0.76rem',
-                      fontWeight: 700,
-                      border: 'none',
-                      cursor: 'pointer',
-                      background: isCreatorMode ? 'var(--primary-neon)' : 'transparent',
-                      color: isCreatorMode ? '#ffffff' : 'var(--on-surface-variant)',
-                      transition: 'all 0.2s',
-                    }}
-                  >
-                    🚀 Creator Profile
-                  </button>
-                </div>
+                ) : (
+                  /* Mobile Profile Switcher Pill for Regular Users */
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, background: '#f0f9ff', padding: 4, borderRadius: 12, border: '1px solid var(--glass-stroke)' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onSwitchProfile) onSwitchProfile('viewer');
+                        else navigate('/viewer');
+                        closeMenu();
+                      }}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: 10,
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        border: 'none',
+                        cursor: 'pointer',
+                        background: isViewerMode ? 'var(--primary-neon)' : 'transparent',
+                        color: isViewerMode ? '#ffffff' : 'var(--on-surface-variant)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                        boxShadow: isViewerMode ? '0 2px 8px rgba(14, 165, 233, 0.28)' : 'none',
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      <PlaySquare size={16} color={isViewerMode ? '#ffffff' : 'var(--primary-neon)'} />
+                      <span>Viewer Profile</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onSwitchProfile) onSwitchProfile('campaigner');
+                        else navigate('/creator');
+                        closeMenu();
+                      }}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: 10,
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        border: 'none',
+                        cursor: 'pointer',
+                        background: isCreatorMode ? 'var(--primary-neon)' : 'transparent',
+                        color: isCreatorMode ? '#ffffff' : 'var(--on-surface-variant)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                        boxShadow: isCreatorMode ? '0 2px 8px rgba(14, 165, 233, 0.28)' : 'none',
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      <Megaphone size={16} color={isCreatorMode ? '#ffffff' : 'var(--primary-neon)'} />
+                      <span>Creator Profile</span>
+                    </button>
+                  </div>
+                )}
 
                 <button
                   onClick={() => {

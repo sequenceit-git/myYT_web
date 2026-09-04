@@ -4,11 +4,24 @@ import { Campaign } from '../../models/Campaign.js';
 import { Payout } from '../../models/Payout.js';
 import { Transaction } from '../../models/Transaction.js';
 import { Task } from '../../models/Task.js';
+import { Setting } from '../../models/Setting.js';
 import { requireAdmin, AuthRequest } from '../../middleware/auth.middleware.js';
+
+export const getSystemExchangeRate = async (): Promise<number> => {
+  try {
+    const setting = await Setting.findOne({ key: 'usd_to_bdt_rate' });
+    if (setting && typeof setting.value === 'number' && setting.value > 0) {
+      return setting.value;
+    }
+  } catch {
+    // fallback to default
+  }
+  return 122;
+};
 
 const router = Router();
 
-// GET /api/admin/stats - Platform overview
+// GET /api/admin/stats - Platform overview & comprehensive telemetry
 router.get('/stats', requireAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
     const totalUsers = await User.countDocuments();
@@ -23,6 +36,72 @@ router.get('/stats', requireAdmin, async (_req: AuthRequest, res: Response): Pro
     ]);
     const totalViewsDelivered = deliveredAgg[0]?.totalViews || 0;
 
+    // Aggregate total watch hours
+    const watchTimeAgg = await Task.aggregate([
+      { $match: { status: 'completed' } },
+      { $group: { _id: null, totalSeconds: { $sum: '$actualDurationSec' } } },
+    ]);
+    const totalWatchSeconds = watchTimeAgg[0]?.totalSeconds || 0;
+    const totalWatchHours = Number((totalWatchSeconds / 3600).toFixed(2));
+
+    // Aggregate financials
+    const spendAgg = await Transaction.aggregate([
+      { $match: { type: 'campaign_spend', status: 'completed' } },
+      { $group: { _id: null, total: { $sum: '$amount' } } },
+    ]);
+    const totalSpendUsd = Number(Math.abs(spendAgg[0]?.total || 0).toFixed(2));
+
+    const depositAgg = await Transaction.aggregate([
+      { $match: { type: 'deposit', status: 'completed' } },
+      { $group: { _id: null, total: { $sum: '$amount' } } },
+    ]);
+    const totalDepositsUsd = Number((depositAgg[0]?.total || 0).toFixed(2));
+
+    const payoutsAgg = await Payout.aggregate([
+      { $match: { status: 'approved' } },
+      { $group: { _id: null, total: { $sum: '$amount' } } },
+    ]);
+    const totalPayoutsUsd = Number((payoutsAgg[0]?.total || 0).toFixed(2));
+
+    const pendingPayoutsAgg = await Payout.aggregate([
+      { $match: { status: 'pending' } },
+      { $group: { _id: null, total: { $sum: '$amount' } } },
+    ]);
+    const pendingPayoutsUsd = Number((pendingPayoutsAgg[0]?.total || 0).toFixed(2));
+
+    // 7-day trend calculation
+    const dayLabels: string[] = [];
+    const dailyWatchHours: number[] = [];
+    const dailySpend: number[] = [];
+    const dailyViews: number[] = [];
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      dayLabels.push(d.toLocaleDateString(undefined, { weekday: 'short' }));
+
+      const startOfDay = new Date(d);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(d);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      // Tasks / Watch hours
+      const dayTasks = await Task.aggregate([
+        { $match: { status: 'completed', createdAt: { $gte: startOfDay, $lte: endOfDay } } },
+        { $group: { _id: null, sec: { $sum: '$actualDurationSec' }, count: { $sum: 1 } } },
+      ]);
+      const daySec = dayTasks[0]?.sec || 0;
+      dailyWatchHours.push(Number((daySec / 3600).toFixed(2)));
+      dailyViews.push(dayTasks[0]?.count || 0);
+
+      // Spend
+      const daySpend = await Transaction.aggregate([
+        { $match: { type: 'campaign_spend', createdAt: { $gte: startOfDay, $lte: endOfDay } } },
+        { $group: { _id: null, total: { $sum: '$amount' } } },
+      ]);
+      dailySpend.push(Number(Math.abs(daySpend[0]?.total || 0).toFixed(2)));
+    }
+
     res.json({
       success: true,
       data: {
@@ -31,8 +110,17 @@ router.get('/stats', requireAdmin, async (_req: AuthRequest, res: Response): Pro
         totalCampaigns,
         totalTasksCompleted,
         totalViewsDelivered,
+        totalWatchHours,
+        totalSpendUsd,
+        totalDepositsUsd,
+        totalPayoutsUsd,
         pendingPayoutsCount,
-        simulatedConcurrency: Math.floor(4100 + Math.random() * 450), // Realistic 4k-5k active live concurrency metric
+        pendingPayoutsUsd,
+        dailyWatchHours,
+        dailySpend,
+        dailyViews,
+        dayLabels,
+        simulatedConcurrency: Math.floor(4100 + Math.random() * 450),
         serverHealth: {
           uptime: process.uptime(),
           memoryUsage: process.memoryUsage(),
@@ -105,12 +193,18 @@ router.post('/campaigns/:id/status', requireAdmin, async (req: AuthRequest, res:
 });
 
 // GET /api/admin/payouts - List withdrawal queue
-router.get('/payouts', requireAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
+router.get('/payouts', requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const payouts = await Payout.find()
-      .populate('viewerId', 'name email balance')
+    const { status } = req.query;
+    const filter: any = {};
+    if (status && status !== 'all') {
+      filter.status = status;
+    }
+
+    const payouts = await Payout.find(filter)
+      .populate('viewerId', 'name email balance viewerBalance totalEarned totalWithdrawn')
       .sort({ createdAt: -1 })
-      .limit(100);
+      .limit(500);
     res.json({ success: true, data: payouts });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
@@ -129,20 +223,17 @@ router.post('/payouts/:id/approve', requireAdmin, async (req: AuthRequest, res: 
 
     payout.status = 'approved';
     payout.transactionRef = transactionRef || `TXN-${Date.now()}`;
-    payout.adminNotes = adminNotes || 'Disbursed by Admin';
+    payout.adminNotes = adminNotes || 'Disbursed manually by Admin';
     payout.processedAt = new Date();
     await payout.save();
-
-    // Increment user's totalWithdrawn
-    await User.findByIdAndUpdate(payout.viewerId, { $inc: { totalWithdrawn: payout.amount } });
 
     // Update corresponding transaction status
     await Transaction.findOneAndUpdate(
       { referenceId: payout._id.toString() },
-      { status: 'completed', notes: `Paid via ${payout.method.toUpperCase()} (Ref: ${payout.transactionRef})` }
+      { status: 'completed', notes: `Disbursed via ${payout.method.toUpperCase()} (Ref: ${payout.transactionRef})` }
     );
 
-    res.json({ success: true, data: payout, message: 'Payout approved successfully' });
+    res.json({ success: true, data: payout, message: 'Payout approved and marked completed!' });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -163,14 +254,20 @@ router.post('/payouts/:id/reject', requireAdmin, async (req: AuthRequest, res: R
     payout.processedAt = new Date();
     await payout.save();
 
-    // Atomic refund back to user wallet
+    // Atomic refund back to user wallet (both balance and viewerBalance) and reverse totalWithdrawn
     const updatedUser = await User.findByIdAndUpdate(
       payout.viewerId,
-      { $inc: { balance: payout.amount } },
+      { $inc: { balance: payout.amount, viewerBalance: payout.amount, totalWithdrawn: -payout.amount } },
       { new: true }
     );
 
-    // Record refund transaction
+    // Update original transaction
+    await Transaction.findOneAndUpdate(
+      { referenceId: payout._id.toString() },
+      { status: 'failed', notes: `Rejected: ${adminNotes || 'Declined by Admin'}` }
+    );
+
+    // Record explicit refund transaction
     await Transaction.create({
       userId: payout.viewerId,
       type: 'refund',
@@ -178,13 +275,55 @@ router.post('/payouts/:id/reject', requireAdmin, async (req: AuthRequest, res: R
       balanceAfter: updatedUser?.balance || 0,
       status: 'completed',
       referenceId: payout._id.toString(),
-      notes: `Refund for rejected payout: ${adminNotes || 'Declined'}`,
+      notes: `Refund for rejected payout: ${adminNotes || 'Declined by Admin'}`,
     });
 
-    res.json({ success: true, data: payout, message: 'Payout rejected and balance refunded to user' });
+    res.json({ success: true, data: payout, message: 'Payout rejected and funds refunded to user wallet' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/admin/settings - Platform configurations
+router.get('/settings', requireAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const usdToBdt = await getSystemExchangeRate();
+    res.json({
+      success: true,
+      data: {
+        usdToBdt,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/admin/settings/exchange-rate - Update USD to BDT dollar price
+router.post('/settings/exchange-rate', requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { usdToBdt } = req.body;
+    const rate = Number(usdToBdt);
+    if (!rate || isNaN(rate) || rate < 10 || rate > 500) {
+      res.status(400).json({ success: false, error: 'Please enter a valid dollar exchange rate (between 10 and 500 BDT)' });
+      return;
+    }
+
+    const updated = await Setting.findOneAndUpdate(
+      { key: 'usd_to_bdt_rate' },
+      { value: rate, description: 'USD to BDT exchange rate' },
+      { upsert: true, new: true }
+    );
+
+    res.json({
+      success: true,
+      data: { usdToBdt: updated.value },
+      message: `Dollar rate successfully updated to 1 USD = ${updated.value} BDT!`,
+    });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
 export const adminRouter = router;
+
