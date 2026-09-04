@@ -295,7 +295,7 @@ router.post('/switch-profile', requireAuth, async (req: AuthRequest, res: Respon
 router.post('/admin-login', async (req: Request, res: Response): Promise<void> => {
   try {
     const { password } = req.body;
-    const adminSecret = process.env.ADMIN_PASSWORD || 'myyt@2026';
+    const adminSecret = process.env.ADMIN_PASSWORD || process.env.ADMIN_SECRET_KEY || 'myyt@2026';
 
     if (!password || password !== adminSecret) {
       res.status(401).json({ success: false, error: 'Invalid admin password. Access denied.' });

@@ -13,15 +13,17 @@ export const app = express();
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 
-// Health check endpoint
-app.get('/api/health', (_req, res) => {
+// Health check endpoints
+const healthHandler = (_req: express.Request, res: express.Response) => {
   res.json({
     status: 'ok',
     service: 'myYT API Backend',
     timestamp: new Date().toISOString(),
     pricingTiers: config.pricingTiers,
   });
-});
+};
+app.get('/api/health', healthHandler);
+app.get('/health', healthHandler);
 
 // Public platform exchange rate (USD to BDT)
 app.get('/api/public/exchange-rate', async (_req, res) => {

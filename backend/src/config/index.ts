@@ -10,6 +10,7 @@ export const config = {
   jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || 'myyt-jwt-refresh-secret-2026',
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173',
   adminSecretKey: process.env.ADMIN_SECRET_KEY || 'admin123',
+  adminPassword: process.env.ADMIN_PASSWORD || process.env.ADMIN_SECRET_KEY || 'myyt@2026',
   
   // Platform Pricing Tiers (Base Price: 1000 views, 10s = $5.00)
   pricingTiers: {

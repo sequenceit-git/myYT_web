@@ -29,10 +29,17 @@ services:
       - REDIS_URL=redis://:${REDIS_PASSWORD:-redis_myyt_secret}@redis:6379
       - JWT_SECRET=${JWT_SECRET}
       - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
-      - ADMIN_SECRET_KEY=${ADMIN_SECRET_KEY}
+      - ADMIN_SECRET_KEY=${ADMIN_SECRET_KEY:-admin123}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-myyt@2026}
       - CORS_ORIGIN=https://${DOMAIN}
       - ENABLE_COOLDOWN=${ENABLE_COOLDOWN:-false}
       - VIDEO_COOLDOWN_SECONDS=${VIDEO_COOLDOWN_SECONDS:-0}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:5000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     depends_on:
       redis:
         condition: service_healthy
