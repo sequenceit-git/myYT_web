@@ -141,20 +141,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {/* Modal Header */}
         <div style={{ padding: '24px 28px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div
+            <img
+              src="/favicon.svg"
+              alt="myYT"
               style={{
-                width: 44,
-                height: 44,
-                borderRadius: '50%',
-                background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 4px 14px rgba(14, 165, 233, 0.35)',
+                width: 42,
+                height: 42,
+                display: 'block',
+                borderRadius: 12,
+                boxShadow: '0 4px 14px rgba(230, 0, 38, 0.28)',
               }}
-            >
-              <PlaySquare size={22} color="#ffffff" />
-            </div>
+            />
             <div>
               <div className="font-display" style={{ fontSize: '1.5rem', color: '#0f172a', letterSpacing: '0.04em', lineHeight: 1.1 }}>
                 MY<span style={{ color: 'var(--primary-neon)' }}>YT</span> ACCESS
