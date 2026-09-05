@@ -76,7 +76,8 @@ router.get('/next', requireAuth, async (req: AuthRequest, res: Response): Promis
         title: selectedCampaign.title,
         thumbnailUrl: selectedCampaign.thumbnailUrl,
         youtubeDeepLink: `vnd.youtube:${selectedCampaign.videoId}`,
-        youtubeWebUrl: `https://www.youtube.com/watch?v=${selectedCampaign.videoId}`,
+        youtubeWebUrl: `https://www.google.com/url?sa=t&url=${encodeURIComponent(`https://www.youtube.com/watch?v=${selectedCampaign.videoId}`)}`,
+        directVideoUrl: `https://www.youtube.com/watch?v=${selectedCampaign.videoId}`,
       },
     });
   } catch (error: any) {

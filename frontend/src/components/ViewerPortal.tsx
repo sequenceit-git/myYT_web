@@ -510,24 +510,91 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
   const bdtRate = usdToBdt;
   const approxBDT = (viewerBal * bdtRate).toFixed(0);
 
-  // Daily Earning & Watch Count (today's watch tasks)
+  // Daily Earning & Watch Count (strictly completed/verified watch tasks)
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
 
-  const todaysTasks = watchHistory.filter((task) => {
+  const todaysCompletedTasks = watchHistory.filter((task) => {
+    const isCompleted = task.status === 'completed';
     const d = task.completedAt ? new Date(task.completedAt) : (task.updatedAt ? new Date(task.updatedAt) : (task.createdAt ? new Date(task.createdAt) : null));
-    return d && d >= startOfDay;
+    return isCompleted && d && d >= startOfDay;
   });
 
-  const todaysWatchCount = todaysTasks.length;
+  const todaysWatchCount = todaysCompletedTasks.length;
 
-  const watchTodayEarned = todaysTasks.reduce((sum, task) => sum + (task.rewardAmount || task.rewardUsd || 0), 0);
+  const watchTodayEarned = todaysCompletedTasks.reduce((sum, task) => sum + (task.rewardAmount || task.rewardUsd || 0), 0);
 
   const dailyEarnings = user.dailyEarnings !== undefined
     ? user.dailyEarnings
     : watchTodayEarned;
 
   const approxDailyBDT = (dailyEarnings * bdtRate).toFixed(0);
+
+  // Google redirect URL method to bypass Google Play Protect prompts
+  const getGoogleRedirectUrl = (videoId: string) => {
+    return `https://www.google.com/url?sa=t&url=${encodeURIComponent(`https://www.youtube.com/watch?v=${videoId}`)}`;
+  };
+
+  // Render Status Badge: Verified (Green) vs In Progress (Orange-Red)
+  const renderWatchStatusBadge = (status: string) => {
+    const isCompleted = status === 'completed';
+    if (isCompleted) {
+      return (
+        <span
+          className="badge-pill"
+          style={{
+            padding: '3px 9px',
+            fontSize: '0.72rem',
+            fontWeight: 700,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            background: '#ecfdf5',
+            color: '#059669',
+            border: '1px solid rgba(16, 185, 129, 0.3)',
+          }}
+        >
+          <CheckCircle2 size={12} /> Verified
+        </span>
+      );
+    }
+    return (
+      <span
+        className="badge-pill"
+        style={{
+          padding: '3px 9px',
+          fontSize: '0.72rem',
+          fontWeight: 700,
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 4,
+          background: '#fff7ed',
+          color: '#ea580c',
+          border: '1px solid rgba(234, 88, 12, 0.35)',
+        }}
+      >
+        <Clock size={12} /> In Progress
+      </span>
+    );
+  };
+
+  // Render Reward: Verified has + in green, In-Progress has NO + and orange-red color
+  const renderWatchReward = (item: any, fontSize = '0.94rem') => {
+    const isCompleted = item.status === 'completed';
+    const reward = item.rewardAmount || 0.0035;
+    if (isCompleted) {
+      return (
+        <span className="font-mono" style={{ fontWeight: 800, fontSize, color: '#059669' }}>
+          +${reward.toFixed(4)}
+        </span>
+      );
+    }
+    return (
+      <span className="font-mono" style={{ fontWeight: 800, fontSize, color: '#ea580c' }}>
+        ${reward.toFixed(4)}
+      </span>
+    );
+  };
 
   const payoutMethods = getPayoutMethods(usdToBdt);
   const selectedConfig = payoutMethods.find((m) => m.id === withdrawMethod) || payoutMethods[0];
@@ -876,7 +943,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                                       {item.campaignId?.title || `YouTube Video (${item.videoId})`}
                                     </div>
                                     <a
-                                      href={`https://www.youtube.com/watch?v=${item.videoId}`}
+                                      href={getGoogleRedirectUrl(item.videoId)}
                                       target="_blank"
                                       rel="noreferrer"
                                       style={{ fontSize: '0.72rem', color: 'var(--primary-neon)', textDecoration: 'none' }}
@@ -889,13 +956,11 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                               <td className="font-mono" style={{ padding: '10px 12px', fontWeight: 600, color: '#334155' }}>
                                 {item.actualDurationSec || item.requiredDurationSec}s
                               </td>
-                              <td className="font-mono" style={{ padding: '10px 12px', fontWeight: 700, fontSize: '0.94rem', color: '#059669' }}>
-                                +${(item.rewardAmount || 0.0035).toFixed(4)}
+                              <td style={{ padding: '10px 12px' }}>
+                                {renderWatchReward(item)}
                               </td>
                               <td style={{ padding: '10px 12px' }}>
-                                <span className="badge-pill badge-active" style={{ padding: '2px 8px', fontSize: '0.72rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                  <CheckCircle2 size={12} /> {item.status === 'completed' ? 'Verified' : item.status}
-                                </span>
+                                {renderWatchStatusBadge(item.status)}
                               </td>
                               <td style={{ padding: '10px 12px', color: '#64748b', fontSize: '0.84rem' }}>
                                 {new Date(item.completedAt || item.createdAt).toLocaleDateString()}
@@ -910,24 +975,31 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                     <div className="mobile-card-list">
                       {watchHistory.slice(0, 5).map((item) => (
                         <div key={item._id} className="mobile-data-card" style={{ padding: '12px', borderRadius: 12, border: '1px solid #f1f5f9', background: '#fafafa', marginBottom: 8 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <img
-                              src={item.campaignId?.thumbnailUrl || `https://img.youtube.com/vi/${item.videoId}/default.jpg`}
-                              alt="thumb"
-                              style={{ width: 44, height: 32, borderRadius: 6, objectFit: 'cover', background: '#000', flexShrink: 0 }}
-                            />
-                            <div style={{ minWidth: 0, flex: 1 }}>
-                              <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.86rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {item.campaignId?.title || `YouTube Video (${item.videoId})`}
-                              </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', color: '#64748b', marginTop: 2 }}>
-                                <span>{item.actualDurationSec || item.requiredDurationSec}s</span>
-                                <span>•</span>
-                                <span>{new Date(item.completedAt || item.createdAt).toLocaleDateString()}</span>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+                              <img
+                                src={item.campaignId?.thumbnailUrl || `https://img.youtube.com/vi/${item.videoId}/default.jpg`}
+                                alt="thumb"
+                                style={{ width: 44, height: 32, borderRadius: 6, objectFit: 'cover', background: '#000', flexShrink: 0 }}
+                              />
+                              <div style={{ minWidth: 0, flex: 1 }}>
+                                <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.86rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {item.campaignId?.title || `YouTube Video (${item.videoId})`}
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', color: '#64748b', marginTop: 2 }}>
+                                  <span>{item.actualDurationSec || item.requiredDurationSec}s</span>
+                                  <span>•</span>
+                                  <span>{new Date(item.completedAt || item.createdAt).toLocaleDateString()}</span>
+                                </div>
                               </div>
                             </div>
-                            <div className="font-mono" style={{ fontWeight: 800, fontSize: '0.94rem', color: '#059669', flexShrink: 0 }}>
-                              +${(item.rewardAmount || 0.0035).toFixed(4)}
+                            <div style={{ flexShrink: 0, textAlign: 'right' }}>
+                              <div style={{ marginBottom: 4 }}>
+                                {renderWatchReward(item)}
+                              </div>
+                              <div>
+                                {renderWatchStatusBadge(item.status)}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -1086,15 +1158,15 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                   <div className="viewer-stats-card" style={{ background: '#f8fafc', padding: '14px 18px', borderRadius: 14, border: '1px solid #e2e8f0' }}>
                     <div style={{ fontSize: '0.78rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>Videos Watched</div>
                     <div className="font-mono kpi-number" style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', marginTop: 3 }}>
-                      {watchHistory.length}
+                      {watchHistory.filter((t) => t.status === 'completed').length}
                     </div>
                   </div>
 
-                  {/* 3. Total Watch Rewards */}
+                  {/* 3. Total Watch Rewards (Strictly verified completed earnings) */}
                   <div className="viewer-stats-card viewer-stats-featured" style={{ background: '#f0fdf4', padding: '14px 18px', borderRadius: 14, border: '1px solid rgba(16, 185, 129, 0.25)' }}>
                     <div style={{ fontSize: '0.78rem', color: '#059669', textTransform: 'uppercase', fontWeight: 700 }}>Total Watch Rewards</div>
                     <div className="font-mono kpi-number" style={{ fontSize: '1.75rem', fontWeight: 800, color: '#059669', marginTop: 3 }}>
-                      +${watchHistory.reduce((sum, t) => sum + (t.rewardAmount || 0.0035), 0).toFixed(4)} USD
+                      +${watchHistory.filter((t) => t.status === 'completed').reduce((sum, t) => sum + (t.rewardAmount || 0.0035), 0).toFixed(4)} USD
                     </div>
                   </div>
 
@@ -1102,7 +1174,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                   <div className="viewer-stats-card" style={{ background: '#f0f9ff', padding: '14px 18px', borderRadius: 14, border: '1px solid rgba(14, 165, 233, 0.25)' }}>
                     <div style={{ fontSize: '0.78rem', color: 'var(--primary-neon)', textTransform: 'uppercase', fontWeight: 700 }}>Total Watch Seconds</div>
                     <div className="font-mono kpi-number" style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--primary-neon)', marginTop: 3 }}>
-                      {watchHistory.reduce((sum, t) => sum + (t.actualDurationSec || t.requiredDurationSec || 0), 0)}s
+                      {watchHistory.filter((t) => t.status === 'completed').reduce((sum, t) => sum + (t.actualDurationSec || t.requiredDurationSec || 0), 0)}s
                     </div>
                   </div>
                 </div>
@@ -1156,7 +1228,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                                         {item.campaignId?.title || `YouTube Video (${item.videoId})`}
                                       </div>
                                       <a
-                                        href={`https://www.youtube.com/watch?v=${item.videoId}`}
+                                        href={getGoogleRedirectUrl(item.videoId)}
                                         target="_blank"
                                         rel="noreferrer"
                                         style={{ fontSize: '0.75rem', color: 'var(--primary-neon)', textDecoration: 'none' }}
@@ -1169,13 +1241,11 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                                 <td className="font-mono" style={{ padding: '10px 12px', fontWeight: 600, color: '#334155' }}>
                                   {item.actualDurationSec || item.requiredDurationSec}s
                                 </td>
-                                <td className="font-mono" style={{ padding: '10px 12px', fontWeight: 700, fontSize: '0.94rem', color: '#059669' }}>
-                                  +${(item.rewardAmount || 0.0035).toFixed(4)}
+                                <td style={{ padding: '10px 12px' }}>
+                                  {renderWatchReward(item)}
                                 </td>
                                 <td style={{ padding: '10px 12px' }}>
-                                  <span className="badge-pill badge-active" style={{ padding: '3px 9px', fontSize: '0.72rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                    <CheckCircle2 size={12} /> {item.status === 'completed' ? 'Verified' : item.status}
-                                  </span>
+                                  {renderWatchStatusBadge(item.status)}
                                 </td>
                                 <td style={{ padding: '10px 12px', color: '#64748b', fontSize: '0.84rem' }}>
                                   {new Date(item.completedAt || item.createdAt).toLocaleDateString()}
@@ -1205,7 +1275,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                                     {item.campaignId?.title || `YouTube Video (${item.videoId})`}
                                   </div>
                                   <a
-                                    href={`https://www.youtube.com/watch?v=${item.videoId}`}
+                                    href={getGoogleRedirectUrl(item.videoId)}
                                     target="_blank"
                                     rel="noreferrer"
                                     style={{ fontSize: '0.75rem', color: 'var(--primary-neon)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 3, marginTop: 2 }}
@@ -1214,9 +1284,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                                   </a>
                                 </div>
                               </div>
-                              <span className="badge-pill badge-active" style={{ padding: '3px 8px', fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
-                                <CheckCircle2 size={11} /> {item.status === 'completed' ? 'Verified' : item.status}
-                              </span>
+                              {renderWatchStatusBadge(item.status)}
                             </div>
 
                             {/* Bottom Row: Duration, Date, and Reward */}
@@ -1227,9 +1295,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                                 <span>•</span>
                                 <span>{new Date(item.completedAt || item.createdAt).toLocaleDateString()}</span>
                               </div>
-                              <div className="font-mono" style={{ fontWeight: 800, fontSize: '0.96rem', color: '#059669' }}>
-                                +${(item.rewardAmount || 0.0035).toFixed(4)}
-                              </div>
+                              {renderWatchReward(item, '0.96rem')}
                             </div>
                           </div>
                         ))}
