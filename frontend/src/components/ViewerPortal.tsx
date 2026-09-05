@@ -746,9 +746,9 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                     <span className="font-mono" style={{ fontSize: '0.82rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
                       Total Earned
                     </span>
-                    <TrendingUp size={18} color="#059669" />
+                    <TrendingUp size={18} color="#0f172a" />
                   </div>
-                  <div className="font-mono responsive-kpi-val" style={{ fontSize: '2.3rem', fontWeight: 800, color: '#059669', marginTop: 6, lineHeight: 1 }}>
+                  <div className="font-mono responsive-kpi-val" style={{ fontSize: '2.3rem', fontWeight: 800, color: '#0f172a', marginTop: 6, lineHeight: 1 }}>
                     ${(user.totalEarned || 0).toFixed(4)}
                   </div>
                   <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 10 }}>
