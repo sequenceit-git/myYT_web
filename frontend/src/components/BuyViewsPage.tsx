@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, CheckCircle2, AlertCircle, ShieldCheck, Zap, Clock } from 'lucide-react';
+import { Sparkles, CheckCircle2, AlertCircle, ShieldCheck, Zap, Clock, Minus, Plus } from 'lucide-react';
 import { User, Campaign } from '../types';
 import { apiRequest } from '../api';
 
@@ -10,35 +10,53 @@ interface BuyViewsPageProps {
   onOpenAuth: (mode: 'signin' | 'signup', role?: 'viewer' | 'campaigner') => void;
 }
 
+const DEFAULT_PRESET_DURATIONS = [
+  { sec: 10, ratePerView: 0.0035 },
+  { sec: 15, ratePerView: 0.0050 },
+  { sec: 30, ratePerView: 0.0080 },
+  { sec: 45, ratePerView: 0.0120 },
+  { sec: 60, ratePerView: 0.0160 },
+  { sec: 90, ratePerView: 0.0240 },
+  { sec: 120, ratePerView: 0.0320 },
+];
+
 export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser, onOpenAuth }) => {
   const navigate = useNavigate();
 
   // Campaign Form / Simulation State
+  const [presets, setPresets] = useState(DEFAULT_PRESET_DURATIONS);
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [duration, setDuration] = useState<number>(10);
+  const [isCustom, setIsCustom] = useState<boolean>(false);
+  const [customSec, setCustomSec] = useState<number>(180);
   const [views, setViews] = useState<number>(1000);
   const [title, setTitle] = useState('');
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  /* Pricing Multipliers:
-     10s: 1.0 ($5.00 / 1k)
-     30s: 1.5 ($7.50 / 1k)
-     60s: 2.0 ($10.00 / 1k)
-     120s: 3.0 ($15.00 / 1k)
-  */
-  const basePrice = 5;
-  const durationMultiplier: Record<number, number> = {
-    10: 1.0,
-    30: 1.5,
-    60: 2.0,
-    120: 3.0,
-  };
+  // Fetch dynamic admin-configured pricing tiers
+  useEffect(() => {
+    apiRequest<any[]>('/campaigns/pricing-tiers')
+      .then((res) => {
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+          const mapped = res.data.map((t: any) => ({
+            sec: t.duration,
+            ratePerView: t.campaignerCost,
+          }));
+          setPresets(mapped);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
-  const currentMultiplier = durationMultiplier[duration] || 1.0;
-  const calculatedCost = Number(((views / 1000) * basePrice * currentMultiplier).toFixed(2));
-  const costPerView = Number((calculatedCost / views).toFixed(4));
-  const totalWatchHours = ((views * duration) / 3600).toFixed(1);
+  const activeDuration = isCustom ? Math.max(10, Math.min(600, customSec || 10)) : duration;
+
+  const costPerView = isCustom
+    ? Number((0.0050 + (activeDuration - 10) * 0.000091).toFixed(4))
+    : (presets.find((p) => p.sec === duration)?.ratePerView || 0.0050);
+
+  const calculatedCost = Number((views * costPerView).toFixed(2));
+  const totalWatchHours = ((views * activeDuration) / 3600).toFixed(1);
 
   const extractVideoId = (url: string) => {
     const match = url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/);
@@ -61,8 +79,8 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
       return;
     }
 
-    if (!views || views < 100) {
-      setFeedback({ type: 'error', message: 'Minimum order is 100 views.' });
+    if (!views || views < 1000) {
+      setFeedback({ type: 'error', message: 'Minimum order is 1,000 views.' });
       return;
     }
 
@@ -81,7 +99,7 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
       body: JSON.stringify({
         youtubeUrl,
         targetViews: views,
-        watchDurationSec: duration,
+        watchDurationSec: activeDuration,
         title: title || undefined,
       }),
     });
@@ -107,7 +125,7 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
           BUY REAL <span style={{ color: 'var(--primary-neon)' }}>YOUTUBE VIEWS</span>
         </h1>
         <p className="font-body" style={{ color: 'var(--on-surface-variant)', marginTop: 8, fontSize: '0.92rem', maxWidth: 840, lineHeight: 1.5 }}>
-          Promote your YouTube video directly to hundreds of thousands of active mobile viewers. Guaranteed official player watch time with 1-hour anti-spam cooldowns.
+          Promote your YouTube video directly to hundreds of thousands of active mobile viewers. Guaranteed official player watch time with anti-spam cooldowns.
         </p>
       </div>
 
@@ -200,69 +218,207 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
               />
             </div>
 
-            {/* 3. Duration Selector (Pills) */}
+            {/* 3. Duration Selector (7 Preset Cards + 1 Custom = 8 Cards) */}
             <div>
-              <label className="font-mono" style={{ fontSize: '0.75rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 8 }}>
-                Viewer Watch Duration:
-              </label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 68px), 1fr))', gap: 8 }}>
-                {[10, 30, 60, 120].map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => setDuration(d)}
-                    style={{
-                      padding: '10px 6px',
-                      borderRadius: 12,
-                      background: duration === d ? 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)' : '#ffffff',
-                      color: duration === d ? '#ffffff' : 'var(--on-surface-variant)',
-                      border: duration === d ? '1px solid var(--primary-neon)' : '1px solid #cbd5e1',
-                      fontFamily: 'JetBrains Mono, monospace',
-                      fontWeight: 700,
-                      fontSize: '0.82rem',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      boxShadow: duration === d ? '0 2px 8px rgba(14, 165, 233, 0.3)' : 'none',
-                    }}
-                  >
-                    {d}s
-                    <div style={{ fontSize: '0.65rem', opacity: 0.9, marginTop: 2 }}>
-                      ${(basePrice * (durationMultiplier[d] || 1)).toFixed(2)}/k
-                    </div>
-                  </button>
-                ))}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <label className="font-mono" style={{ fontSize: '0.75rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Viewer Watch Duration:
+                </label>
+                <span className="font-mono" style={{ fontSize: '0.75rem', color: 'var(--primary-neon)', fontWeight: 700 }}>
+                  {activeDuration}s Selected (${costPerView.toFixed(4)}/view)
+                </span>
               </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+                {presets.map((p) => {
+                  const isSelected = !isCustom && duration === p.sec;
+                  return (
+                    <button
+                      key={p.sec}
+                      type="button"
+                      onClick={() => {
+                        setIsCustom(false);
+                        setDuration(p.sec);
+                      }}
+                      style={{
+                        padding: '10px 6px',
+                        borderRadius: 12,
+                        background: isSelected ? 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)' : '#ffffff',
+                        color: isSelected ? '#ffffff' : 'var(--on-surface-variant)',
+                        border: isSelected ? '1.5px solid var(--primary-neon)' : '1px solid #cbd5e1',
+                        fontFamily: 'JetBrains Mono, monospace',
+                        fontWeight: 700,
+                        fontSize: '0.88rem',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                        boxShadow: isSelected ? '0 3px 10px rgba(14, 165, 233, 0.35)' : 'none',
+                        textAlign: 'center',
+                      }}
+                    >
+                      {p.sec}s
+                      <div style={{ fontSize: '0.64rem', opacity: 0.92, marginTop: 2, fontWeight: 500 }}>
+                        ${p.ratePerView.toFixed(4)}/view
+                      </div>
+                    </button>
+                  );
+                })}
+
+                {/* 8th Card: Custom Duration */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCustom(true);
+                    setDuration(Math.max(10, Math.min(600, customSec || 10)));
+                  }}
+                  style={{
+                    padding: '10px 6px',
+                    borderRadius: 12,
+                    background: isCustom ? 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)' : '#ffffff',
+                    color: isCustom ? '#ffffff' : 'var(--on-surface-variant)',
+                    border: isCustom ? '1.5px solid var(--primary-neon)' : '1px solid #cbd5e1',
+                    fontFamily: 'JetBrains Mono, monospace',
+                    fontWeight: 700,
+                    fontSize: '0.88rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    boxShadow: isCustom ? '0 3px 10px rgba(14, 165, 233, 0.35)' : 'none',
+                    textAlign: 'center',
+                  }}
+                >
+                  Custom
+                  <div style={{ fontSize: '0.64rem', opacity: 0.92, marginTop: 2, fontWeight: 500 }}>
+                    {isCustom ? `$${costPerView.toFixed(4)}/view` : 'Variable'}
+                  </div>
+                </button>
+              </div>
+
+              {/* Custom Duration Input Field */}
+              {isCustom && (
+                <div style={{ marginTop: 10, padding: '10px 14px', borderRadius: 12, background: '#f0f9ff', border: '1.5px solid rgba(14, 165, 233, 0.35)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <Clock size={16} color="var(--primary-neon)" />
+                  <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0f172a' }}>
+                    Custom Seconds:
+                  </span>
+                  <input
+                    type="number"
+                    min={10}
+                    max={600}
+                    value={customSec || ''}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      setCustomSec(isNaN(val) ? 0 : val);
+                      if (val >= 10) setDuration(Math.min(600, val));
+                    }}
+                    onBlur={() => {
+                      if (!customSec || customSec < 10) {
+                        setCustomSec(10);
+                        setDuration(10);
+                      } else if (customSec > 600) {
+                        setCustomSec(600);
+                        setDuration(600);
+                      }
+                    }}
+                    className="input-field font-mono"
+                    style={{ width: 85, padding: '6px 10px', fontSize: '0.9rem', textAlign: 'center', fontWeight: 700, borderRadius: 8 }}
+                    placeholder="180"
+                  />
+                  <span style={{ fontSize: '0.78rem', color: '#64748b' }}>(10s – 600s)</span>
+                  <span className="font-mono" style={{ marginLeft: 'auto', fontSize: '0.82rem', fontWeight: 800, color: 'var(--primary-neon)' }}>
+                    ${costPerView.toFixed(4)} USD / View
+                  </span>
+                </div>
+              )}
             </div>
 
-            {/* 4. Target Views Slider & Number Input */}
+            {/* 4. Target Views: Manual Number Input & +/- 100 Stepper Buttons */}
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <label className="font-mono" style={{ fontSize: '0.75rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Target Views:
+                  Target Views (Min 1,000):
                 </label>
-                <div className="font-mono" style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--primary-neon)' }}>
+                <div className="font-mono" style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--primary-neon)' }}>
                   {views.toLocaleString()} Views
                 </div>
               </div>
-              <input
-                type="range"
-                min={100}
-                max={50000}
-                step={100}
-                value={views}
-                onChange={(e) => setViews(Number(e.target.value))}
-                style={{
-                  width: '100%',
-                  accentColor: 'var(--primary-neon)',
-                  cursor: 'pointer',
-                  height: 6,
-                }}
-              />
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--on-surface-variant)', marginTop: 4 }}>
-                <span>100 min</span>
-                <span>10,000</span>
-                <span>25,000</span>
-                <span>50,000 max</span>
+
+              {/* Stepper with - / + buttons and manual number input */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => setViews((prev) => Math.max(1000, (prev || 1000) - 100))}
+                  disabled={views <= 1000}
+                  className="stepper-btn"
+                  title="Decrease by 100"
+                  aria-label="Decrease by 100"
+                >
+                  <Minus size={20} strokeWidth={2.8} />
+                </button>
+
+                <div style={{ position: 'relative', flex: 1 }}>
+                  <input
+                    type="number"
+                    min={1000}
+                    step={100}
+                    value={views || ''}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      setViews(isNaN(val) ? 0 : val);
+                    }}
+                    onBlur={() => {
+                      if (!views || views < 1000) {
+                        setViews(1000);
+                      }
+                    }}
+                    className="input-field font-mono"
+                    style={{
+                      height: 44,
+                      fontSize: '1.15rem',
+                      fontWeight: 800,
+                      textAlign: 'center',
+                      color: '#0f172a',
+                      padding: '8px 45px 8px 14px',
+                      borderRadius: 12,
+                    }}
+                    placeholder="1000"
+                  />
+                  <span style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', fontSize: '0.78rem', color: '#64748b', fontWeight: 600, pointerEvents: 'none' }}>
+                    views
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setViews((prev) => Math.max(1000, (prev || 0) + 100))}
+                  className="stepper-btn"
+                  title="Increase by 100"
+                  aria-label="Increase by 100"
+                >
+                  <Plus size={20} strokeWidth={2.8} />
+                </button>
+              </div>
+
+              {/* Quick Preset Buttons */}
+              <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                {[1000, 2000, 5000, 10000, 25000, 50000].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setViews(preset)}
+                    className="badge-pill"
+                    style={{
+                      border: views === preset ? '1.5px solid var(--primary-neon)' : '1px solid #e2e8f0',
+                      background: views === preset ? '#e0f2fe' : '#ffffff',
+                      color: views === preset ? '#0369a1' : '#64748b',
+                      fontWeight: 700,
+                      fontSize: '0.75rem',
+                      padding: '4px 10px',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {preset >= 1000 ? `${preset / 1000}k` : preset}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -309,7 +465,7 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
 
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
                 <span style={{ color: 'var(--on-surface-variant)' }}>Duration Per View:</span>
-                <strong className="font-mono" style={{ color: '#0f172a' }}>{duration} seconds</strong>
+                <strong className="font-mono" style={{ color: '#0f172a' }}>{activeDuration} seconds</strong>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
@@ -338,7 +494,7 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.82rem', color: 'var(--on-surface)' }}>
                 <Clock size={16} color="var(--primary-neon)" style={{ flexShrink: 0 }} />
-                <span><strong>1-Hour Anti-Spam:</strong> Unique viewer IP distribution prevents invalid YouTube duplicate detection.</span>
+                <span><strong>Anti-Spam:</strong> Unique viewer IP distribution prevents invalid YouTube duplicate detection.</span>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.82rem', color: 'var(--on-surface)' }}>

@@ -466,7 +466,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     Server Watch Verified!
                   </div>
                   <div className="font-mono" style={{ fontSize: '0.68rem', color: '#059669' }}>
-                    +$0.0052 credited to bKash/Nagad wallet
+                    +$0.0052 credited to wallet
                   </div>
                 </div>
               </div>

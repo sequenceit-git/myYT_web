@@ -7,6 +7,7 @@ import { Transaction } from '../../models/Transaction.js';
 import { config } from '../../config/index.js';
 import { cacheService } from '../../services/cache.service.js';
 import { requireAuth, AuthRequest } from '../../middleware/auth.middleware.js';
+import { getSystemPricingTiers, getSystemCooldownSettings } from '../admin/admin.controller.js';
 
 const router = Router();
 
@@ -29,10 +30,13 @@ router.get('/next', requireAuth, async (req: AuthRequest, res: Response): Promis
       return;
     }
 
+    const cooldownSettings = await getSystemCooldownSettings();
+    const pricingTiers = await getSystemPricingTiers();
+
     // Filter by cooldown (if enabled)
     let selectedCampaign: any = null;
     for (const camp of activeCampaigns) {
-      const isCooldown = config.enableCooldown && config.videoCooldownSeconds > 0
+      const isCooldown = cooldownSettings.enableCooldown && cooldownSettings.videoCooldownSeconds > 0
         ? await cacheService.hasCooldown(userId, camp.videoId)
         : false;
       if (!isCooldown) {
@@ -44,13 +48,13 @@ router.get('/next', requireAuth, async (req: AuthRequest, res: Response): Promis
     if (!selectedCampaign) {
       res.status(429).json({
         success: false,
-        error: 'All available videos have been watched within the last hour. Cooldown in progress.',
+        error: 'All available videos have been watched within the anti-spam cooldown window. Cooldown in progress.',
       });
       return;
     }
 
-    const tier = config.pricingTiers[selectedCampaign.watchDurationSec];
-    const rewardAmount = tier ? tier.viewerReward : 0.003;
+    const tier = pricingTiers[selectedCampaign.watchDurationSec];
+    const rewardAmount = tier ? tier.viewerReward : Number(((selectedCampaign.pricePerView || 0.005) * 0.72).toFixed(4));
 
     // Create assigned task
     const task = await Task.create({
@@ -154,7 +158,8 @@ router.post('/:id/complete', requireAuth, async (req: AuthRequest, res: Response
     await task.save();
 
     // Calculate USD cash reward based on pricing tier (fallback $0.0035)
-    const tier = config.pricingTiers[task.requiredDurationSec];
+    const pricingTiers = await getSystemPricingTiers();
+    const tier = pricingTiers[task.requiredDurationSec];
     const rewardAmount = tier ? tier.viewerReward : (task.rewardAmount || 0.0035);
 
     // Atomic direct USD balance and totalEarned increment to viewer
@@ -188,11 +193,12 @@ router.post('/:id/complete', requireAuth, async (req: AuthRequest, res: Response
     });
 
     // Enforce cooldown in Redis/Cache if enabled
-    if (config.enableCooldown && config.videoCooldownSeconds > 0) {
+    const cooldownSettings = await getSystemCooldownSettings();
+    if (cooldownSettings.enableCooldown && cooldownSettings.videoCooldownSeconds > 0) {
       await cacheService.setCooldown(
         req.user!._id.toString(),
         task.videoId,
-        config.videoCooldownSeconds
+        cooldownSettings.videoCooldownSeconds
       );
     }
 

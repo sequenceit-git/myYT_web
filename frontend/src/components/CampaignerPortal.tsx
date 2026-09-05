@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Play,
   Pause,
@@ -23,10 +23,13 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  Flame,
+  UserCheck,
 } from 'lucide-react';
 import { Campaign, User, Transaction } from '../types';
 import { apiRequest } from '../api';
 import { ProfileSwitchBanner } from './ProfileSwitchBanner';
+import { ProfileSettingsSection } from './ProfileSettingsSection';
 import { useExchangeRate } from '../context/ExchangeRateContext';
 
 interface CampaignerPortalProps {
@@ -36,7 +39,7 @@ interface CampaignerPortalProps {
   onSwitchProfile?: (targetRole: 'viewer' | 'campaigner') => void;
 }
 
-type CreatorTab = 'overview' | 'campaigns' | 'deposit' | 'ledger';
+type CreatorTab = 'overview' | 'campaigns' | 'deposit' | 'ledger' | 'profile';
 
 interface DepositMethodConfig {
   id: string;
@@ -59,11 +62,11 @@ const getDepositMethods = (usdToBdt: number): DepositMethodConfig[] => [
   },
   {
     id: 'crypto',
-    name: 'Crypto (USDT)',
+    name: 'USDT (BEP-20)',
     logoBg: '#ffffff',
     logoMark: '₮',
     logoUrl: '/payment-methods/crypto.svg',
-    rateText: 'Direct Blockchain (USDT TRC20 / BEP20)',
+    rateText: 'Only BEP-20 USDT Supported (BNB Smart Chain)',
   },
   {
     id: 'bkash',
@@ -198,7 +201,28 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
   onSwitchProfile,
 }) => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<CreatorTab>('overview');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tab') as CreatorTab | null;
+  const [internalTab, setInternalTab] = useState<CreatorTab>(() => {
+    return (tabFromUrl && ['overview', 'campaigns', 'deposit', 'ledger', 'profile'].includes(tabFromUrl))
+      ? tabFromUrl
+      : 'overview';
+  });
+
+  const activeTab = (tabFromUrl && ['overview', 'campaigns', 'deposit', 'ledger', 'profile'].includes(tabFromUrl))
+    ? tabFromUrl
+    : internalTab;
+
+  useEffect(() => {
+    if (tabFromUrl && ['overview', 'campaigns', 'deposit', 'ledger', 'profile'].includes(tabFromUrl)) {
+      setInternalTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
+
+  const setActiveTab = (tab: CreatorTab) => {
+    setInternalTab(tab);
+    setSearchParams({ tab });
+  };
 
   // Creator Profile Balance (Ad Budget)
   const creatorBal = user?.creatorBalance !== undefined ? user.creatorBalance : (user?.balance || 0);
@@ -438,6 +462,23 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
   const totalViewsDelivered = campaigns.reduce((acc, c) => acc + (c.viewsDelivered || 0), 0);
   const totalViewsTargeted = campaigns.reduce((acc, c) => acc + (c.targetViews || 0), 0);
   const activeCampaignsCount = campaigns.filter((c) => c.status === 'active').length;
+
+  // Daily Spend (today's campaign ad spend)
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const txTodaySpend = transactions
+    .filter((tx) => tx.type === 'campaign_spend' && new Date(tx.createdAt) >= startOfDay)
+    .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+
+  const campaignTodaySpend = campaigns
+    .filter((c) => new Date(c.createdAt) >= startOfDay)
+    .reduce((sum, c) => sum + (c.totalCost || 0), 0);
+
+  const dailySpend = user?.dailySpend !== undefined
+    ? user.dailySpend
+    : (txTodaySpend > 0 ? txTodaySpend : campaignTodaySpend);
+
   const { usdToBdt } = useExchangeRate();
   const bdtRate = usdToBdt;
   const depositMethods = getDepositMethods(usdToBdt);
@@ -482,6 +523,16 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
             </button>
 
             <button
+              onClick={() => navigate('/buy-views')}
+              className="dashboard-nav-item"
+            >
+              <div className="nav-left">
+                <PlusCircle size={20} />
+                <span>New Campaign</span>
+              </div>
+            </button>
+
+            <button
               onClick={() => { setActiveTab('campaigns'); setFeedback(null); }}
               className={`dashboard-nav-item ${activeTab === 'campaigns' ? 'active-neon' : ''}`}
             >
@@ -490,16 +541,6 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                 <span>Campaigns</span>
               </div>
               <span className="dashboard-nav-badge badge-active">{campaigns.length}</span>
-            </button>
-
-            <button
-              onClick={() => navigate('/buy-views')}
-              className="dashboard-nav-item"
-            >
-              <div className="nav-left">
-                <PlusCircle size={20} />
-                <span>New Campaign</span>
-              </div>
             </button>
 
             <button
@@ -519,6 +560,16 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
               <div className="nav-left">
                 <History size={20} />
                 <span>Spend Ledger</span>
+              </div>
+            </button>
+
+            <button
+              onClick={() => { setActiveTab('profile'); setFeedback(null); }}
+              className={`dashboard-nav-item ${activeTab === 'profile' ? 'active-neon' : ''}`}
+            >
+              <div className="nav-left">
+                <UserCheck size={20} />
+                <span>Account Profile</span>
               </div>
             </button>
           </nav>
@@ -545,16 +596,6 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
               <PlaySquare size={16} />
               <span>Switch to Viewer</span>
             </button>
-          </div>
-
-          {/* Budget Display (Desktop Only) */}
-          <div className="dashboard-sidebar-footer" style={{ background: '#f0f9ff', padding: '14px 16px', borderRadius: 14, border: '1px solid rgba(14, 165, 233, 0.22)', marginTop: 'auto' }}>
-            <div className="font-mono" style={{ fontSize: '0.78rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>
-              Ad Budget
-            </div>
-            <div className="font-mono" style={{ fontSize: '1.55rem', fontWeight: 800, color: 'var(--primary-neon)', marginTop: 2 }}>
-              ${creatorBal.toFixed(2)} <span style={{ fontSize: '0.8rem', color: '#64748b' }}>USD</span>
-            </div>
           </div>
         </aside>
 
@@ -640,7 +681,25 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                   </button>
                 </div>
 
-                {/* 2. Views Delivered */}
+                {/* 2. Daily Spend */}
+                <div className="glass-card responsive-kpi-card" style={{ padding: '20px', borderRadius: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span className="font-mono" style={{ fontSize: '0.82rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
+                      Daily Spend
+                    </span>
+                    <span className="badge-pill" style={{ fontSize: '0.68rem', padding: '2px 7px', background: '#fef3c7', color: '#b45309', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                      <Flame size={12} color="#f59e0b" /> TODAY
+                    </span>
+                  </div>
+                  <div className="font-mono responsive-kpi-val" style={{ fontSize: '2.3rem', fontWeight: 800, color: '#d97706', marginTop: 6, lineHeight: 1 }}>
+                    ${dailySpend.toFixed(2)}
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 10 }}>
+                    Campaign ad spend today
+                  </div>
+                </div>
+
+                {/* 3. Views Delivered */}
                 <div className="glass-card responsive-kpi-card" style={{ padding: '20px', borderRadius: 16 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span className="font-mono" style={{ fontSize: '0.82rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
@@ -1041,6 +1100,28 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                 <span className="badge-pill badge-neon" style={{ fontSize: '0.74rem', padding: '4px 12px' }}>
                   Min Deposit: $5.00 USD (≈ ৳{5 * bdtRate} BDT)
                 </span>
+              </div>
+
+              {/* Policy Notice: Min Deposit $5 & Crypto BEP20 */}
+              <div
+                style={{
+                  background: '#fef3c7',
+                  border: '1px solid #fde047',
+                  borderRadius: 12,
+                  padding: '10px 16px',
+                  marginBottom: 18,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  fontSize: '0.84rem',
+                  color: '#854d0e',
+                  fontWeight: 600,
+                }}
+              >
+                <AlertCircle size={18} color="#ca8a04" style={{ flexShrink: 0 }} />
+                <div>
+                  <strong>Important Notice:</strong> Minimum deposit is <strong>$5.00 USD</strong> across all payment methods. For crypto deposits, only <strong>USDT (BEP-20)</strong> on BNB Smart Chain is supported.
+                </div>
               </div>
 
               {/* INDIVIDUAL DEPOSIT METHOD CARDS - LOGO PLACEHOLDER + NAME ONLY */}
@@ -1617,6 +1698,13 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                 </div>
               )}
             </div>
+          )}
+
+          {/* =========================================================================
+              TAB 5: ACCOUNT PROFILE & PERSONAL SETTINGS
+              ========================================================================= */}
+          {activeTab === 'profile' && (
+            <ProfileSettingsSection user={user} onRefreshUser={onRefreshUser} />
           )}
         </main>
       </div>

@@ -22,10 +22,25 @@ import {
   Check,
   Search,
   Eye,
+  Sliders,
+  RotateCcw,
+  Timer,
+  Save,
 } from 'lucide-react';
 import { User, Campaign, Payout } from '../types';
 import { apiRequest, setAuthToken, clearAuthToken } from '../api';
 import { useExchangeRate } from '../context/ExchangeRateContext';
+
+export interface PricingTierItem {
+  duration: number;
+  campaignerCost: number;
+  viewerReward: number;
+}
+
+export interface CooldownConfig {
+  enabled: boolean;
+  durationSeconds: number;
+}
 
 interface AdminPortalProps {
   user: User | null;
@@ -58,8 +73,26 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
   const [loginError, setLoginError] = useState<string | null>(null);
 
   // Active Admin Tab
-  const [activeTab, setActiveTab] = useState<'overview' | 'payouts' | 'campaigns' | 'users'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'payouts' | 'campaigns' | 'users' | 'settings'>('overview');
   const [payoutFilter, setPayoutFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
+
+  // Pricing & Cooldown Engine States
+  const [pricingTiers, setPricingTiers] = useState<PricingTierItem[]>([
+    { duration: 10, campaignerCost: 0.0035, viewerReward: 0.0020 },
+    { duration: 15, campaignerCost: 0.0050, viewerReward: 0.0030 },
+    { duration: 30, campaignerCost: 0.0080, viewerReward: 0.0052 },
+    { duration: 45, campaignerCost: 0.0120, viewerReward: 0.0080 },
+    { duration: 60, campaignerCost: 0.0160, viewerReward: 0.0105 },
+    { duration: 90, campaignerCost: 0.0240, viewerReward: 0.0160 },
+    { duration: 120, campaignerCost: 0.0320, viewerReward: 0.0210 },
+  ]);
+  const [pricingSaving, setPricingSaving] = useState(false);
+
+  const [cooldownConfig, setCooldownConfig] = useState<CooldownConfig>({
+    enabled: true,
+    durationSeconds: 3600,
+  });
+  const [cooldownSaving, setCooldownSaving] = useState(false);
 
   // Telemetry & Data lists
   const [stats, setStats] = useState<any>(null);
@@ -118,22 +151,106 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
   const fetchAdminData = async () => {
     setDataLoading(true);
     try {
-      const [statsRes, usersRes, campRes, payRes] = await Promise.all([
+      const [statsRes, usersRes, campRes, payRes, settingsRes] = await Promise.all([
         apiRequest<any>('/admin/stats'),
         apiRequest<User[]>('/admin/users'),
         apiRequest<Campaign[]>('/admin/campaigns'),
         apiRequest<Payout[]>('/admin/payouts'),
+        apiRequest<{ usdToBdt: number; pricingTiers: PricingTierItem[]; cooldownSettings: CooldownConfig }>('/admin/settings'),
       ]);
 
       if (statsRes.success) setStats(statsRes.data);
       if (usersRes.success) setUsersList(usersRes.data || []);
       if (campRes.success) setCampaignsList(campRes.data || []);
       if (payRes.success) setPayoutsList(payRes.data || []);
+      if (settingsRes.success && settingsRes.data) {
+        if (settingsRes.data.pricingTiers && Array.isArray(settingsRes.data.pricingTiers)) {
+          setPricingTiers(settingsRes.data.pricingTiers);
+        }
+        if (settingsRes.data.cooldownSettings) {
+          setCooldownConfig(settingsRes.data.cooldownSettings);
+        }
+      }
     } catch {
       // Ignore network errors
     } finally {
       setDataLoading(false);
     }
+  };
+
+  // Pricing Matrix Handlers
+  const handleSavePricing = async () => {
+    setPricingSaving(true);
+    try {
+      const res = await apiRequest<{ message: string; pricingTiers: PricingTierItem[] }>('/admin/settings/pricing', {
+        method: 'POST',
+        body: JSON.stringify({ pricingTiers }),
+      });
+      if (res.success) {
+        setActionNotice({ type: 'success', message: 'Pricing tiers per view saved successfully!' });
+        if (res.data?.pricingTiers) setPricingTiers(res.data.pricingTiers);
+      } else {
+        setActionNotice({ type: 'error', message: res.error || 'Failed to save pricing tiers' });
+      }
+    } catch (err: any) {
+      setActionNotice({ type: 'error', message: err.message || 'Error saving pricing tiers' });
+    } finally {
+      setPricingSaving(false);
+    }
+  };
+
+  const handleResetPricing = () => {
+    const defaultTiers: PricingTierItem[] = [
+      { duration: 10, campaignerCost: 0.0035, viewerReward: 0.0020 },
+      { duration: 15, campaignerCost: 0.0050, viewerReward: 0.0030 },
+      { duration: 30, campaignerCost: 0.0080, viewerReward: 0.0052 },
+      { duration: 45, campaignerCost: 0.0120, viewerReward: 0.0080 },
+      { duration: 60, campaignerCost: 0.0160, viewerReward: 0.0105 },
+      { duration: 90, campaignerCost: 0.0240, viewerReward: 0.0160 },
+      { duration: 120, campaignerCost: 0.0320, viewerReward: 0.0210 },
+    ];
+    setPricingTiers(defaultTiers);
+    setActionNotice({ type: 'success', message: 'Reset to standard defaults. Click Save Pricing Rules to apply.' });
+  };
+
+  const handleUpdateTier = (index: number, field: 'campaignerCost' | 'viewerReward', value: number) => {
+    setPricingTiers((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: Math.max(0, value) };
+      return updated;
+    });
+  };
+
+  // Cooldown Settings Handlers
+  const handleSaveCooldown = async () => {
+    setCooldownSaving(true);
+    try {
+      const res = await apiRequest<{ message: string; cooldownSettings: CooldownConfig }>('/admin/settings/cooldown', {
+        method: 'POST',
+        body: JSON.stringify(cooldownConfig),
+      });
+      if (res.success) {
+        setActionNotice({ type: 'success', message: 'Anti-spam cooldown timer settings saved successfully!' });
+        if (res.data?.cooldownSettings) setCooldownConfig(res.data.cooldownSettings);
+      } else {
+        setActionNotice({ type: 'error', message: res.error || 'Failed to save cooldown settings' });
+      }
+    } catch (err: any) {
+      setActionNotice({ type: 'error', message: err.message || 'Error saving cooldown settings' });
+    } finally {
+      setCooldownSaving(false);
+    }
+  };
+
+  const formatSecondsHuman = (sec: number) => {
+    if (sec <= 0) return '0 seconds (No cooldown)';
+    if (sec < 60) return `${sec} seconds`;
+    if (sec < 3600) {
+      const m = Math.round(sec / 60);
+      return `${m} minute${m > 1 ? 's' : ''} (${sec}s)`;
+    }
+    const hrs = (sec / 3600).toFixed(sec % 3600 === 0 ? 0 : 1);
+    return `${hrs} hour${Number(hrs) > 1 ? 's' : ''} (${sec}s)`;
   };
 
   useEffect(() => {
@@ -837,6 +954,27 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
           }}
         >
           <Users size={15} /> User Accounts ({usersList.length})
+        </button>
+
+        <button
+          onClick={() => setActiveTab('settings')}
+          className="btn"
+          style={{
+            padding: '8px 16px',
+            borderRadius: 10,
+            fontSize: '0.84rem',
+            fontWeight: 700,
+            background: activeTab === 'settings' ? 'var(--primary-neon)' : 'transparent',
+            color: activeTab === 'settings' ? '#ffffff' : '#64748b',
+            border: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            flexShrink: 0,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          <Sliders size={15} /> Pricing & Cooldown Rules
         </button>
       </div>
 
@@ -1616,6 +1754,565 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
               )}
             </>
           )}
+        </div>
+      )}
+
+      {/* =========================================================================
+          TAB 5: PRICING PER VIEW & ANTI-SPAM COOLDOWN RULES
+          ========================================================================= */}
+      {activeTab === 'settings' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {/* Card 1: Per-View Pricing Matrix */}
+          <div
+            className="glass-card"
+            style={{
+              padding: '24px 28px',
+              borderRadius: 20,
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.03)',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                flexWrap: 'wrap',
+                gap: 16,
+                marginBottom: 20,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 12,
+                    background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
+                    color: '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 4px 12px rgba(14, 165, 233, 0.3)',
+                  }}
+                >
+                  <Sliders size={22} />
+                </div>
+                <div>
+                  <h2 className="font-display" style={{ fontSize: '1.25rem', color: '#0f172a', margin: 0 }}>
+                    Watch Duration Pricing Matrix
+                  </h2>
+                  <p style={{ color: '#64748b', fontSize: '0.84rem', margin: '3px 0 0' }}>
+                    Control advertiser pricing ($/view) and viewer rewards ($/view) across all watch duration tiers.
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <button
+                  type="button"
+                  onClick={handleResetPricing}
+                  className="btn btn-ghost"
+                  style={{
+                    padding: '8px 14px',
+                    fontSize: '0.82rem',
+                    borderRadius: 10,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <RotateCcw size={14} /> Reset Defaults
+                </button>
+                <button
+                  type="button"
+                  disabled={pricingSaving}
+                  onClick={handleSavePricing}
+                  className="btn btn-neon glow-neon"
+                  style={{
+                    padding: '9px 18px',
+                    fontSize: '0.86rem',
+                    fontWeight: 700,
+                    borderRadius: 10,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 7,
+                  }}
+                >
+                  <Save size={15} />
+                  {pricingSaving ? 'Saving...' : 'Save Pricing Rules'}
+                </button>
+              </div>
+            </div>
+
+            {/* Pricing Table */}
+            <div style={{ overflowX: 'auto', borderRadius: 14, border: '1px solid #e2e8f0' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: 700 }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontSize: '0.76rem', color: '#475569' }}>
+                    <th style={{ padding: '12px 16px' }}>WATCH DURATION</th>
+                    <th style={{ padding: '12px 16px' }}>CAMPAIGNER COST ($ / VIEW)</th>
+                    <th style={{ padding: '12px 16px' }}>VIEWER REWARD ($ / VIEW)</th>
+                    <th style={{ padding: '12px 16px' }}>SYSTEM MARGIN (%)</th>
+                    <th style={{ padding: '12px 16px' }}>1,000 VIEWS REVENUE</th>
+                    <th style={{ padding: '12px 16px' }}>1,000 VIEWS PAYOUT</th>
+                  </tr>
+                </thead>
+                <tbody style={{ fontSize: '0.86rem' }}>
+                  {pricingTiers.map((tier, idx) => {
+                    const margin = tier.campaignerCost > 0
+                      ? (((tier.campaignerCost - tier.viewerReward) / tier.campaignerCost) * 100)
+                      : 0;
+                    const marginColor = margin >= 30 ? '#059669' : margin >= 15 ? '#0284c7' : margin >= 0 ? '#d97706' : '#ef4444';
+                    const marginBg = margin >= 30 ? '#f0fdf4' : margin >= 15 ? '#f0f9ff' : margin >= 0 ? '#fffbeb' : '#fef2f2';
+
+                    return (
+                      <tr key={tier.duration} style={{ borderBottom: idx < pricingTiers.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+                        {/* Duration */}
+                        <td style={{ padding: '12px 16px' }}>
+                          <span
+                            className="badge-pill"
+                            style={{
+                              background: '#f1f5f9',
+                              color: '#0f172a',
+                              fontWeight: 800,
+                              fontSize: '0.82rem',
+                              padding: '4px 10px',
+                            }}
+                          >
+                            {tier.duration} Seconds
+                          </span>
+                        </td>
+
+                        {/* Campaigner Cost Input */}
+                        <td style={{ padding: '12px 16px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ color: '#94a3b8', fontWeight: 600 }}>$</span>
+                            <input
+                              type="number"
+                              step="0.0001"
+                              min="0"
+                              value={tier.campaignerCost}
+                              onChange={(e) => handleUpdateTier(idx, 'campaignerCost', parseFloat(e.target.value) || 0)}
+                              className="input-field"
+                              style={{
+                                width: 110,
+                                padding: '6px 10px',
+                                fontSize: '0.86rem',
+                                fontWeight: 700,
+                                borderRadius: 8,
+                                color: '#0f172a',
+                              }}
+                            />
+                          </div>
+                        </td>
+
+                        {/* Viewer Reward Input */}
+                        <td style={{ padding: '12px 16px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ color: '#94a3b8', fontWeight: 600 }}>$</span>
+                            <input
+                              type="number"
+                              step="0.0001"
+                              min="0"
+                              value={tier.viewerReward}
+                              onChange={(e) => handleUpdateTier(idx, 'viewerReward', parseFloat(e.target.value) || 0)}
+                              className="input-field"
+                              style={{
+                                width: 110,
+                                padding: '6px 10px',
+                                fontSize: '0.86rem',
+                                fontWeight: 700,
+                                borderRadius: 8,
+                                color: '#059669',
+                              }}
+                            />
+                          </div>
+                        </td>
+
+                        {/* System Margin % */}
+                        <td style={{ padding: '12px 16px' }}>
+                          <span
+                            className="badge-pill"
+                            style={{
+                              background: marginBg,
+                              color: marginColor,
+                              fontWeight: 800,
+                              fontSize: '0.78rem',
+                              padding: '4px 10px',
+                              border: `1px solid ${marginColor}33`,
+                            }}
+                          >
+                            {margin.toFixed(1)}%
+                          </span>
+                        </td>
+
+                        {/* 1,000 Views Campaign Revenue */}
+                        <td style={{ padding: '12px 16px' }}>
+                          <strong className="font-mono" style={{ color: '#0f172a' }}>
+                            ${(tier.campaignerCost * 1000).toFixed(2)}
+                          </strong>
+                        </td>
+
+                        {/* 1,000 Views Viewer Payout */}
+                        <td style={{ padding: '12px 16px' }}>
+                          <strong className="font-mono" style={{ color: '#059669' }}>
+                            ${(tier.viewerReward * 1000).toFixed(2)}
+                          </strong>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div
+              style={{
+                marginTop: 16,
+                padding: '12px 16px',
+                borderRadius: 12,
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 10,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.82rem', color: '#64748b' }}>
+                <CheckCircle2 size={16} color="#059669" />
+                <span>Changes update order calculations on Buy Views and completion rewards for Viewers in real time.</span>
+              </div>
+              <button
+                type="button"
+                disabled={pricingSaving}
+                onClick={handleSavePricing}
+                className="btn btn-neon glow-neon"
+                style={{
+                  padding: '7px 16px',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  borderRadius: 8,
+                }}
+              >
+                {pricingSaving ? 'Saving...' : 'Save Pricing'}
+              </button>
+            </div>
+          </div>
+
+          {/* Card 2: Anti-Spam Video Cooldown Control */}
+          <div
+            className="glass-card"
+            style={{
+              padding: '24px 28px',
+              borderRadius: 20,
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.03)',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                flexWrap: 'wrap',
+                gap: 16,
+                marginBottom: 20,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 12,
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    color: '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+                  }}
+                >
+                  <Timer size={22} />
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <h2 className="font-display" style={{ fontSize: '1.25rem', color: '#0f172a', margin: 0 }}>
+                      Anti-Spam Video Cooldown Controller
+                    </h2>
+                    <span
+                      className="badge-pill"
+                      style={{
+                        background: cooldownConfig.enabled ? '#f0fdf4' : '#fef2f2',
+                        color: cooldownConfig.enabled ? '#059669' : '#ef4444',
+                        border: `1px solid ${cooldownConfig.enabled ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+                        fontSize: '0.72rem',
+                        padding: '2px 8px',
+                        fontWeight: 800,
+                      }}
+                    >
+                      {cooldownConfig.enabled ? 'PROTECTION ACTIVE' : 'DISABLED'}
+                    </span>
+                  </div>
+                  <p style={{ color: '#64748b', fontSize: '0.84rem', margin: '3px 0 0' }}>
+                    Set how long viewers must wait before re-watching the same video campaign. Prevents repetitive view abuse.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                disabled={cooldownSaving}
+                onClick={handleSaveCooldown}
+                className="btn btn-neon glow-neon"
+                style={{
+                  padding: '9px 18px',
+                  fontSize: '0.86rem',
+                  fontWeight: 700,
+                  borderRadius: 10,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 7,
+                }}
+              >
+                <Save size={15} />
+                {cooldownSaving ? 'Saving...' : 'Save Cooldown Rules'}
+              </button>
+            </div>
+
+            {/* Toggle & Cooldown Form */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+              {/* Status Switcher */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '16px 20px',
+                  background: '#f8fafc',
+                  borderRadius: 14,
+                  border: '1px solid #e2e8f0',
+                  flexWrap: 'wrap',
+                  gap: 12,
+                }}
+              >
+                <div>
+                  <strong style={{ color: '#0f172a', fontSize: '0.94rem', display: 'block' }}>
+                    Anti-Spam Re-Watch Enforcement
+                  </strong>
+                  <span style={{ color: '#64748b', fontSize: '0.82rem' }}>
+                    When enabled, identical video tasks are placed on cooldown per viewer for the configured duration.
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => setCooldownConfig((prev) => ({ ...prev, enabled: true }))}
+                    className="btn"
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: 10,
+                      fontSize: '0.82rem',
+                      fontWeight: 700,
+                      background: cooldownConfig.enabled ? '#059669' : '#ffffff',
+                      color: cooldownConfig.enabled ? '#ffffff' : '#64748b',
+                      border: cooldownConfig.enabled ? 'none' : '1px solid #cbd5e1',
+                    }}
+                  >
+                    Enabled
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCooldownConfig((prev) => ({ ...prev, enabled: false }))}
+                    className="btn"
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: 10,
+                      fontSize: '0.82rem',
+                      fontWeight: 700,
+                      background: !cooldownConfig.enabled ? '#ef4444' : '#ffffff',
+                      color: !cooldownConfig.enabled ? '#ffffff' : '#64748b',
+                      border: !cooldownConfig.enabled ? 'none' : '1px solid #cbd5e1',
+                    }}
+                  >
+                    Disabled
+                  </button>
+                </div>
+              </div>
+
+              {/* Cooldown Duration Input & Presets */}
+              <div
+                style={{
+                  padding: '20px',
+                  background: '#ffffff',
+                  borderRadius: 14,
+                  border: '1px solid #e2e8f0',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 14,
+                }}
+              >
+                <div>
+                  <label className="font-mono" style={{ fontSize: '0.82rem', color: '#334155', fontWeight: 700, display: 'block', marginBottom: 6 }}>
+                    COOLDOWN DURATION (SECONDS):
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                    <input
+                      type="number"
+                      min="0"
+                      max="604800"
+                      value={cooldownConfig.durationSeconds}
+                      onChange={(e) =>
+                        setCooldownConfig((prev) => ({
+                          ...prev,
+                          durationSeconds: Math.max(0, parseInt(e.target.value, 10) || 0),
+                        }))
+                      }
+                      className="input-field"
+                      style={{
+                        width: 160,
+                        padding: '10px 14px',
+                        fontSize: '0.94rem',
+                        fontWeight: 700,
+                        borderRadius: 10,
+                        color: '#0f172a',
+                      }}
+                    />
+                    <div
+                      style={{
+                        padding: '8px 14px',
+                        borderRadius: 10,
+                        background: '#f0f9ff',
+                        border: '1px solid rgba(14, 165, 233, 0.3)',
+                        color: 'var(--primary-neon)',
+                        fontSize: '0.84rem',
+                        fontWeight: 700,
+                      }}
+                    >
+                      Active Rule: {formatSecondsHuman(cooldownConfig.durationSeconds)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quick Presets */}
+                <div>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600, marginBottom: 8 }}>
+                    QUICK PRESETS:
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {[
+                      { label: '0s (No Delay)', sec: 0 },
+                      { label: '5 Min (300s)', sec: 300 },
+                      { label: '15 Min (900s)', sec: 900 },
+                      { label: '30 Min (1,800s)', sec: 1800 },
+                      { label: '1 Hour (3,600s)', sec: 3600 },
+                      { label: '2 Hours (7,200s)', sec: 7200 },
+                      { label: '24 Hours (86,400s)', sec: 86400 },
+                    ].map((preset) => {
+                      const isSelected = cooldownConfig.durationSeconds === preset.sec;
+                      return (
+                        <button
+                          key={preset.sec}
+                          type="button"
+                          onClick={() =>
+                            setCooldownConfig((prev) => ({
+                              ...prev,
+                              durationSeconds: preset.sec,
+                              enabled: preset.sec > 0 ? true : prev.enabled,
+                            }))
+                          }
+                          className="btn"
+                          style={{
+                            padding: '6px 12px',
+                            borderRadius: 8,
+                            fontSize: '0.78rem',
+                            fontWeight: isSelected ? 700 : 500,
+                            background: isSelected ? 'var(--primary-neon)' : '#f8fafc',
+                            color: isSelected ? '#ffffff' : '#475569',
+                            border: isSelected ? 'none' : '1px solid #e2e8f0',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          {preset.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 3: Currency Exchange Rate Controller */}
+          <div
+            className="glass-card"
+            style={{
+              padding: '24px 28px',
+              borderRadius: 20,
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.03)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+              <div
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 12,
+                  background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                  color: '#ffffff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 12px rgba(245, 158, 11, 0.3)',
+                }}
+              >
+                <DollarSign size={22} />
+              </div>
+              <div>
+                <h2 className="font-display" style={{ fontSize: '1.25rem', color: '#0f172a', margin: 0 }}>
+                  USD to BDT Currency Rate Engine
+                </h2>
+                <p style={{ color: '#64748b', fontSize: '0.84rem', margin: '3px 0 0' }}>
+                  Current rate: 1 USD = ৳{usdToBdt} BDT. Used across bKash, Nagad, and local wallet conversions.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span className="font-mono" style={{ fontSize: '0.88rem', color: '#475569', fontWeight: 700 }}>1 USD = ৳</span>
+                <input
+                  type="number"
+                  step="0.5"
+                  min="50"
+                  max="300"
+                  value={dollarRateInput}
+                  onChange={(e) => setDollarRateInput(e.target.value)}
+                  className="input-field"
+                  style={{ width: 120, padding: '8px 12px', fontSize: '0.94rem', fontWeight: 700, borderRadius: 10 }}
+                />
+                <span className="font-mono" style={{ fontSize: '0.88rem', color: '#475569', fontWeight: 700 }}>BDT</span>
+              </div>
+
+              <button
+                type="button"
+                disabled={rateUpdating}
+                onClick={() => handleSaveDollarRate()}
+                className="btn btn-neon glow-neon"
+                style={{ padding: '8px 18px', fontSize: '0.84rem', fontWeight: 700, borderRadius: 10 }}
+              >
+                {rateUpdating ? 'Updating...' : 'Update Exchange Rate'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

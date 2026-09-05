@@ -11,8 +11,11 @@ export interface User {
   totalEarned?: number;
   totalSpent?: number;
   totalWithdrawn?: number;
+  dailySpend?: number;
+  dailyEarnings?: number;
   status?: string;
   avatar?: string;
+  phoneNumber?: string;
 }
 
 export interface Campaign {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Wallet,
   Play,
@@ -23,10 +24,13 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  Sparkles,
+  UserCheck,
 } from 'lucide-react';
 import { User, Task, Transaction } from '../types';
 import { apiRequest } from '../api';
 import { ProfileSwitchBanner } from './ProfileSwitchBanner';
+import { ProfileSettingsSection } from './ProfileSettingsSection';
 import { useExchangeRate } from '../context/ExchangeRateContext';
 
 interface ViewerPortalProps {
@@ -37,7 +41,7 @@ interface ViewerPortalProps {
   onSwitchProfile?: (targetRole: 'viewer' | 'campaigner') => void;
 }
 
-type ViewerTab = 'overview' | 'watch' | 'withdraw' | 'transactions';
+type ViewerTab = 'overview' | 'watch' | 'withdraw' | 'transactions' | 'profile';
 
 type PayoutMethodType = 'bkash' | 'nagad' | 'faucetpay' | 'crypto' | 'webmoney';
 
@@ -61,7 +65,7 @@ const getPayoutMethods = (usdToBdt: number): PayoutMethodConfig[] => [
     logoMark: 'bK',
     logoUrl: '/payment-methods/bkash.svg',
     inputLabel: 'bKash Personal Mobile Number',
-    placeholder: '017XXXXXXXX or 019XXXXXXXX',
+    placeholder: '01XXXXXXXXX',
     rateText: `1 USD = ${usdToBdt} BDT`,
     isBDT: true,
   },
@@ -72,7 +76,7 @@ const getPayoutMethods = (usdToBdt: number): PayoutMethodConfig[] => [
     logoMark: 'Nagad',
     logoUrl: '/payment-methods/nagad.svg',
     inputLabel: 'Nagad Personal Mobile Number',
-    placeholder: '017XXXXXXXX or 018XXXXXXXX',
+    placeholder: '01XXXXXXXXX',
     rateText: `1 USD = ${usdToBdt} BDT`,
     isBDT: true,
   },
@@ -84,18 +88,18 @@ const getPayoutMethods = (usdToBdt: number): PayoutMethodConfig[] => [
     logoUrl: '/payment-methods/faucetpay.svg',
     inputLabel: 'FaucetPay Registered Email',
     placeholder: 'your-email@example.com',
-    rateText: 'Instant USDT / LTC • Zero Fee',
+    rateText: 'Instant Automated • Zero Fee',
     isBDT: false,
   },
   {
     id: 'crypto',
-    name: 'Crypto (USDT)',
+    name: 'USDT (BEP-20)',
     logoBg: '#ffffff',
     logoMark: '₮',
     logoUrl: '/payment-methods/crypto.svg',
-    inputLabel: 'Crypto Wallet Address (USDT TRC20 / LTC)',
-    placeholder: 'T... or L... or 0x...',
-    rateText: 'Direct Blockchain (TRC20 / BEP20)',
+    inputLabel: 'BEP-20 USDT Wallet Address (BNB Smart Chain)',
+    placeholder: '0x... (BEP-20 USDT only)',
+    rateText: 'Only BEP-20 USDT Supported (BNB Smart Chain)',
     isBDT: false,
   },
   {
@@ -225,7 +229,28 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
   onOpenAuth,
   onSwitchProfile,
 }) => {
-  const [activeTab, setActiveTab] = useState<ViewerTab>('overview');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tab') as ViewerTab | null;
+  const [internalTab, setInternalTab] = useState<ViewerTab>(() => {
+    return (tabFromUrl && ['overview', 'watch', 'withdraw', 'transactions', 'profile'].includes(tabFromUrl))
+      ? tabFromUrl
+      : 'overview';
+  });
+
+  const activeTab = (tabFromUrl && ['overview', 'watch', 'withdraw', 'transactions', 'profile'].includes(tabFromUrl))
+    ? tabFromUrl
+    : internalTab;
+
+  useEffect(() => {
+    if (tabFromUrl && ['overview', 'watch', 'withdraw', 'transactions', 'profile'].includes(tabFromUrl)) {
+      setInternalTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
+
+  const setActiveTab = (tab: ViewerTab) => {
+    setInternalTab(tab);
+    setSearchParams({ tab });
+  };
 
   // Watch History & Pagination State (10 per page)
   const [watchHistory, setWatchHistory] = useState<any[]>([]);
@@ -484,6 +509,24 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
   const { usdToBdt } = useExchangeRate();
   const bdtRate = usdToBdt;
   const approxBDT = (viewerBal * bdtRate).toFixed(0);
+
+  // Daily Earning (today's watch tasks earnings)
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const watchTodayEarned = watchHistory
+    .filter((task) => {
+      const d = task.completedAt ? new Date(task.completedAt) : (task.updatedAt ? new Date(task.updatedAt) : null);
+      return d && d >= startOfDay;
+    })
+    .reduce((sum, task) => sum + (task.rewardAmount || task.rewardUsd || 0), 0);
+
+  const dailyEarnings = user.dailyEarnings !== undefined
+    ? user.dailyEarnings
+    : watchTodayEarned;
+
+  const approxDailyBDT = (dailyEarnings * bdtRate).toFixed(0);
+
   const payoutMethods = getPayoutMethods(usdToBdt);
   const selectedConfig = payoutMethods.find((m) => m.id === withdrawMethod) || payoutMethods[0];
 
@@ -554,6 +597,16 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                 <span>Payout Ledger</span>
               </div>
             </button>
+
+            <button
+              onClick={() => { setActiveTab('profile'); setMsg(null); }}
+              className={`dashboard-nav-item ${activeTab === 'profile' ? 'active-neon' : ''}`}
+            >
+              <div className="nav-left">
+                <UserCheck size={20} />
+                <span>Account Profile</span>
+              </div>
+            </button>
           </nav>
 
           {/* Profile Switch Button (Desktop Only) */}
@@ -578,19 +631,6 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
               <Rocket size={16} />
               <span>Switch to Creator</span>
             </button>
-          </div>
-
-          {/* Balance Display (Desktop Only) */}
-          <div className="dashboard-sidebar-footer" style={{ background: '#f0f9ff', padding: '14px 16px', borderRadius: 14, border: '1px solid rgba(14, 165, 233, 0.22)', marginTop: 'auto' }}>
-            <div className="font-mono" style={{ fontSize: '0.78rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>
-              Available Earnings
-            </div>
-            <div className="font-mono" style={{ fontSize: '1.55rem', fontWeight: 800, color: 'var(--primary-neon)', marginTop: 2 }}>
-              ${viewerBal.toFixed(4)} <span style={{ fontSize: '0.8rem', color: '#64748b' }}>USD</span>
-            </div>
-            <div className="font-mono" style={{ fontSize: '0.85rem', color: '#059669', fontWeight: 600, marginTop: 2 }}>
-              ≈ ৳{approxBDT} BDT
-            </div>
           </div>
         </aside>
 
@@ -679,7 +719,28 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                   </button>
                 </div>
 
-                {/* 2. Total Earned */}
+                {/* 2. Daily Earning */}
+                <div className="glass-card responsive-kpi-card" style={{ padding: '20px', borderRadius: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span className="font-mono" style={{ fontSize: '0.82rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
+                      Daily Earning
+                    </span>
+                    <span className="badge-pill" style={{ fontSize: '0.68rem', padding: '2px 7px', background: '#dcfce7', color: '#15803d', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                      <Sparkles size={12} color="#16a34a" /> TODAY
+                    </span>
+                  </div>
+                  <div className="font-mono responsive-kpi-val" style={{ fontSize: '2.3rem', fontWeight: 800, color: '#059669', marginTop: 6, lineHeight: 1 }}>
+                    ${dailyEarnings.toFixed(4)}
+                  </div>
+                  <div className="font-mono" style={{ fontSize: '0.84rem', color: '#059669', fontWeight: 600, marginTop: 4 }}>
+                    ≈ ৳{approxDailyBDT} BDT
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 6 }}>
+                    Watch rewards earned today
+                  </div>
+                </div>
+
+                {/* 3. Total Earned */}
                 <div className="glass-card responsive-kpi-card" style={{ padding: '20px', borderRadius: 16 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span className="font-mono" style={{ fontSize: '0.82rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
@@ -759,58 +820,118 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                 </div>
               </div>
 
-              {/* Recent Withdrawals Table */}
+              {/* Videos Watch History Table */}
               <div className="glass-card" style={{ padding: '20px', borderRadius: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                   <h3 className="font-display" style={{ fontSize: '1.18rem', color: '#0f172a', margin: 0 }}>
-                    RECENT WITHDRAWALS
+                    VIDEOS WATCH HISTORY
                   </h3>
                   <button
-                    onClick={() => setActiveTab('transactions')}
+                    onClick={() => setActiveTab('watch')}
                     className="btn btn-ghost"
                     style={{ padding: '4px 10px', fontSize: '0.82rem', borderRadius: 8 }}
                   >
-                    View Ledger →
+                    View All ({watchHistory.length}) →
                   </button>
                 </div>
 
-                {!transactions.length ? (
+                {!watchHistory.length ? (
                   <div style={{ textAlign: 'center', padding: '24px', color: '#64748b', fontSize: '0.92rem' }}>
-                    No payout requests yet. Click "Withdraw Cash" once your balance reaches $5.00!
+                    No videos watched yet.{' '}
+                    <button
+                      onClick={() => setActiveTab('watch')}
+                      style={{ background: 'none', border: 'none', color: 'var(--primary-neon)', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}
+                    >
+                      Watch & earn cash on our Android App
+                    </button>!
                   </div>
                 ) : (
-                  <div className="responsive-table-wrapper">
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                      <thead>
-                        <tr style={{ borderBottom: '1.5px solid #e2e8f0', color: 'var(--on-surface-variant)', textAlign: 'left' }}>
-                          <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Method</th>
-                          <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Amount</th>
-                          <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Status</th>
-                          <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Date</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {transactions.slice(0, 5).map((tx) => (
-                          <tr key={tx._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                            <td style={{ padding: '10px 12px' }}>
-                              <span className="badge-pill badge-cyan" style={{ padding: '2px 8px', fontSize: '0.72rem', textTransform: 'uppercase' }}>
-                                {tx.gateway || 'payout'}
-                              </span>
-                            </td>
-                            <td className="font-mono" style={{ padding: '10px 12px', fontWeight: 700, fontSize: '0.92rem', color: '#ef4444' }}>
-                              -${Math.abs(tx.amount).toFixed(2)}
-                            </td>
-                            <td style={{ padding: '10px 12px', color: tx.status === 'completed' ? '#059669' : '#d97706', fontWeight: 600 }}>
-                              {tx.status}
-                            </td>
-                            <td style={{ padding: '10px 12px', color: 'var(--on-surface-variant)' }}>
-                              {new Date(tx.createdAt).toLocaleDateString()}
-                            </td>
+                  <>
+                    {/* Desktop Table View */}
+                    <div className="desktop-only-table responsive-table-wrapper">
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                        <thead>
+                          <tr style={{ borderBottom: '1.5px solid #e2e8f0', color: 'var(--on-surface-variant)', textAlign: 'left' }}>
+                            <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Video</th>
+                            <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Duration</th>
+                            <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Reward</th>
+                            <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Status</th>
+                            <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Date</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody>
+                          {watchHistory.slice(0, 5).map((item) => (
+                            <tr key={item._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                              <td style={{ padding: '10px 12px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                  <img
+                                    src={item.campaignId?.thumbnailUrl || `https://img.youtube.com/vi/${item.videoId}/default.jpg`}
+                                    alt="thumb"
+                                    style={{ width: 44, height: 32, borderRadius: 6, objectFit: 'cover', background: '#000', flexShrink: 0 }}
+                                  />
+                                  <div style={{ minWidth: 0 }}>
+                                    <div style={{ fontWeight: 600, color: '#0f172a', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                      {item.campaignId?.title || `YouTube Video (${item.videoId})`}
+                                    </div>
+                                    <a
+                                      href={`https://www.youtube.com/watch?v=${item.videoId}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      style={{ fontSize: '0.72rem', color: 'var(--primary-neon)', textDecoration: 'none' }}
+                                    >
+                                      Watch on YouTube ↗
+                                    </a>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="font-mono" style={{ padding: '10px 12px', fontWeight: 600, color: '#334155' }}>
+                                {item.actualDurationSec || item.requiredDurationSec}s
+                              </td>
+                              <td className="font-mono" style={{ padding: '10px 12px', fontWeight: 700, fontSize: '0.94rem', color: '#059669' }}>
+                                +${(item.rewardAmount || 0.0035).toFixed(4)}
+                              </td>
+                              <td style={{ padding: '10px 12px' }}>
+                                <span className="badge-pill badge-active" style={{ padding: '2px 8px', fontSize: '0.72rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                  <CheckCircle2 size={12} /> {item.status === 'completed' ? 'Verified' : item.status}
+                                </span>
+                              </td>
+                              <td style={{ padding: '10px 12px', color: '#64748b', fontSize: '0.84rem' }}>
+                                {new Date(item.completedAt || item.createdAt).toLocaleDateString()}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Mobile Card List */}
+                    <div className="mobile-card-list">
+                      {watchHistory.slice(0, 5).map((item) => (
+                        <div key={item._id} className="mobile-data-card" style={{ padding: '12px', borderRadius: 12, border: '1px solid #f1f5f9', background: '#fafafa', marginBottom: 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <img
+                              src={item.campaignId?.thumbnailUrl || `https://img.youtube.com/vi/${item.videoId}/default.jpg`}
+                              alt="thumb"
+                              style={{ width: 44, height: 32, borderRadius: 6, objectFit: 'cover', background: '#000', flexShrink: 0 }}
+                            />
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.86rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {item.campaignId?.title || `YouTube Video (${item.videoId})`}
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', color: '#64748b', marginTop: 2 }}>
+                                <span>{item.actualDurationSec || item.requiredDurationSec}s</span>
+                                <span>•</span>
+                                <span>{new Date(item.completedAt || item.createdAt).toLocaleDateString()}</span>
+                              </div>
+                            </div>
+                            <div className="font-mono" style={{ fontWeight: 800, fontSize: '0.94rem', color: '#059669', flexShrink: 0 }}>
+                              +${(item.rewardAmount || 0.0035).toFixed(4)}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
             </div>
@@ -1129,6 +1250,28 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                 <span className="badge-pill badge-cyan" style={{ fontSize: '0.74rem', padding: '4px 12px' }}>
                   Min Payout: $5.00 USD (≈ ৳610 BDT)
                 </span>
+              </div>
+
+              {/* Policy Notice: Min Payout & Crypto BEP20 */}
+              <div
+                style={{
+                  background: '#f0fdf4',
+                  border: '1px solid #bbf7d0',
+                  borderRadius: 12,
+                  padding: '10px 16px',
+                  marginBottom: 18,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  fontSize: '0.84rem',
+                  color: '#166534',
+                  fontWeight: 600,
+                }}
+              >
+                <AlertCircle size={18} color="#16a34a" style={{ flexShrink: 0 }} />
+                <div>
+                  <strong>Withdrawal Notice:</strong> Minimum cashout is <strong>$5.00 USD</strong>. For crypto withdrawals, only <strong>USDT (BEP-20)</strong> on BNB Smart Chain is supported.
+                </div>
               </div>
 
               {/* INDIVIDUAL METHOD CARDS - LOGO PLACEHOLDER + NAME ONLY */}
@@ -1681,6 +1824,13 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                 </div>
               )}
             </div>
+          )}
+
+          {/* =========================================================================
+              TAB 5: ACCOUNT PROFILE & PERSONAL SETTINGS
+              ========================================================================= */}
+          {activeTab === 'profile' && (
+            <ProfileSettingsSection user={user} onRefreshUser={onRefreshUser} />
           )}
         </main>
       </div>

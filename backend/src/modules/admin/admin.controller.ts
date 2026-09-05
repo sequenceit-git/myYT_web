@@ -6,6 +6,7 @@ import { Transaction } from '../../models/Transaction.js';
 import { Task } from '../../models/Task.js';
 import { Setting } from '../../models/Setting.js';
 import { requireAdmin, AuthRequest } from '../../middleware/auth.middleware.js';
+import { config } from '../../config/index.js';
 
 export const getSystemExchangeRate = async (): Promise<number> => {
   try {
@@ -17,6 +18,36 @@ export const getSystemExchangeRate = async (): Promise<number> => {
     // fallback to default
   }
   return 122;
+};
+
+export const getSystemPricingTiers = async (): Promise<Record<number, { campaignerCost: number; viewerReward: number }>> => {
+  try {
+    const setting = await Setting.findOne({ key: 'pricing_tiers' });
+    if (setting && setting.value && typeof setting.value === 'object') {
+      return setting.value;
+    }
+  } catch {
+    // fallback
+  }
+  return config.pricingTiers;
+};
+
+export const getSystemCooldownSettings = async (): Promise<{ enableCooldown: boolean; videoCooldownSeconds: number }> => {
+  try {
+    const setting = await Setting.findOne({ key: 'cooldown_settings' });
+    if (setting && setting.value && typeof setting.value === 'object') {
+      return {
+        enableCooldown: typeof setting.value.enableCooldown === 'boolean' ? setting.value.enableCooldown : config.enableCooldown,
+        videoCooldownSeconds: typeof setting.value.videoCooldownSeconds === 'number' ? setting.value.videoCooldownSeconds : config.videoCooldownSeconds,
+      };
+    }
+  } catch {
+    // fallback
+  }
+  return {
+    enableCooldown: config.enableCooldown,
+    videoCooldownSeconds: config.videoCooldownSeconds,
+  };
 };
 
 const router = Router();
@@ -287,11 +318,17 @@ router.post('/payouts/:id/reject', requireAdmin, async (req: AuthRequest, res: R
 // GET /api/admin/settings - Platform configurations
 router.get('/settings', requireAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const usdToBdt = await getSystemExchangeRate();
+    const [usdToBdt, pricingTiers, cooldownSettings] = await Promise.all([
+      getSystemExchangeRate(),
+      getSystemPricingTiers(),
+      getSystemCooldownSettings(),
+    ]);
     res.json({
       success: true,
       data: {
         usdToBdt,
+        pricingTiers,
+        cooldownSettings,
       },
     });
   } catch (error: any) {
@@ -319,6 +356,88 @@ router.post('/settings/exchange-rate', requireAdmin, async (req: AuthRequest, re
       success: true,
       data: { usdToBdt: updated.value },
       message: `Dollar rate successfully updated to 1 USD = ${updated.value} BDT!`,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/admin/settings/pricing - Update pricing per view for tiers
+router.post('/settings/pricing', requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { pricingTiers } = req.body;
+    if (!pricingTiers || typeof pricingTiers !== 'object') {
+      res.status(400).json({ success: false, error: 'Valid pricing tiers object is required' });
+      return;
+    }
+
+    // Clean and validate tier numbers
+    const cleanTiers: Record<number, { campaignerCost: number; viewerReward: number }> = {};
+    for (const [secStr, tierObj] of Object.entries(pricingTiers)) {
+      const sec = parseInt(secStr, 10);
+      const t = tierObj as any;
+      if (!isNaN(sec) && sec > 0 && t && typeof t === 'object') {
+        const cost = Number(t.campaignerCost);
+        const reward = Number(t.viewerReward);
+        if (!isNaN(cost) && cost > 0 && !isNaN(reward) && reward >= 0) {
+          cleanTiers[sec] = {
+            campaignerCost: Number(cost.toFixed(4)),
+            viewerReward: Number(reward.toFixed(4)),
+          };
+        }
+      }
+    }
+
+    const updated = await Setting.findOneAndUpdate(
+      { key: 'pricing_tiers' },
+      { value: cleanTiers, description: 'Platform pricing tiers per watch duration' },
+      { upsert: true, new: true }
+    );
+
+    // Sync in-memory config
+    Object.assign(config.pricingTiers, cleanTiers);
+
+    res.json({
+      success: true,
+      data: { pricingTiers: updated.value },
+      message: 'Platform pricing tiers updated successfully!',
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/admin/settings/cooldown - Update cooldown timer & anti-spam rule
+router.post('/settings/cooldown', requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { enableCooldown, videoCooldownSeconds } = req.body;
+    const isEnabled = Boolean(enableCooldown);
+    const seconds = parseInt(videoCooldownSeconds, 10);
+
+    if (isNaN(seconds) || seconds < 0 || seconds > 86400 * 7) {
+      res.status(400).json({ success: false, error: 'Cooldown seconds must be between 0 and 604800 (7 days)' });
+      return;
+    }
+
+    const cooldownData = {
+      enableCooldown: isEnabled,
+      videoCooldownSeconds: seconds,
+    };
+
+    const updated = await Setting.findOneAndUpdate(
+      { key: 'cooldown_settings' },
+      { value: cooldownData, description: 'Viewer video anti-spam cooldown settings' },
+      { upsert: true, new: true }
+    );
+
+    // Sync in-memory config
+    config.enableCooldown = isEnabled;
+    config.videoCooldownSeconds = seconds;
+
+    res.json({
+      success: true,
+      data: { cooldownSettings: updated.value },
+      message: `Cooldown settings updated! Cooldown is ${isEnabled ? `ENABLED (${seconds}s)` : 'DISABLED'}.`,
     });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });

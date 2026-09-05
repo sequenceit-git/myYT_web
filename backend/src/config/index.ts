@@ -19,6 +19,7 @@ export const config = {
     30: { campaignerCost: 0.0075, viewerReward: 0.0052 },
     45: { campaignerCost: 0.0088, viewerReward: 0.0062 },
     60: { campaignerCost: 0.0100, viewerReward: 0.0072 },
+    90: { campaignerCost: 0.0125, viewerReward: 0.0090 },
     120: { campaignerCost: 0.0150, viewerReward: 0.0110 },
   } as Record<number, { campaignerCost: number; viewerReward: number }>,
 

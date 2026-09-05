@@ -7,6 +7,7 @@ import { Transaction } from '../../models/Transaction.js';
 import { Task } from '../../models/Task.js';
 import { config } from '../../config/index.js';
 import { requireAuth, AuthRequest } from '../../middleware/auth.middleware.js';
+import { getSystemPricingTiers } from '../admin/admin.controller.js';
 
 const router = Router();
 
@@ -24,17 +25,28 @@ const createCampaignSchema = z.object({
   title: z.string().optional(),
 });
 
+// Public pricing tiers endpoint
+router.get('/pricing-tiers', async (_req, res) => {
+  const pricingTiers = await getSystemPricingTiers();
+  res.json({ success: true, data: { pricingTiers } });
+});
+
 // Price calculator endpoint
-router.get('/calculate-price', (req, res) => {
+router.get('/calculate-price', async (req, res) => {
   const duration = parseInt(req.query.duration as string, 10);
   const views = parseInt(req.query.views as string, 10);
 
-  if (!config.pricingTiers[duration] || !views || views < 10) {
+  if (!duration || duration < 10 || !views || views < 10) {
     res.status(400).json({ success: false, error: 'Invalid duration or views' });
     return;
   }
 
-  const rate = config.pricingTiers[duration].campaignerCost;
+  const pricingTiers = await getSystemPricingTiers();
+  const tier = pricingTiers[duration] || {
+    campaignerCost: Number((0.0050 + (Math.max(10, duration) - 10) * 0.000091).toFixed(4)),
+    viewerReward: Number(((0.0050 + (Math.max(10, duration) - 10) * 0.000091) * 0.72).toFixed(4)),
+  };
+  const rate = tier.campaignerCost;
   const totalCost = Number((rate * views).toFixed(4));
 
   res.json({
@@ -47,6 +59,18 @@ router.get('/calculate-price', (req, res) => {
     },
   });
 });
+
+// Helper for duration tier
+export const getPricingTier = async (sec: number) => {
+  const pricingTiers = await getSystemPricingTiers();
+  if (pricingTiers[sec]) {
+    return pricingTiers[sec];
+  }
+  const safeSec = Math.max(10, sec);
+  const campaignerCost = Number((0.0050 + (safeSec - 10) * 0.000091).toFixed(4));
+  const viewerReward = Number((campaignerCost * 0.72).toFixed(4));
+  return { campaignerCost, viewerReward };
+};
 
 // Create campaign & deduct balance atomically
 router.post('/', requireAuth, async (req: AuthRequest, res: Response): Promise<void> => {
@@ -64,7 +88,7 @@ router.post('/', requireAuth, async (req: AuthRequest, res: Response): Promise<v
       return;
     }
 
-    const tier = config.pricingTiers[watchDurationSec];
+    const tier = await getPricingTier(watchDurationSec);
     const totalCost = Number((tier.campaignerCost * targetViews).toFixed(4));
 
     // Atomic balance deduction (Creator Ad Budget)

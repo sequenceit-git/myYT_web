@@ -17,6 +17,9 @@ export interface IUser extends Document {
   totalSpent: number;
   totalWithdrawn: number;
   kycStatus: 'none' | 'pending' | 'verified' | 'rejected';
+  phoneNumber?: string;
+  resetPasswordToken?: string;
+  resetPasswordExpires?: Date;
   trustScore: number;
   createdAt: Date;
   updatedAt: Date;
@@ -26,6 +29,9 @@ const UserSchema = new Schema<IUser>(
   {
     email: { type: String, required: true, unique: true, index: true, lowercase: true, trim: true },
     name: { type: String, required: true },
+    phoneNumber: { type: String, trim: true },
+    resetPasswordToken: { type: String },
+    resetPasswordExpires: { type: Date },
     passwordHash: { type: String },
     googleId: { type: String, sparse: true, index: true },
     avatar: { type: String },
