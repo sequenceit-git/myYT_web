@@ -983,97 +983,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
           ========================================================================= */}
       {activeTab === 'overview' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-          {/* Dynamic Dollar Exchange Rate Controller */}
-          <div
-            className="glass-card"
-            style={{
-              padding: '16px 20px',
-              borderRadius: 16,
-              border: '1.5px solid rgba(14, 165, 233, 0.35)',
-              background: 'linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%)',
-              display: 'flex',
-              flexWrap: 'wrap',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 14,
-            }}
-          >
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <span className="badge-pill badge-neon" style={{ fontSize: '0.72rem', padding: '2px 8px' }}>
-                  Live Dollar Pricing Engine
-                </span>
-                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                  Changes update pricing across all viewer cashouts & creator deposit calculators
-                </span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 4 }}>
-                <h3 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f172a' }}>
-                  1 USD = <span style={{ color: 'var(--primary-neon)' }}>৳{usdToBdt} BDT</span>
-                </h3>
-                <span style={{ fontSize: '0.78rem', color: '#64748b' }}>(Platform Exchange Rate)</span>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>Presets:</span>
-                {[110, 115, 120, 122, 125].map((preset) => (
-                  <button
-                    key={preset}
-                    type="button"
-                    onClick={() => {
-                      setDollarRateInput(String(preset));
-                      handleSaveDollarRate(preset);
-                    }}
-                    disabled={rateUpdating}
-                    className="btn btn-ghost"
-                    style={{
-                      padding: '4px 8px',
-                      fontSize: '0.74rem',
-                      borderRadius: 8,
-                      background: usdToBdt === preset ? '#e0f2fe' : '#ffffff',
-                      borderColor: usdToBdt === preset ? 'var(--primary-neon)' : '#cbd5e1',
-                      color: usdToBdt === preset ? 'var(--primary-neon)' : '#475569',
-                      fontWeight: usdToBdt === preset ? 700 : 500,
-                    }}
-                  >
-                    ৳{preset}
-                  </button>
-                ))}
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                <input
-                  type="number"
-                  value={dollarRateInput}
-                  onChange={(e) => setDollarRateInput(e.target.value)}
-                  placeholder="e.g. 120"
-                  style={{
-                    width: 80,
-                    padding: '6px 10px',
-                    borderRadius: 8,
-                    border: '1px solid #cbd5e1',
-                    fontSize: '0.88rem',
-                    fontWeight: 700,
-                    fontFamily: 'JetBrains Mono, monospace',
-                    textAlign: 'center',
-                    outline: 'none',
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => handleSaveDollarRate()}
-                  disabled={rateUpdating || !dollarRateInput}
-                  className="btn btn-neon glow-neon"
-                  style={{ padding: '6px 14px', fontSize: '0.76rem', borderRadius: 8 }}
-                >
-                  {rateUpdating ? 'Saving...' : 'Set Dollar Price'}
-                </button>
-              </div>
-            </div>
-          </div>
-
           {/* 8 Primary KPI Metric Cards (Responsive Grid) */}
           <div className="responsive-kpi-grid">
             {/* 1. Watch Hours */}
@@ -2286,7 +2195,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span className="font-mono" style={{ fontSize: '0.88rem', color: '#475569', fontWeight: 700 }}>1 USD = ৳</span>
                 <input
@@ -2297,14 +2206,41 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
                   value={dollarRateInput}
                   onChange={(e) => setDollarRateInput(e.target.value)}
                   className="input-field"
-                  style={{ width: 120, padding: '8px 12px', fontSize: '0.94rem', fontWeight: 700, borderRadius: 10 }}
+                  style={{ width: 110, padding: '8px 12px', fontSize: '0.94rem', fontWeight: 700, borderRadius: 10 }}
                 />
                 <span className="font-mono" style={{ fontSize: '0.88rem', color: '#475569', fontWeight: 700 }}>BDT</span>
               </div>
 
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>Presets:</span>
+                {[110, 115, 120, 122, 125].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => {
+                      setDollarRateInput(String(preset));
+                      handleSaveDollarRate(preset);
+                    }}
+                    disabled={rateUpdating}
+                    className="btn btn-ghost"
+                    style={{
+                      padding: '5px 10px',
+                      fontSize: '0.76rem',
+                      borderRadius: 8,
+                      background: usdToBdt === preset ? '#e0f2fe' : '#ffffff',
+                      borderColor: usdToBdt === preset ? 'var(--primary-neon)' : '#cbd5e1',
+                      color: usdToBdt === preset ? 'var(--primary-neon)' : '#475569',
+                      fontWeight: usdToBdt === preset ? 700 : 500,
+                    }}
+                  >
+                    ৳{preset}
+                  </button>
+                ))}
+              </div>
+
               <button
                 type="button"
-                disabled={rateUpdating}
+                disabled={rateUpdating || !dollarRateInput}
                 onClick={() => handleSaveDollarRate()}
                 className="btn btn-neon glow-neon"
                 style={{ padding: '8px 18px', fontSize: '0.84rem', fontWeight: 700, borderRadius: 10 }}
