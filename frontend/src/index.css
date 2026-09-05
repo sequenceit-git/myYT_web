@@ -736,21 +736,18 @@ h1, h2, h3, h4, h5, h6 {
   background: #f8fafc;
 }
 
-/* Viewer Watch & Earn 3-KPI Grid */
+/* Viewer Watch & Earn KPI Grid (Supports 4 cards) */
 .viewer-stats-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 14px;
   margin-bottom: 18px;
 }
 
-@media (max-width: 800px) {
+@media (max-width: 960px) {
   .viewer-stats-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 10px;
-  }
-  .viewer-stats-featured {
-    grid-column: span 2;
   }
 }
 

@@ -510,16 +510,18 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
   const bdtRate = usdToBdt;
   const approxBDT = (viewerBal * bdtRate).toFixed(0);
 
-  // Daily Earning (today's watch tasks earnings)
+  // Daily Earning & Watch Count (today's watch tasks)
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
 
-  const watchTodayEarned = watchHistory
-    .filter((task) => {
-      const d = task.completedAt ? new Date(task.completedAt) : (task.updatedAt ? new Date(task.updatedAt) : null);
-      return d && d >= startOfDay;
-    })
-    .reduce((sum, task) => sum + (task.rewardAmount || task.rewardUsd || 0), 0);
+  const todaysTasks = watchHistory.filter((task) => {
+    const d = task.completedAt ? new Date(task.completedAt) : (task.updatedAt ? new Date(task.updatedAt) : (task.createdAt ? new Date(task.createdAt) : null));
+    return d && d >= startOfDay;
+  });
+
+  const todaysWatchCount = todaysTasks.length;
+
+  const watchTodayEarned = todaysTasks.reduce((sum, task) => sum + (task.rewardAmount || task.rewardUsd || 0), 0);
 
   const dailyEarnings = user.dailyEarnings !== undefined
     ? user.dailyEarnings
@@ -1069,18 +1071,34 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
 
                 {/* Summary Stats Row in Fluid Grid */}
                 <div className="viewer-stats-grid">
+                  {/* 1. Today's Watch */}
+                  <div className="viewer-stats-card" style={{ background: '#f0fdf4', padding: '14px 18px', borderRadius: 14, border: '1.5px solid rgba(16, 185, 129, 0.35)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.78rem', color: '#059669', textTransform: 'uppercase', fontWeight: 700 }}>Today's Watch</span>
+                      <span className="badge-pill" style={{ fontSize: '0.64rem', padding: '1px 6px', background: '#dcfce7', color: '#15803d', fontWeight: 700 }}>TODAY</span>
+                    </div>
+                    <div className="font-mono kpi-number" style={{ fontSize: '1.75rem', fontWeight: 800, color: '#059669', marginTop: 3 }}>
+                      {todaysWatchCount}
+                    </div>
+                  </div>
+
+                  {/* 2. Total Videos Watched */}
                   <div className="viewer-stats-card" style={{ background: '#f8fafc', padding: '14px 18px', borderRadius: 14, border: '1px solid #e2e8f0' }}>
                     <div style={{ fontSize: '0.78rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>Videos Watched</div>
                     <div className="font-mono kpi-number" style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', marginTop: 3 }}>
                       {watchHistory.length}
                     </div>
                   </div>
+
+                  {/* 3. Total Watch Rewards */}
                   <div className="viewer-stats-card viewer-stats-featured" style={{ background: '#f0fdf4', padding: '14px 18px', borderRadius: 14, border: '1px solid rgba(16, 185, 129, 0.25)' }}>
                     <div style={{ fontSize: '0.78rem', color: '#059669', textTransform: 'uppercase', fontWeight: 700 }}>Total Watch Rewards</div>
                     <div className="font-mono kpi-number" style={{ fontSize: '1.75rem', fontWeight: 800, color: '#059669', marginTop: 3 }}>
                       +${watchHistory.reduce((sum, t) => sum + (t.rewardAmount || 0.0035), 0).toFixed(4)} USD
                     </div>
                   </div>
+
+                  {/* 4. Total Watch Seconds */}
                   <div className="viewer-stats-card" style={{ background: '#f0f9ff', padding: '14px 18px', borderRadius: 14, border: '1px solid rgba(14, 165, 233, 0.25)' }}>
                     <div style={{ fontSize: '0.78rem', color: 'var(--primary-neon)', textTransform: 'uppercase', fontWeight: 700 }}>Total Watch Seconds</div>
                     <div className="font-mono kpi-number" style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--primary-neon)', marginTop: 3 }}>
