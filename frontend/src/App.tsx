@@ -34,6 +34,11 @@ export function App() {
   };
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const refCode = params.get('ref');
+    if (refCode) {
+      localStorage.setItem('myyt_ref', refCode.trim().toUpperCase());
+    }
     fetchMe();
   }, []);
 

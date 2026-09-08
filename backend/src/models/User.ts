@@ -18,6 +18,10 @@ export interface IUser extends Document {
   totalWithdrawn: number;
   kycStatus: 'none' | 'pending' | 'verified' | 'rejected';
   phoneNumber?: string;
+  referralCode?: string;
+  referredBy?: mongoose.Types.ObjectId | string;
+  referralEarnings: number;
+  referralCount: number;
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
   trustScore: number;
@@ -30,6 +34,10 @@ const UserSchema = new Schema<IUser>(
     email: { type: String, required: true, unique: true, index: true, lowercase: true, trim: true },
     name: { type: String, required: true },
     phoneNumber: { type: String, trim: true },
+    referralCode: { type: String, unique: true, sparse: true, index: true, uppercase: true, trim: true },
+    referredBy: { type: Schema.Types.ObjectId, ref: 'User', index: true },
+    referralEarnings: { type: Number, default: 0, min: 0 },
+    referralCount: { type: Number, default: 0, min: 0 },
     resetPasswordToken: { type: String },
     resetPasswordExpires: { type: Date },
     passwordHash: { type: String },

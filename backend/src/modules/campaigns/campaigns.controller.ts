@@ -36,15 +36,15 @@ router.get('/calculate-price', async (req, res) => {
   const duration = parseInt(req.query.duration as string, 10);
   const views = parseInt(req.query.views as string, 10);
 
-  if (!duration || duration < 10 || !views || views < 10) {
+  if (!duration || duration < 8 || !views || views < 10) {
     res.status(400).json({ success: false, error: 'Invalid duration or views' });
     return;
   }
 
   const pricingTiers = await getSystemPricingTiers();
   const tier = pricingTiers[duration] || {
-    campaignerCost: Number((0.0050 + (Math.max(10, duration) - 10) * 0.000091).toFixed(4)),
-    viewerReward: Number(((0.0050 + (Math.max(10, duration) - 10) * 0.000091) * 0.72).toFixed(4)),
+    campaignerCost: Number((0.0040 + (Math.max(8, duration) - 8) * 0.000095).toFixed(4)),
+    viewerReward: Number(((0.0040 + (Math.max(8, duration) - 8) * 0.000095) * 0.72).toFixed(4)),
   };
   const rate = tier.campaignerCost;
   const totalCost = Number((rate * views).toFixed(4));
@@ -66,8 +66,8 @@ export const getPricingTier = async (sec: number) => {
   if (pricingTiers[sec]) {
     return pricingTiers[sec];
   }
-  const safeSec = Math.max(10, sec);
-  const campaignerCost = Number((0.0050 + (safeSec - 10) * 0.000091).toFixed(4));
+  const safeSec = Math.max(8, sec);
+  const campaignerCost = Number((0.0040 + (safeSec - 8) * 0.000095).toFixed(4));
   const viewerReward = Number((campaignerCost * 0.72).toFixed(4));
   return { campaignerCost, viewerReward };
 };

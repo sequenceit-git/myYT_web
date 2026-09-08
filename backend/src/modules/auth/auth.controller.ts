@@ -39,11 +39,21 @@ async function getDailyStats(userId: any) {
   }
 }
 
+const generateReferralCode = (): string => {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = 'MY';
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+};
+
 const registerSchema = z.object({
   email: z.string().email(),
   name: z.string().min(2),
   password: z.string().min(6),
   role: z.enum(['campaigner', 'viewer']).optional().default('viewer'),
+  referralCode: z.string().optional(),
 });
 
 const loginSchema = z.object({
@@ -76,6 +86,21 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
+    let referredBy = undefined;
+    if (parsed.data.referralCode) {
+      const trimmedCode = parsed.data.referralCode.trim().toUpperCase();
+      const referrer = await User.findOne({ referralCode: trimmedCode });
+      if (referrer) {
+        referredBy = referrer._id;
+        await User.findByIdAndUpdate(referrer._id, { $inc: { referralCount: 1 } });
+      }
+    }
+
+    let code = generateReferralCode();
+    while (await User.exists({ referralCode: code })) {
+      code = generateReferralCode();
+    }
+
     const randomAvatar = `https://api.dicebear.com/7.x/adventurer/png?seed=${encodeURIComponent(email)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`;
     const user = await User.create({
       email,
@@ -86,6 +111,10 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
       balance: 1.0, // Free starter credit for testing both viewing and campaigns!
       creatorBalance: 1.0,
       viewerBalance: 0,
+      referralCode: code,
+      referredBy,
+      referralEarnings: 0,
+      referralCount: 0,
     });
 
     const tokens = generateTokens(user._id.toString(), user.role);
@@ -101,6 +130,9 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
           role: user.role,
           balance: user.balance,
           avatar: user.avatar || randomAvatar,
+          referralCode: user.referralCode,
+          referralEarnings: user.referralEarnings || 0,
+          referralCount: user.referralCount || 0,
         },
         ...tokens,
       },
@@ -198,6 +230,21 @@ router.post('/google', async (req: Request, res: Response): Promise<void> => {
     let user = await User.findOne({ email });
 
     if (!user) {
+      let referredBy = undefined;
+      if (req.body.referralCode) {
+        const trimmedCode = (req.body.referralCode as string).trim().toUpperCase();
+        const referrer = await User.findOne({ referralCode: trimmedCode });
+        if (referrer) {
+          referredBy = referrer._id;
+          await User.findByIdAndUpdate(referrer._id, { $inc: { referralCount: 1 } });
+        }
+      }
+
+      let code = generateReferralCode();
+      while (await User.exists({ referralCode: code })) {
+        code = generateReferralCode();
+      }
+
       user = await User.create({
         email,
         name,
@@ -207,6 +254,10 @@ router.post('/google', async (req: Request, res: Response): Promise<void> => {
         balance: 1.0,
         creatorBalance: 1.0,
         viewerBalance: 0,
+        referralCode: code,
+        referredBy,
+        referralEarnings: 0,
+        referralCount: 0,
       });
     } else {
       let updated = false;
@@ -216,6 +267,14 @@ router.post('/google', async (req: Request, res: Response): Promise<void> => {
       }
       if (googleId && !user.googleId) {
         user.googleId = googleId;
+        updated = true;
+      }
+      if (!user.referralCode) {
+        let code = generateReferralCode();
+        while (await User.exists({ referralCode: code })) {
+          code = generateReferralCode();
+        }
+        user.referralCode = code;
         updated = true;
       }
       if (updated) {
@@ -246,6 +305,9 @@ router.post('/google', async (req: Request, res: Response): Promise<void> => {
           avatar: user.avatar,
           totalEarned: user.totalEarned,
           totalSpent: user.totalSpent,
+          referralCode: user.referralCode,
+          referralEarnings: user.referralEarnings || 0,
+          referralCount: user.referralCount || 0,
           dailySpend,
           dailyEarnings,
         },
@@ -260,6 +322,15 @@ router.post('/google', async (req: Request, res: Response): Promise<void> => {
 // Me
 router.get('/me', requireAuth, async (req: AuthRequest, res: Response): Promise<void> => {
   const u = req.user!;
+  if (!u.referralCode) {
+    let code = generateReferralCode();
+    while (await User.exists({ referralCode: code })) {
+      code = generateReferralCode();
+    }
+    u.referralCode = code;
+    await u.save();
+  }
+
   const viewerBal = u.viewerBalance !== undefined ? u.viewerBalance : Math.max(0, (u.totalEarned || 0) - (u.totalWithdrawn || 0));
   const creatorBal = u.creatorBalance !== undefined ? u.creatorBalance : (u.balance || 0);
   const { dailySpend, dailyEarnings } = await getDailyStats(u._id);
@@ -280,12 +351,50 @@ router.get('/me', requireAuth, async (req: AuthRequest, res: Response): Promise<
       totalEarned: u.totalEarned,
       totalSpent: u.totalSpent,
       totalWithdrawn: u.totalWithdrawn,
+      referralCode: u.referralCode,
+      referralEarnings: u.referralEarnings || 0,
+      referralCount: u.referralCount || 0,
       dailySpend,
       dailyEarnings,
       status: u.status,
       avatar: (u.avatar ? u.avatar.replace('/svg', '/png') : `https://api.dicebear.com/7.x/adventurer/png?seed=${encodeURIComponent(u.email)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`),
     },
   });
+});
+
+// Referral Stats & History
+router.get('/referrals', requireAuth, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const user = req.user!;
+    if (!user.referralCode) {
+      let code = generateReferralCode();
+      while (await User.exists({ referralCode: code })) {
+        code = generateReferralCode();
+      }
+      user.referralCode = code;
+      await user.save();
+    }
+
+    const recentCommissions = await Transaction.find({
+      userId: user._id,
+      type: 'referral_commission',
+    })
+      .sort({ createdAt: -1 })
+      .limit(50);
+
+    res.json({
+      success: true,
+      data: {
+        referralCode: user.referralCode,
+        referralEarnings: user.referralEarnings || 0,
+        referralCount: user.referralCount || 0,
+        commissionRate: 10,
+        recentCommissions,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
 // Switch Profile (Creator <-> Viewer)

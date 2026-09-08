@@ -12,6 +12,7 @@ import {
   AlertCircle,
   KeyRound,
   Check,
+  Gift,
 } from 'lucide-react';
 import { apiRequest, setAuthToken } from '../api';
 import { User } from '../types';
@@ -34,6 +35,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [referralCode, setReferralCode] = useState(() => {
+    const urlRef = new URLSearchParams(window.location.search).get('ref');
+    if (urlRef) {
+      localStorage.setItem('myyt_ref', urlRef.trim().toUpperCase());
+      return urlRef.trim().toUpperCase();
+    }
+    return localStorage.getItem('myyt_ref') || '';
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,6 +74,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             demoEmail
           )}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`,
           role: 'viewer',
+          referralCode: referralCode ? referralCode.trim().toUpperCase() : undefined,
         }),
       });
 
@@ -93,7 +103,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     const endpoint = mode === 'signup' ? '/auth/register' : '/auth/login';
     const payload =
       mode === 'signup'
-        ? { email, password, name, role: 'viewer' }
+        ? {
+            email,
+            password,
+            name,
+            role: 'viewer',
+            referralCode: referralCode ? referralCode.trim().toUpperCase() : undefined,
+          }
         : { email, password };
 
     try {
@@ -811,6 +827,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     </button>
                   </div>
                 </div>
+
+                {mode === 'signup' && (
+                  <div>
+                    <label className="font-mono" style={{ fontSize: '0.76rem', color: 'var(--on-surface-variant)', display: 'block', marginBottom: 6 }}>
+                      Referral Code (Optional)
+                    </label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type="text"
+                        value={referralCode}
+                        onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                        placeholder="e.g. MY82X9KL"
+                        className="input-field font-mono"
+                        style={{ padding: '11px 14px 11px 40px', fontSize: '0.85rem', borderRadius: 12, letterSpacing: '0.05em', textTransform: 'uppercase' }}
+                      />
+                      <Gift size={16} color="var(--primary-neon)" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
+                    </div>
+                  </div>
+                )}
 
                 <button
                   type="submit"

@@ -11,13 +11,13 @@ interface BuyViewsPageProps {
 }
 
 const DEFAULT_PRESET_DURATIONS = [
-  { sec: 10, ratePerView: 0.0035 },
-  { sec: 15, ratePerView: 0.0050 },
-  { sec: 30, ratePerView: 0.0080 },
-  { sec: 45, ratePerView: 0.0120 },
-  { sec: 60, ratePerView: 0.0160 },
-  { sec: 90, ratePerView: 0.0240 },
-  { sec: 120, ratePerView: 0.0320 },
+  { sec: 8, ratePerView: 0.0040 },
+  { sec: 16, ratePerView: 0.0055 },
+  { sec: 45, ratePerView: 0.0088 },
+  { sec: 60, ratePerView: 0.0100 },
+  { sec: 120, ratePerView: 0.0150 },
+  { sec: 180, ratePerView: 0.0210 },
+  { sec: 300, ratePerView: 0.0320 },
 ];
 
 export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser, onOpenAuth }) => {
@@ -26,7 +26,7 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
   // Campaign Form / Simulation State
   const [presets, setPresets] = useState(DEFAULT_PRESET_DURATIONS);
   const [youtubeUrl, setYoutubeUrl] = useState('');
-  const [duration, setDuration] = useState<number>(10);
+  const [duration, setDuration] = useState<number>(8);
   const [isCustom, setIsCustom] = useState<boolean>(false);
   const [customSec, setCustomSec] = useState<number>(180);
   const [views, setViews] = useState<number>(1000);
@@ -49,11 +49,11 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
       .catch(() => {});
   }, []);
 
-  const activeDuration = isCustom ? Math.max(10, Math.min(600, customSec || 10)) : duration;
+  const activeDuration = isCustom ? Math.max(8, Math.min(600, customSec || 8)) : duration;
 
   const costPerView = isCustom
-    ? Number((0.0050 + (activeDuration - 10) * 0.000091).toFixed(4))
-    : (presets.find((p) => p.sec === duration)?.ratePerView || 0.0050);
+    ? Number((0.0040 + (activeDuration - 8) * 0.000095).toFixed(4))
+    : (presets.find((p) => p.sec === duration)?.ratePerView || 0.0040);
 
   const calculatedCost = Number((views * costPerView).toFixed(2));
   const totalWatchHours = ((views * activeDuration) / 3600).toFixed(1);
@@ -268,7 +268,7 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
                   type="button"
                   onClick={() => {
                     setIsCustom(true);
-                    setDuration(Math.max(10, Math.min(600, customSec || 10)));
+                    setDuration(Math.max(8, Math.min(600, customSec || 8)));
                   }}
                   style={{
                     padding: '10px 6px',
@@ -301,18 +301,18 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
                   </span>
                   <input
                     type="number"
-                    min={10}
+                    min={8}
                     max={600}
                     value={customSec || ''}
                     onChange={(e) => {
                       const val = parseInt(e.target.value, 10);
                       setCustomSec(isNaN(val) ? 0 : val);
-                      if (val >= 10) setDuration(Math.min(600, val));
+                      if (val >= 8) setDuration(Math.min(600, val));
                     }}
                     onBlur={() => {
-                      if (!customSec || customSec < 10) {
-                        setCustomSec(10);
-                        setDuration(10);
+                      if (!customSec || customSec < 8) {
+                        setCustomSec(8);
+                        setDuration(8);
                       } else if (customSec > 600) {
                         setCustomSec(600);
                         setDuration(600);
@@ -322,7 +322,7 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
                     style={{ width: 85, padding: '6px 10px', fontSize: '0.9rem', textAlign: 'center', fontWeight: 700, borderRadius: 8 }}
                     placeholder="180"
                   />
-                  <span style={{ fontSize: '0.78rem', color: '#64748b' }}>(10s – 600s)</span>
+                  <span style={{ fontSize: '0.78rem', color: '#64748b' }}>(8s – 600s)</span>
                   <span className="font-mono" style={{ marginLeft: 'auto', fontSize: '0.82rem', fontWeight: 800, color: 'var(--primary-neon)' }}>
                     ${costPerView.toFixed(4)} USD / View
                   </span>

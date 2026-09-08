@@ -649,13 +649,6 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                   >
                     <PlusCircle size={15} /> New Campaign
                   </button>
-                  <button
-                    onClick={() => setActiveTab('deposit')}
-                    className="btn btn-cyan"
-                    style={{ padding: '9px 18px', fontSize: '0.88rem', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 6 }}
-                  >
-                    <CreditCard size={15} /> Deposit Budget
-                  </button>
                 </div>
               </div>
 
@@ -681,11 +674,11 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                   </button>
                 </div>
 
-                {/* 2. Daily Spend */}
+                {/* 2. Today's Spending */}
                 <div className="glass-card responsive-kpi-card" style={{ padding: '20px', borderRadius: 16 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span className="font-mono" style={{ fontSize: '0.82rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
-                      Daily Spend
+                      Today’s Spending
                     </span>
                     <span className="badge-pill" style={{ fontSize: '0.68rem', padding: '2px 7px', background: '#fef3c7', color: '#b45309', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
                       <Flame size={12} color="#f59e0b" /> TODAY
@@ -703,7 +696,7 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                 <div className="glass-card responsive-kpi-card" style={{ padding: '20px', borderRadius: 16 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span className="font-mono" style={{ fontSize: '0.82rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
-                      Delivered
+                      Total Delivered
                     </span>
                     <Eye size={18} color="#059669" />
                   </div>
@@ -715,11 +708,11 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                   </div>
                 </div>
 
-                {/* 3. Total Invested */}
+                {/* 4. Total Invested */}
                 <div className="glass-card responsive-kpi-card" style={{ padding: '20px', borderRadius: 16 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span className="font-mono" style={{ fontSize: '0.82rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
-                      Invested
+                      Total Invested
                     </span>
                     <BarChart3 size={18} color="#7c3aed" />
                   </div>

@@ -16,6 +16,10 @@ export interface User {
   status?: string;
   avatar?: string;
   phoneNumber?: string;
+  referralCode?: string;
+  referralEarnings?: number;
+  referralCount?: number;
+  referredBy?: string;
 }
 
 export interface Campaign {

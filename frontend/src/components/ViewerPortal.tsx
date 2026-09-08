@@ -26,12 +26,32 @@ import {
   Clock,
   Sparkles,
   UserCheck,
+  Copy,
+  Share2,
+  Gift,
 } from 'lucide-react';
 import { User, Task, Transaction } from '../types';
 import { apiRequest } from '../api';
 import { ProfileSwitchBanner } from './ProfileSwitchBanner';
 import { ProfileSettingsSection } from './ProfileSettingsSection';
 import { useExchangeRate } from '../context/ExchangeRateContext';
+
+// Custom sleek Smartphone device icon with bezel, speaker, and home bar
+const PhoneDeviceIcon: React.FC<{ size?: number; color?: string }> = ({ size = 24, color = 'currentColor' }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    style={{ flexShrink: 0 }}
+  >
+    <rect x="5" y="2" width="14" height="20" rx="3" stroke={color} strokeWidth="2" fill="none" />
+    <line x1="10" y1="4.8" x2="14" y2="4.8" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+    <rect x="7" y="6.8" width="10" height="11.5" rx="1" fill={color} fillOpacity="0.22" />
+    <line x1="10.5" y1="20" x2="13.5" y2="20" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+);
 
 interface ViewerPortalProps {
   user: User | null;
@@ -41,7 +61,7 @@ interface ViewerPortalProps {
   onSwitchProfile?: (targetRole: 'viewer' | 'campaigner') => void;
 }
 
-type ViewerTab = 'overview' | 'watch' | 'withdraw' | 'transactions' | 'profile';
+type ViewerTab = 'overview' | 'watch' | 'withdraw' | 'transactions' | 'referrals' | 'profile';
 
 type PayoutMethodType = 'bkash' | 'nagad' | 'faucetpay' | 'crypto' | 'webmoney';
 
@@ -231,18 +251,19 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab') as ViewerTab | null;
+  const validTabs: ViewerTab[] = ['overview', 'watch', 'withdraw', 'transactions', 'referrals', 'profile'];
   const [internalTab, setInternalTab] = useState<ViewerTab>(() => {
-    return (tabFromUrl && ['overview', 'watch', 'withdraw', 'transactions', 'profile'].includes(tabFromUrl))
+    return (tabFromUrl && validTabs.includes(tabFromUrl))
       ? tabFromUrl
       : 'overview';
   });
 
-  const activeTab = (tabFromUrl && ['overview', 'watch', 'withdraw', 'transactions', 'profile'].includes(tabFromUrl))
+  const activeTab = (tabFromUrl && validTabs.includes(tabFromUrl))
     ? tabFromUrl
     : internalTab;
 
   useEffect(() => {
-    if (tabFromUrl && ['overview', 'watch', 'withdraw', 'transactions', 'profile'].includes(tabFromUrl)) {
+    if (tabFromUrl && validTabs.includes(tabFromUrl)) {
       setInternalTab(tabFromUrl);
     }
   }, [tabFromUrl]);
@@ -251,6 +272,37 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
     setInternalTab(tab);
     setSearchParams({ tab });
   };
+
+  // Referral Program State
+  const [referralStats, setReferralStats] = useState<any>(null);
+  const [referralLoading, setReferralLoading] = useState<boolean>(false);
+  const [referralCopied, setReferralCopied] = useState<boolean>(false);
+
+  const fetchReferralStats = async () => {
+    setReferralLoading(true);
+    try {
+      const res = await apiRequest<any>('/auth/referrals');
+      if (res.success && res.data) {
+        setReferralStats(res.data);
+      }
+    } catch (e) {
+      console.error('[Referral] Failed to fetch stats:', e);
+    } finally {
+      setReferralLoading(false);
+    }
+  };
+
+  const handleCopyReferral = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setReferralCopied(true);
+    setTimeout(() => setReferralCopied(false), 2500);
+  };
+
+  useEffect(() => {
+    if (user && activeTab === 'referrals') {
+      fetchReferralStats();
+    }
+  }, [user, activeTab]);
 
   // Watch History & Pagination State (10 per page)
   const [watchHistory, setWatchHistory] = useState<any[]>([]);
@@ -668,6 +720,17 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
             </button>
 
             <button
+              onClick={() => { setActiveTab('referrals'); setMsg(null); }}
+              className={`dashboard-nav-item ${activeTab === 'referrals' ? 'active-neon' : ''}`}
+            >
+              <div className="nav-left">
+                <Gift size={20} />
+                <span>Referral (10%)</span>
+              </div>
+              <span className="dashboard-nav-badge badge-cyan" style={{ fontSize: '0.62rem', padding: '1px 6px' }}>10%</span>
+            </button>
+
+            <button
               onClick={() => { setActiveTab('profile'); setMsg(null); }}
               className={`dashboard-nav-item ${activeTab === 'profile' ? 'active-neon' : ''}`}
             >
@@ -749,16 +812,9 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                   <button
                     onClick={() => setActiveTab('watch')}
                     className="btn btn-neon glow-neon"
-                    style={{ padding: '9px 18px', fontSize: '0.88rem', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 6 }}
+                    style={{ padding: '9px 18px', fontSize: '0.88rem', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 7 }}
                   >
-                    <Smartphone size={15} /> Watch & Earn (App)
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('withdraw')}
-                    className="btn btn-cyan"
-                    style={{ padding: '9px 18px', fontSize: '0.88rem', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 6 }}
-                  >
-                    <ArrowUpRight size={15} /> Withdraw Cash
+                    <img src="/payment-methods/image.png" alt="" style={{ width: 17, height: 17, borderRadius: '50%' }} /> Watch & Earn (App)
                   </button>
                 </div>
               </div>
@@ -788,11 +844,11 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                   </button>
                 </div>
 
-                {/* 2. Daily Earning */}
+                {/* 2. Today's Earnings */}
                 <div className="glass-card responsive-kpi-card" style={{ padding: '20px', borderRadius: 16 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span className="font-mono" style={{ fontSize: '0.82rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
-                      Daily Earning
+                      Today’s Earnings
                     </span>
                     <span className="badge-pill" style={{ fontSize: '0.68rem', padding: '2px 7px', background: '#dcfce7', color: '#15803d', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
                       <Sparkles size={12} color="#16a34a" /> TODAY
@@ -809,8 +865,24 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                   </div>
                 </div>
 
-                {/* 3. Total Earned */}
+                {/* 3. Total Watched (Sits side-by-side with Today's Earnings on phones!) */}
                 <div className="glass-card responsive-kpi-card" style={{ padding: '20px', borderRadius: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span className="font-mono" style={{ fontSize: '0.82rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
+                      Total Watched
+                    </span>
+                    <Play size={18} color="#0284c7" />
+                  </div>
+                  <div className="font-mono responsive-kpi-val" style={{ fontSize: '2.3rem', fontWeight: 800, color: '#0284c7', marginTop: 6, lineHeight: 1 }}>
+                    {watchHistory.filter((t) => t.status === 'completed').length}
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 6 }}>
+                    Completed video tasks
+                  </div>
+                </div>
+
+                {/* 4. Total Earned (Hidden on mobile phones, visible on desktop) */}
+                <div className="glass-card responsive-kpi-card desktop-only-kpi" style={{ padding: '20px', borderRadius: 16 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span className="font-mono" style={{ fontSize: '0.82rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
                       Total Earned
@@ -825,8 +897,8 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                   </div>
                 </div>
 
-                {/* 3. Total Withdrawn */}
-                <div className="glass-card responsive-kpi-card" style={{ padding: '20px', borderRadius: 16 }}>
+                {/* 5. Total Withdrawn (Hidden on mobile phones, visible on desktop) */}
+                <div className="glass-card responsive-kpi-card desktop-only-kpi" style={{ padding: '20px', borderRadius: 16 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span className="font-mono" style={{ fontSize: '0.82rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
                       Total Withdrawn
@@ -857,9 +929,18 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                  <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--primary-neon)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Smartphone size={24} />
-                  </div>
+                  <img
+                    src="/payment-methods/image.png"
+                    alt="myYT Mobile App"
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: '50%',
+                      objectFit: 'contain',
+                      flexShrink: 0,
+                      boxShadow: '0 4px 14px rgba(14, 165, 233, 0.35)',
+                    }}
+                  />
                   <div>
                     <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1.02rem' }}>
                       Watch YouTube Videos & Earn Real Cash on Android App
@@ -1052,21 +1133,18 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
               >
                 {/* Left: Compact Icon & Headline */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div
+                  <img
+                    src="/payment-methods/image.png"
+                    alt="myYT Mobile App"
                     style={{
-                      width: 42,
-                      height: 42,
-                      borderRadius: 10,
-                      background: 'rgba(255, 255, 255, 0.16)',
-                      border: '1px solid rgba(255, 255, 255, 0.28)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
+                      width: 46,
+                      height: 46,
+                      borderRadius: '50%',
+                      objectFit: 'contain',
                       flexShrink: 0,
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.25)',
                     }}
-                  >
-                    <Smartphone size={22} color="#ffffff" />
-                  </div>
+                  />
 
                   <div>
                     <div className="font-display apk-banner-title" style={{ fontSize: '1.25rem', color: '#ffffff', letterSpacing: '0.01em', margin: 0, lineHeight: 1.2 }}>
@@ -1156,7 +1234,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
 
                   {/* 2. Total Videos Watched */}
                   <div className="viewer-stats-card" style={{ background: '#f8fafc', padding: '14px 18px', borderRadius: 14, border: '1px solid #e2e8f0' }}>
-                    <div style={{ fontSize: '0.78rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>Videos Watched</div>
+                    <div style={{ fontSize: '0.78rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>Total Watched</div>
                     <div className="font-mono kpi-number" style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', marginTop: 3 }}>
                       {watchHistory.filter((t) => t.status === 'completed').length}
                     </div>
@@ -1181,7 +1259,18 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
 
                 {!watchHistory.length ? (
                   <div style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b', fontSize: '0.92rem' }}>
-                    <Smartphone size={40} color="#94a3b8" style={{ margin: '0 auto 12px auto', display: 'block' }} />
+                    <img
+                      src="/payment-methods/image.png"
+                      alt="myYT App"
+                      style={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: '50%',
+                        margin: '0 auto 12px auto',
+                        display: 'block',
+                        boxShadow: '0 4px 14px rgba(14, 165, 233, 0.3)',
+                      }}
+                    />
                     <strong style={{ fontSize: '1.05rem', color: '#0f172a', display: 'block' }}>
                       No videos recorded in your watch ledger yet
                     </strong>
@@ -1804,7 +1893,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                     <div className="glass-card responsive-kpi-card" style={{ padding: '18px', borderRadius: 16, border: '1.5px solid rgba(14, 165, 233, 0.3)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span className="font-mono" style={{ fontSize: '0.8rem', color: 'var(--primary-neon)', textTransform: 'uppercase', fontWeight: 700 }}>
-                          Videos Watched
+                          Total Watched
                         </span>
                         <PlaySquare size={18} color="var(--primary-neon)" />
                       </div>
@@ -1911,7 +2000,282 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
           )}
 
           {/* =========================================================================
-              TAB 5: ACCOUNT PROFILE & PERSONAL SETTINGS
+              TAB 5: REFERRALS (10% COMMISSION)
+              ========================================================================= */}
+          {activeTab === 'referrals' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              {/* Header & Description */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                <div>
+                  <h1 className="font-display" style={{ fontSize: 'clamp(1.4rem, 5vw, 1.85rem)', color: '#0f172a', margin: 0, letterSpacing: '0.01em' }}>
+                    REFERRAL PROGRAM
+                  </h1>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '0.88rem', color: '#64748b' }}>
+                    Earn <strong style={{ color: 'var(--primary-neon)' }}>10% lifetime cash commission</strong> from every video task reward completed by your friends.
+                  </p>
+                </div>
+
+                <button
+                  onClick={fetchReferralStats}
+                  className="btn btn-ghost"
+                  style={{ padding: '8px 14px', fontSize: '0.82rem', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  <RefreshCw size={14} className={referralLoading ? 'animate-spin' : ''} /> Refresh Stats
+                </button>
+              </div>
+
+              {/* Share Your Referral Link Banner */}
+              <div
+                className="glass-card"
+                style={{
+                  background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #f8fafc 100%)',
+                  border: '1.5px solid rgba(14, 165, 233, 0.4)',
+                  borderRadius: 18,
+                  padding: '24px',
+                  position: 'relative',
+                  overflow: 'hidden',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--primary-neon)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Share2 size={18} />
+                  </div>
+                  <div>
+                    <h3 className="font-display" style={{ margin: 0, fontSize: '1.15rem', color: '#0f172a' }}>
+                      YOUR UNIQUE INVITE LINK
+                    </h3>
+                    <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                      Share this link. Anyone who registers will be permanently linked to your account.
+                    </div>
+                  </div>
+                </div>
+
+                {/* Link Box with Copy Button */}
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginTop: 12 }}>
+                  <div
+                    style={{
+                      flex: 1,
+                      minWidth: 260,
+                      background: '#ffffff',
+                      border: '1.5px solid #cbd5e1',
+                      borderRadius: 12,
+                      padding: '10px 14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 8,
+                    }}
+                  >
+                    <span
+                      className="font-mono"
+                      style={{
+                        fontSize: '0.88rem',
+                        color: '#0f172a',
+                        fontWeight: 600,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {`${window.location.origin}/?ref=${referralStats?.referralCode || user.referralCode || 'MYYT'}`}
+                    </span>
+                  </div>
+
+                  <button
+                    onClick={() => handleCopyReferral(`${window.location.origin}/?ref=${referralStats?.referralCode || user.referralCode || 'MYYT'}`)}
+                    className="btn btn-neon glow-neon"
+                    style={{
+                      padding: '10px 20px',
+                      fontSize: '0.88rem',
+                      borderRadius: 12,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 7,
+                      fontWeight: 700,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {referralCopied ? <Check size={16} /> : <Copy size={16} />}
+                    <span>{referralCopied ? 'Copied Link!' : 'Copy Link'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleCopyReferral(referralStats?.referralCode || user.referralCode || 'MYYT')}
+                    className="btn btn-ghost"
+                    style={{
+                      padding: '10px 16px',
+                      fontSize: '0.85rem',
+                      borderRadius: 12,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      border: '1px solid #cbd5e1',
+                      background: '#ffffff',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    <span style={{ color: '#64748b' }}>Code:</span>
+                    <strong className="font-mono" style={{ color: 'var(--primary-neon)' }}>
+                      {referralStats?.referralCode || user.referralCode || 'MYYT'}
+                    </strong>
+                  </button>
+                </div>
+              </div>
+
+              {/* 3 Metric Cards */}
+              <div className="responsive-kpi-grid">
+                {/* 1. Commission Rate */}
+                <div className="glass-card responsive-kpi-card" style={{ padding: '20px', borderRadius: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span className="font-mono" style={{ fontSize: '0.82rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
+                      Commission Rate
+                    </span>
+                    <Gift size={18} color="var(--primary-neon)" />
+                  </div>
+                  <div className="font-mono responsive-kpi-val" style={{ fontSize: '2.3rem', fontWeight: 800, color: 'var(--primary-neon)', marginTop: 6, lineHeight: 1 }}>
+                    10%
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 8 }}>
+                    Lifetime rate on all video rewards
+                  </div>
+                </div>
+
+                {/* 2. Total Referrals */}
+                <div className="glass-card responsive-kpi-card" style={{ padding: '20px', borderRadius: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span className="font-mono" style={{ fontSize: '0.82rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
+                      Friends Referred
+                    </span>
+                    <Users size={18} color="#059669" />
+                  </div>
+                  <div className="font-mono responsive-kpi-val" style={{ fontSize: '2.3rem', fontWeight: 800, color: '#059669', marginTop: 6, lineHeight: 1 }}>
+                    {(referralStats?.referralCount ?? user.referralCount ?? 0).toLocaleString()}
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 8 }}>
+                    Registered users via your link
+                  </div>
+                </div>
+
+                {/* 3. Total Referral Earnings */}
+                <div className="glass-card responsive-kpi-card" style={{ padding: '20px', borderRadius: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span className="font-mono" style={{ fontSize: '0.82rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
+                      Referral Earnings
+                    </span>
+                    <Sparkles size={18} color="#7c3aed" />
+                  </div>
+                  <div className="font-mono responsive-kpi-val" style={{ fontSize: '2.3rem', fontWeight: 800, color: '#7c3aed', marginTop: 6, lineHeight: 1 }}>
+                    ${(referralStats?.referralEarnings ?? user.referralEarnings ?? 0).toFixed(4)}
+                  </div>
+                  <div className="font-mono" style={{ fontSize: '0.84rem', color: '#059669', fontWeight: 600, marginTop: 4 }}>
+                    ≈ ৳{Math.round(((referralStats?.referralEarnings ?? user.referralEarnings ?? 0) * bdtRate)).toLocaleString()} BDT
+                  </div>
+                </div>
+              </div>
+
+              {/* How It Works (3 Steps) */}
+              <div className="glass-card" style={{ padding: '22px', borderRadius: 16 }}>
+                <h3 className="font-display" style={{ margin: '0 0 16px 0', fontSize: '1.2rem', color: '#0f172a' }}>
+                  HOW 10% REFERRAL COMMISSION WORKS
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+                  <div style={{ background: '#f8fafc', padding: '16px', borderRadius: 14, border: '1px solid #e2e8f0' }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--primary-neon)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.85rem', marginBottom: 10 }}>
+                      1
+                    </div>
+                    <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.94rem' }}>Share Your Link</div>
+                    <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: 4 }}>
+                      Invite friends, YouTubers, or communities using your custom link or code.
+                    </div>
+                  </div>
+
+                  <div style={{ background: '#f8fafc', padding: '16px', borderRadius: 14, border: '1px solid #e2e8f0' }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 8, background: '#059669', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.85rem', marginBottom: 10 }}>
+                      2
+                    </div>
+                    <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.94rem' }}>They Watch Videos</div>
+                    <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: 4 }}>
+                      Whenever they watch YouTube videos and earn cash rewards on the mobile app,
+                    </div>
+                  </div>
+
+                  <div style={{ background: '#f8fafc', padding: '16px', borderRadius: 14, border: '1px solid #e2e8f0' }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 8, background: '#7c3aed', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.85rem', marginBottom: 10 }}>
+                      3
+                    </div>
+                    <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.94rem' }}>Instant 10% Cash</div>
+                    <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: 4 }}>
+                      You receive 10% bonus instantly in your wallet balance, ready to withdraw anytime!
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Commission Ledger Table */}
+              <div className="glass-card" style={{ padding: '22px', borderRadius: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                  <h3 className="font-display" style={{ fontSize: '1.2rem', color: '#0f172a', margin: 0 }}>
+                    COMMISSION HISTORY
+                  </h3>
+                  <span style={{ fontSize: '0.82rem', color: '#64748b' }}>
+                    {(referralStats?.recentCommissions || []).length} recorded payouts
+                  </span>
+                </div>
+
+                {(!referralStats?.recentCommissions || referralStats.recentCommissions.length === 0) ? (
+                  <div style={{ textAlign: 'center', padding: '36px 16px', color: '#64748b' }}>
+                    <Gift size={38} color="#94a3b8" style={{ margin: '0 auto 10px auto', display: 'block' }} />
+                    <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#334155' }}>No referral commissions earned yet</div>
+                    <div style={{ fontSize: '0.82rem', marginTop: 4, maxWidth: 360, margin: '4px auto 0 auto' }}>
+                      Copy your referral link above and share it with friends to start earning 10% passive commission automatically!
+                    </div>
+                  </div>
+                ) : (
+                  <div className="table-responsive" style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid #e2e8f0', textAlign: 'left', color: '#64748b' }}>
+                          <th style={{ padding: '10px 12px' }}>Date</th>
+                          <th style={{ padding: '10px 12px' }}>Type</th>
+                          <th style={{ padding: '10px 12px' }}>Description</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'right' }}>Commission</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'center' }}>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {referralStats.recentCommissions.map((comm: any) => (
+                          <tr key={comm._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '10px 12px', color: '#475569', whiteSpace: 'nowrap' }}>
+                              {new Date(comm.createdAt).toLocaleDateString()} {new Date(comm.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </td>
+                            <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                              <span className="badge-pill" style={{ fontSize: '0.7rem', padding: '2px 8px', background: '#f3e8ff', color: '#7c3aed', fontWeight: 700 }}>
+                                10% Referral
+                              </span>
+                            </td>
+                            <td style={{ padding: '10px 12px', color: '#334155' }}>
+                              {comm.description || '10% Commission on referral task completion'}
+                            </td>
+                            <td className="font-mono" style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 700, color: '#059669', whiteSpace: 'nowrap' }}>
+                              +${(comm.amount || 0).toFixed(4)} USD
+                            </td>
+                            <td style={{ padding: '10px 12px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                              <span className="badge-pill" style={{ fontSize: '0.7rem', padding: '2px 8px', background: '#dcfce7', color: '#15803d', fontWeight: 700 }}>
+                                Completed
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* =========================================================================
+              TAB 6: ACCOUNT PROFILE & PERSONAL SETTINGS
               ========================================================================= */}
           {activeTab === 'profile' && (
             <ProfileSettingsSection user={user} onRefreshUser={onRefreshUser} />

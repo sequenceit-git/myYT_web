@@ -2,7 +2,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ITransaction extends Document {
   userId: mongoose.Types.ObjectId;
-  type: 'deposit' | 'earning' | 'campaign_spend' | 'payout' | 'refund' | 'admin_adjustment' | 'watch_credit' | 'credit_conversion';
+  type: 'deposit' | 'earning' | 'referral_commission' | 'campaign_spend' | 'payout' | 'refund' | 'admin_adjustment' | 'watch_credit' | 'credit_conversion';
   amount: number; // positive for credits, negative for debits
   balanceAfter: number;
   status: 'completed' | 'pending' | 'failed';
@@ -21,6 +21,7 @@ const TransactionSchema = new Schema<ITransaction>(
       enum: [
         'deposit',
         'earning',
+        'referral_commission',
         'campaign_spend',
         'payout',
         'refund',

@@ -668,6 +668,10 @@ h1, h2, h3, h4, h5, h6 {
     grid-column: span 2;
   }
 
+  .desktop-only-kpi {
+    display: none !important;
+  }
+
   .responsive-kpi-card {
     padding: 14px 12px !important;
     border-radius: 14px !important;
@@ -696,16 +700,20 @@ h1, h2, h3, h4, h5, h6 {
 
 @media (max-width: 380px) {
   .responsive-kpi-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
     gap: 8px;
   }
 
   .responsive-kpi-featured {
-    grid-column: span 1;
+    grid-column: span 2;
+  }
+
+  .responsive-kpi-card {
+    padding: 12px 8px !important;
   }
 
   .responsive-kpi-val {
-    font-size: 1.35rem !important;
+    font-size: 1.25rem !important;
   }
 }
 

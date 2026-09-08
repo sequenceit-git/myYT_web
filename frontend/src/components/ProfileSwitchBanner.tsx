@@ -60,11 +60,11 @@ export const ProfileSwitchBanner: React.FC<ProfileSwitchBannerProps> = ({
       }}
     >
       {/* Left: Compact Icon & Headline */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: '1 1 auto' }}>
         <div
           style={{
-            width: 40,
-            height: 40,
+            width: 36,
+            height: 36,
             borderRadius: 10,
             background: 'rgba(255, 255, 255, 0.15)',
             border: '1px solid rgba(255, 255, 255, 0.25)',
@@ -74,10 +74,21 @@ export const ProfileSwitchBanner: React.FC<ProfileSwitchBannerProps> = ({
             flexShrink: 0,
           }}
         >
-          {isViewer ? <Rocket size={20} color="#ffffff" /> : <PlaySquare size={20} color="#ffffff" />}
+          {isViewer ? <Rocket size={18} color="#ffffff" /> : <PlaySquare size={18} color="#ffffff" />}
         </div>
 
-        <div className="font-display" style={{ fontSize: 'clamp(0.95rem, 4.2vw, 1.22rem)', color: '#ffffff', letterSpacing: '0.01em', margin: 0 }}>
+        <div
+          className="font-display"
+          style={{
+            fontSize: 'clamp(0.68rem, 2.9vw, 1.12rem)',
+            color: '#ffffff',
+            letterSpacing: '0.01em',
+            margin: 0,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
           {isViewer ? (
             <>
               PROMOTE YOUR VIDEOS WITH{' '}

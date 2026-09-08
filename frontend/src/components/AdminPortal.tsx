@@ -78,13 +78,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
 
   // Pricing & Cooldown Engine States
   const [pricingTiers, setPricingTiers] = useState<PricingTierItem[]>([
-    { duration: 10, campaignerCost: 0.0035, viewerReward: 0.0020 },
-    { duration: 15, campaignerCost: 0.0050, viewerReward: 0.0030 },
-    { duration: 30, campaignerCost: 0.0080, viewerReward: 0.0052 },
-    { duration: 45, campaignerCost: 0.0120, viewerReward: 0.0080 },
-    { duration: 60, campaignerCost: 0.0160, viewerReward: 0.0105 },
-    { duration: 90, campaignerCost: 0.0240, viewerReward: 0.0160 },
-    { duration: 120, campaignerCost: 0.0320, viewerReward: 0.0210 },
+    { duration: 8, campaignerCost: 0.0040, viewerReward: 0.0028 },
+    { duration: 16, campaignerCost: 0.0055, viewerReward: 0.0039 },
+    { duration: 45, campaignerCost: 0.0088, viewerReward: 0.0062 },
+    { duration: 60, campaignerCost: 0.0100, viewerReward: 0.0072 },
+    { duration: 120, campaignerCost: 0.0150, viewerReward: 0.0110 },
+    { duration: 180, campaignerCost: 0.0210, viewerReward: 0.0155 },
+    { duration: 300, campaignerCost: 0.0320, viewerReward: 0.0240 },
   ]);
   const [pricingSaving, setPricingSaving] = useState(false);
 
@@ -201,13 +201,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
 
   const handleResetPricing = () => {
     const defaultTiers: PricingTierItem[] = [
-      { duration: 10, campaignerCost: 0.0035, viewerReward: 0.0020 },
-      { duration: 15, campaignerCost: 0.0050, viewerReward: 0.0030 },
-      { duration: 30, campaignerCost: 0.0080, viewerReward: 0.0052 },
-      { duration: 45, campaignerCost: 0.0120, viewerReward: 0.0080 },
-      { duration: 60, campaignerCost: 0.0160, viewerReward: 0.0105 },
-      { duration: 90, campaignerCost: 0.0240, viewerReward: 0.0160 },
-      { duration: 120, campaignerCost: 0.0320, viewerReward: 0.0210 },
+      { duration: 8, campaignerCost: 0.0040, viewerReward: 0.0028 },
+      { duration: 16, campaignerCost: 0.0055, viewerReward: 0.0039 },
+      { duration: 45, campaignerCost: 0.0088, viewerReward: 0.0062 },
+      { duration: 60, campaignerCost: 0.0100, viewerReward: 0.0072 },
+      { duration: 120, campaignerCost: 0.0150, viewerReward: 0.0110 },
+      { duration: 180, campaignerCost: 0.0210, viewerReward: 0.0155 },
+      { duration: 300, campaignerCost: 0.0320, viewerReward: 0.0240 },
     ];
     setPricingTiers(defaultTiers);
     setActionNotice({ type: 'success', message: 'Reset to standard defaults. Click Save Pricing Rules to apply.' });

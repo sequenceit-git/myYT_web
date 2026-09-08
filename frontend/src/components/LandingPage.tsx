@@ -37,23 +37,26 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   // Viewer Calculator State
   const [calcVideosPerDay, setCalcVideosPerDay] = useState(60);
-  const [calcDuration, setCalcDuration] = useState<number>(30);
+  const [calcDuration, setCalcDuration] = useState<number>(45);
 
   // Campaigner Estimator State (index.txt logic)
   const [campaignViews, setCampaignViews] = useState(1000);
-  const [campaignDuration, setCampaignDuration] = useState<number>(10);
+  const [campaignDuration, setCampaignDuration] = useState<number>(16);
 
   // FAQ Accordion Open State
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   // Calculations for Viewer
   const viewerRewardPerVideo: Record<number, number> = {
-    10: 0.0035,
-    30: 0.0052,
+    8: 0.0028,
+    16: 0.0039,
+    45: 0.0062,
     60: 0.0072,
     120: 0.0110,
+    180: 0.0155,
+    300: 0.0240,
   };
-  const rewardPerVideo = viewerRewardPerVideo[calcDuration] || 0.0052;
+  const rewardPerVideo = viewerRewardPerVideo[calcDuration] || 0.0062;
   const dailyEarningsUSD = calcVideosPerDay * rewardPerVideo;
   const monthlyEarningsUSD = dailyEarningsUSD * 30;
   const { usdToBdt } = useExchangeRate();
@@ -62,12 +65,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   // Calculations for Campaigner from index.txt
   const basePrice = 5;
   const durationMultiplier: Record<number, number> = {
-    10: 1.0,
-    30: 1.5,
+    8: 0.8,
+    16: 1.1,
+    45: 1.76,
     60: 2.0,
     120: 3.0,
+    180: 4.2,
+    300: 6.4,
   };
-  const currentMult = durationMultiplier[campaignDuration] || 1.0;
+  const currentMult = durationMultiplier[campaignDuration] || 1.1;
   const campaignTotalUSD = Number(((campaignViews / 1000) * basePrice * currentMult).toFixed(2));
   const campaignTotalBDT = campaignTotalUSD * usdToBdt;
   const costPerView = Number((campaignTotalUSD / campaignViews).toFixed(4));
@@ -76,7 +82,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const faqs = [
     {
       q: 'How do I withdraw my earnings?',
-      a: 'Withdrawals are supported directly to bKash and Nagad (Personal MFS accounts), FaucetPay, WebMoney, and Direct Crypto (USDT TRC20 / LTC). Once your balance reaches $0.50, you can request an instant cashout from your wallet.',
+      a: 'Withdrawals are supported directly to bKash and Nagad (Personal MFS accounts), FaucetPay, WebMoney, and Direct Crypto (USDT TRC20 / LTC). Once your balance reaches $0.20, you can request an instant cashout from your wallet.',
     },
     {
       q: 'Is signing in with Google safe and required?',
@@ -299,13 +305,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Clock size={15} color="var(--primary-neon)" />
                 <span style={{ fontSize: '0.75rem', color: 'var(--on-surface-variant)' }}>
-                  10s – 120s Retention
+                  8s–300s Retention
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Wallet size={15} color="#059669" />
                 <span style={{ fontSize: '0.75rem', color: 'var(--on-surface-variant)' }}>
-                  Min Payout $0.50
+                  Min Payout $0.20
                 </span>
               </div>
             </div>
@@ -654,7 +660,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </div>
                 <h3 style={{ fontSize: '1.02rem', color: '#0f172a', fontWeight: 600 }}>Watch YouTube Videos</h3>
                 <p style={{ color: 'var(--on-surface-variant)', fontSize: '0.82rem', lineHeight: 1.55 }}>
-                  Watch official short YouTube videos for 10s, 30s, 60s, or 120s directly on the official YouTube player without interruptions.
+                  Watch official short YouTube videos for 8s to 300s directly on the official YouTube player without interruptions.
                 </p>
               </div>
 
@@ -702,7 +708,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </div>
                 <h3 style={{ fontSize: '1.02rem', color: '#0f172a', fontWeight: 600 }}>Instant Cashout</h3>
                 <p style={{ color: 'var(--on-surface-variant)', fontSize: '0.82rem', lineHeight: 1.55 }}>
-                  Withdraw your hard-earned cash directly to bKash, Nagad, FaucetPay, WebMoney, or USDT with minimal threshold of only $0.50.
+                  Withdraw your hard-earned cash directly to bKash, Nagad, FaucetPay, WebMoney, or USDT with minimal threshold of only $0.20.
                 </p>
               </div>
             </>
@@ -752,7 +758,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </div>
                 <h3 style={{ fontSize: '1.02rem', color: '#0f172a', fontWeight: 600 }}>Choose Views & Duration</h3>
                 <p style={{ color: 'var(--on-surface-variant)', fontSize: '0.82rem', lineHeight: 1.55 }}>
-                  Pick your required watch duration (10s, 30s, 1 Min, 2 Min) to guarantee maximum viewer retention and YouTube algorithm boost.
+                  Pick your required watch duration (8s, 16s, 45s, 60s, 120s, 180s, 300s) to guarantee maximum viewer retention and YouTube algorithm boost.
                 </p>
               </div>
 
@@ -875,10 +881,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </span>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
                 {[
-                  { sec: 10, label: '10s' },
-                  { sec: 30, label: '30s' },
-                  { sec: 60, label: '1 Min' },
+                  { sec: 8, label: '8s' },
+                  { sec: 16, label: '16s' },
+                  { sec: 45, label: '45s' },
+                  { sec: 60, label: '60s' },
                   { sec: 120, label: '2 Min' },
+                  { sec: 180, label: '3 Min' },
+                  { sec: 300, label: '5 Min' },
                 ].map((item) => (
                   <button
                     key={item.sec}
@@ -1009,10 +1018,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </span>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
                 {[
-                  { sec: 10, label: '10s (1x)' },
-                  { sec: 30, label: '30s (1.5x)' },
+                  { sec: 8, label: '8s (0.8x)' },
+                  { sec: 16, label: '16s (1.1x)' },
+                  { sec: 45, label: '45s (1.7x)' },
                   { sec: 60, label: '1 Min (2x)' },
                   { sec: 120, label: '2 Min (3x)' },
+                  { sec: 180, label: '3 Min (4.2x)' },
+                  { sec: 300, label: '5 Min (6.4x)' },
                 ].map((item) => (
                   <button
                     key={item.sec}
