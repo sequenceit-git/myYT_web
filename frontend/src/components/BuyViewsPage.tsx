@@ -36,14 +36,19 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
 
   // Fetch dynamic admin-configured pricing tiers
   useEffect(() => {
-    apiRequest<any[]>('/campaigns/pricing-tiers')
+    apiRequest<any>('/campaigns/pricing-tiers')
       .then((res) => {
-        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
-          const mapped = res.data.map((t: any) => ({
-            sec: t.duration,
-            ratePerView: t.campaignerCost,
-          }));
-          setPresets(mapped);
+        if (res.success && res.data) {
+          const raw = Array.isArray(res.data)
+            ? res.data
+            : (res.data.pricingTiersList || (res.data.pricingTiers ? Object.entries(res.data.pricingTiers).map(([sec, t]: [string, any]) => ({ duration: parseInt(sec, 10), campaignerCost: t.campaignerCost })) : []));
+          if (Array.isArray(raw) && raw.length > 0) {
+            const mapped = raw.map((t: any) => ({
+              sec: t.duration,
+              ratePerView: t.campaignerCost,
+            }));
+            setPresets(mapped);
+          }
         }
       })
       .catch(() => {});

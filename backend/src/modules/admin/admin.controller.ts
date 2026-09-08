@@ -24,7 +24,16 @@ export const getSystemPricingTiers = async (): Promise<Record<number, { campaign
   try {
     const setting = await Setting.findOne({ key: 'pricing_tiers' });
     if (setting && setting.value && typeof setting.value === 'object') {
-      return setting.value;
+      const val = setting.value as Record<string, any>;
+      // Check if it has real duration keys (e.g., 8, 16, 45, etc.) and not just array indices
+      const numericKeys = Object.keys(val).map((k) => parseInt(k, 10));
+      const hasRealDurations = numericKeys.some((k) => [8, 16, 45, 60, 120, 180, 300].includes(k));
+      if (hasRealDurations) {
+        return {
+          ...config.pricingTiers,
+          ...val,
+        };
+      }
     }
   } catch {
     // fallback
@@ -32,21 +41,72 @@ export const getSystemPricingTiers = async (): Promise<Record<number, { campaign
   return config.pricingTiers;
 };
 
-export const getSystemCooldownSettings = async (): Promise<{ enableCooldown: boolean; videoCooldownSeconds: number }> => {
+export const formatPricingTiersList = (tiers: Record<number, { campaignerCost: number; viewerReward: number }>) => {
+  return Object.entries(tiers)
+    .map(([sec, t]) => ({
+      duration: parseInt(sec, 10),
+      campaignerCost: Number(t.campaignerCost),
+      viewerReward: Number(t.viewerReward),
+    }))
+    .filter((item) => !isNaN(item.duration) && item.duration > 0)
+    .sort((a, b) => a.duration - b.duration);
+};
+
+export const getSystemCooldownSettings = async (): Promise<{
+  enableCooldown: boolean;
+  videoCooldownSeconds: number;
+  enabled: boolean;
+  durationSeconds: number;
+}> => {
+  let isEnabled = config.enableCooldown;
+  let seconds = config.videoCooldownSeconds;
   try {
     const setting = await Setting.findOne({ key: 'cooldown_settings' });
     if (setting && setting.value && typeof setting.value === 'object') {
-      return {
-        enableCooldown: typeof setting.value.enableCooldown === 'boolean' ? setting.value.enableCooldown : config.enableCooldown,
-        videoCooldownSeconds: typeof setting.value.videoCooldownSeconds === 'number' ? setting.value.videoCooldownSeconds : config.videoCooldownSeconds,
-      };
+      const val = setting.value as any;
+      if (typeof val.enableCooldown === 'boolean') isEnabled = val.enableCooldown;
+      else if (typeof val.enabled === 'boolean') isEnabled = val.enabled;
+
+      if (typeof val.videoCooldownSeconds === 'number') seconds = val.videoCooldownSeconds;
+      else if (typeof val.durationSeconds === 'number') seconds = val.durationSeconds;
     }
   } catch {
     // fallback
   }
   return {
-    enableCooldown: config.enableCooldown,
-    videoCooldownSeconds: config.videoCooldownSeconds,
+    enableCooldown: isEnabled,
+    videoCooldownSeconds: seconds,
+    enabled: isEnabled,
+    durationSeconds: seconds,
+  };
+};
+
+export const getSystemDailyLimitSettings = async (): Promise<{
+  enableDailyLimit: boolean;
+  maxDailyVideos: number;
+  enabled: boolean;
+  limit: number;
+}> => {
+  let isEnabled = false;
+  let limit = 50;
+  try {
+    const setting = await Setting.findOne({ key: 'daily_limit_settings' });
+    if (setting && setting.value && typeof setting.value === 'object') {
+      const val = setting.value as any;
+      if (typeof val.enableDailyLimit === 'boolean') isEnabled = val.enableDailyLimit;
+      else if (typeof val.enabled === 'boolean') isEnabled = val.enabled;
+
+      if (typeof val.maxDailyVideos === 'number') limit = val.maxDailyVideos;
+      else if (typeof val.limit === 'number') limit = val.limit;
+    }
+  } catch {
+    // fallback
+  }
+  return {
+    enableDailyLimit: isEnabled,
+    maxDailyVideos: limit,
+    enabled: isEnabled,
+    limit,
   };
 };
 
@@ -318,17 +378,23 @@ router.post('/payouts/:id/reject', requireAdmin, async (req: AuthRequest, res: R
 // GET /api/admin/settings - Platform configurations
 router.get('/settings', requireAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const [usdToBdt, pricingTiers, cooldownSettings] = await Promise.all([
+    const [usdToBdt, pricingTiers, cooldownSettings, dailyLimitSettings] = await Promise.all([
       getSystemExchangeRate(),
       getSystemPricingTiers(),
       getSystemCooldownSettings(),
+      getSystemDailyLimitSettings(),
     ]);
+
+    const pricingTiersList = formatPricingTiersList(pricingTiers);
+
     res.json({
       success: true,
       data: {
         usdToBdt,
         pricingTiers,
+        pricingTiersList,
         cooldownSettings,
+        dailyLimitSettings,
       },
     });
   } catch (error: any) {
@@ -339,8 +405,9 @@ router.get('/settings', requireAdmin, async (_req: AuthRequest, res: Response): 
 // POST /api/admin/settings/exchange-rate - Update USD to BDT dollar price
 router.post('/settings/exchange-rate', requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { usdToBdt } = req.body;
-    const rate = Number(usdToBdt);
+    const { usdToBdt, rate: rawRate } = req.body;
+    const val = usdToBdt !== undefined ? usdToBdt : rawRate;
+    const rate = Number(val);
     if (!rate || isNaN(rate) || rate < 10 || rate > 500) {
       res.status(400).json({ success: false, error: 'Please enter a valid dollar exchange rate (between 10 and 500 BDT)' });
       return;
@@ -366,26 +433,47 @@ router.post('/settings/exchange-rate', requireAdmin, async (req: AuthRequest, re
 router.post('/settings/pricing', requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { pricingTiers } = req.body;
-    if (!pricingTiers || typeof pricingTiers !== 'object') {
-      res.status(400).json({ success: false, error: 'Valid pricing tiers object is required' });
+    if (!pricingTiers || (typeof pricingTiers !== 'object' && !Array.isArray(pricingTiers))) {
+      res.status(400).json({ success: false, error: 'Valid pricing tiers array or object is required' });
       return;
     }
 
-    // Clean and validate tier numbers
+    // Clean and validate tier numbers whether submitted as Array or Object
     const cleanTiers: Record<number, { campaignerCost: number; viewerReward: number }> = {};
-    for (const [secStr, tierObj] of Object.entries(pricingTiers)) {
-      const sec = parseInt(secStr, 10);
-      const t = tierObj as any;
-      if (!isNaN(sec) && sec > 0 && t && typeof t === 'object') {
-        const cost = Number(t.campaignerCost);
-        const reward = Number(t.viewerReward);
-        if (!isNaN(cost) && cost > 0 && !isNaN(reward) && reward >= 0) {
+
+    if (Array.isArray(pricingTiers)) {
+      for (const item of pricingTiers) {
+        if (!item || typeof item !== 'object') continue;
+        const sec = parseInt(item.duration, 10);
+        const cost = Number(item.campaignerCost);
+        const reward = Number(item.viewerReward);
+        if (!isNaN(sec) && sec > 0 && !isNaN(cost) && cost > 0 && !isNaN(reward) && reward >= 0) {
           cleanTiers[sec] = {
             campaignerCost: Number(cost.toFixed(4)),
             viewerReward: Number(reward.toFixed(4)),
           };
         }
       }
+    } else {
+      for (const [secStr, tierObj] of Object.entries(pricingTiers)) {
+        const sec = parseInt(secStr, 10);
+        const t = tierObj as any;
+        if (!isNaN(sec) && sec > 0 && t && typeof t === 'object') {
+          const cost = Number(t.campaignerCost);
+          const reward = Number(t.viewerReward);
+          if (!isNaN(cost) && cost > 0 && !isNaN(reward) && reward >= 0) {
+            cleanTiers[sec] = {
+              campaignerCost: Number(cost.toFixed(4)),
+              viewerReward: Number(reward.toFixed(4)),
+            };
+          }
+        }
+      }
+    }
+
+    if (Object.keys(cleanTiers).length === 0) {
+      res.status(400).json({ success: false, error: 'At least one valid pricing tier is required' });
+      return;
     }
 
     const updated = await Setting.findOneAndUpdate(
@@ -397,9 +485,14 @@ router.post('/settings/pricing', requireAdmin, async (req: AuthRequest, res: Res
     // Sync in-memory config
     Object.assign(config.pricingTiers, cleanTiers);
 
+    const pricingTiersList = formatPricingTiersList(cleanTiers);
+
     res.json({
       success: true,
-      data: { pricingTiers: updated.value },
+      data: {
+        pricingTiers: updated.value,
+        pricingTiersList,
+      },
       message: 'Platform pricing tiers updated successfully!',
     });
   } catch (error: any) {
@@ -410,9 +503,10 @@ router.post('/settings/pricing', requireAdmin, async (req: AuthRequest, res: Res
 // POST /api/admin/settings/cooldown - Update cooldown timer & anti-spam rule
 router.post('/settings/cooldown', requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { enableCooldown, videoCooldownSeconds } = req.body;
-    const isEnabled = Boolean(enableCooldown);
-    const seconds = parseInt(videoCooldownSeconds, 10);
+    const { enableCooldown, videoCooldownSeconds, enabled, durationSeconds } = req.body;
+    const isEnabled = enabled !== undefined ? Boolean(enabled) : Boolean(enableCooldown);
+    const rawSeconds = durationSeconds !== undefined ? durationSeconds : videoCooldownSeconds;
+    const seconds = parseInt(String(rawSeconds), 10);
 
     if (isNaN(seconds) || seconds < 0 || seconds > 86400 * 7) {
       res.status(400).json({ success: false, error: 'Cooldown seconds must be between 0 and 604800 (7 days)' });
@@ -422,6 +516,8 @@ router.post('/settings/cooldown', requireAdmin, async (req: AuthRequest, res: Re
     const cooldownData = {
       enableCooldown: isEnabled,
       videoCooldownSeconds: seconds,
+      enabled: isEnabled,
+      durationSeconds: seconds,
     };
 
     const updated = await Setting.findOneAndUpdate(
@@ -436,8 +532,44 @@ router.post('/settings/cooldown', requireAdmin, async (req: AuthRequest, res: Re
 
     res.json({
       success: true,
-      data: { cooldownSettings: updated.value },
+      data: { cooldownSettings: cooldownData },
       message: `Cooldown settings updated! Cooldown is ${isEnabled ? `ENABLED (${seconds}s)` : 'DISABLED'}.`,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/admin/settings/daily-limit - Set maximum daily videos a viewer can watch
+router.post('/settings/daily-limit', requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { enableDailyLimit, maxDailyVideos, enabled, limit: rawLimit } = req.body;
+    const isEnabled = enabled !== undefined ? Boolean(enabled) : Boolean(enableDailyLimit);
+    const limitNum = rawLimit !== undefined ? rawLimit : maxDailyVideos;
+    const limit = parseInt(String(limitNum), 10);
+
+    if (isNaN(limit) || limit < 0 || limit > 100000) {
+      res.status(400).json({ success: false, error: 'Max daily videos must be a valid number between 0 and 100,000' });
+      return;
+    }
+
+    const limitData = {
+      enableDailyLimit: isEnabled,
+      maxDailyVideos: limit,
+      enabled: isEnabled,
+      limit,
+    };
+
+    const updated = await Setting.findOneAndUpdate(
+      { key: 'daily_limit_settings' },
+      { value: limitData, description: 'Viewer daily maximum video watch limit settings' },
+      { upsert: true, new: true }
+    );
+
+    res.json({
+      success: true,
+      data: { dailyLimitSettings: limitData },
+      message: `Daily watch limit updated! Daily limit is ${isEnabled ? `ACTIVE (${limit} videos/day)` : 'DISABLED (unlimited)'}.`,
     });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });

@@ -7,7 +7,7 @@ import { Transaction } from '../../models/Transaction.js';
 import { config } from '../../config/index.js';
 import { cacheService } from '../../services/cache.service.js';
 import { requireAuth, AuthRequest } from '../../middleware/auth.middleware.js';
-import { getSystemPricingTiers, getSystemCooldownSettings } from '../admin/admin.controller.js';
+import { getSystemPricingTiers, getSystemCooldownSettings, getSystemDailyLimitSettings } from '../admin/admin.controller.js';
 
 const router = Router();
 
@@ -15,6 +15,33 @@ const router = Router();
 router.get('/next', requireAuth, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user!._id.toString();
+
+    // Check daily video limit (if configured by admin)
+    const dailyLimitSettings = await getSystemDailyLimitSettings();
+    if (dailyLimitSettings.enableDailyLimit && dailyLimitSettings.maxDailyVideos > 0) {
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+
+      const todayWatchedCount = await Task.countDocuments({
+        viewerId: req.user!._id,
+        status: 'completed',
+        $or: [
+          { completedAt: { $gte: startOfDay } },
+          { createdAt: { $gte: startOfDay } },
+        ],
+      });
+
+      if (todayWatchedCount >= dailyLimitSettings.maxDailyVideos) {
+        res.status(429).json({
+          success: false,
+          error: `Daily video limit reached! You have completed ${todayWatchedCount}/${dailyLimitSettings.maxDailyVideos} videos today. Please return tomorrow after midnight to watch more!`,
+          dailyLimitReached: true,
+          todayWatchedCount,
+          maxDailyVideos: dailyLimitSettings.maxDailyVideos,
+        });
+        return;
+      }
+    }
 
     // Find active campaigns that still have views to deliver
     const activeCampaigns = await Campaign.find({

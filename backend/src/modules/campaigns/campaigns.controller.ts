@@ -7,7 +7,8 @@ import { Transaction } from '../../models/Transaction.js';
 import { Task } from '../../models/Task.js';
 import { config } from '../../config/index.js';
 import { requireAuth, AuthRequest } from '../../middleware/auth.middleware.js';
-import { getSystemPricingTiers } from '../admin/admin.controller.js';
+import { getSystemPricingTiers, formatPricingTiersList } from '../admin/admin.controller.js';
+import { cacheService } from '../../services/cache.service.js';
 
 const router = Router();
 
@@ -28,7 +29,13 @@ const createCampaignSchema = z.object({
 // Public pricing tiers endpoint
 router.get('/pricing-tiers', async (_req, res) => {
   const pricingTiers = await getSystemPricingTiers();
-  res.json({ success: true, data: { pricingTiers } });
+  const pricingTiersList = formatPricingTiersList(pricingTiers);
+  res.json({
+    success: true,
+    data: pricingTiersList,
+    pricingTiers,
+    pricingTiersList,
+  });
 });
 
 // Price calculator endpoint

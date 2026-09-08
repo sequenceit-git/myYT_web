@@ -865,8 +865,24 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                   </div>
                 </div>
 
-                {/* 3. Total Watched (Sits side-by-side with Today's Earnings on phones!) */}
+                {/* 3. Total Withdrawn (Visible on mobile view side-by-side with Today's Earnings!) */}
                 <div className="glass-card responsive-kpi-card" style={{ padding: '20px', borderRadius: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span className="font-mono" style={{ fontSize: '0.82rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
+                      Total Withdrawn
+                    </span>
+                    <CreditCard size={18} color="#7c3aed" />
+                  </div>
+                  <div className="font-mono responsive-kpi-val" style={{ fontSize: '2.3rem', fontWeight: 800, color: '#7c3aed', marginTop: 6, lineHeight: 1 }}>
+                    ${(user.totalWithdrawn || 0).toFixed(2)}
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 10 }}>
+                    Disbursed to bKash/Nagad/Crypto
+                  </div>
+                </div>
+
+                {/* 4. Total Watched (Hidden on mobile view, visible on desktop) */}
+                <div className="glass-card responsive-kpi-card desktop-only-kpi" style={{ padding: '20px', borderRadius: 16 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span className="font-mono" style={{ fontSize: '0.82rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
                       Total Watched
@@ -881,7 +897,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                   </div>
                 </div>
 
-                {/* 4. Total Earned (Hidden on mobile phones, visible on desktop) */}
+                {/* 5. Total Earned (Hidden on mobile phones, visible on desktop) */}
                 <div className="glass-card responsive-kpi-card desktop-only-kpi" style={{ padding: '20px', borderRadius: 16 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span className="font-mono" style={{ fontSize: '0.82rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
@@ -894,22 +910,6 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                   </div>
                   <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 10 }}>
                     Lifetime watch rewards
-                  </div>
-                </div>
-
-                {/* 5. Total Withdrawn (Hidden on mobile phones, visible on desktop) */}
-                <div className="glass-card responsive-kpi-card desktop-only-kpi" style={{ padding: '20px', borderRadius: 16 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span className="font-mono" style={{ fontSize: '0.82rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
-                      Total Withdrawn
-                    </span>
-                    <CreditCard size={18} color="#7c3aed" />
-                  </div>
-                  <div className="font-mono responsive-kpi-val" style={{ fontSize: '2.3rem', fontWeight: 800, color: '#7c3aed', marginTop: 6, lineHeight: 1 }}>
-                    ${(user.totalWithdrawn || 0).toFixed(2)}
-                  </div>
-                  <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 10 }}>
-                    Disbursed to bKash/Nagad/Crypto
                   </div>
                 </div>
               </div>

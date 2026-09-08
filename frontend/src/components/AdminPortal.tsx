@@ -42,6 +42,11 @@ export interface CooldownConfig {
   durationSeconds: number;
 }
 
+export interface DailyLimitConfig {
+  enableDailyLimit: boolean;
+  maxDailyVideos: number;
+}
+
 interface AdminPortalProps {
   user: User | null;
   onRefreshUser?: () => Promise<void> | void;
@@ -93,6 +98,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
     durationSeconds: 3600,
   });
   const [cooldownSaving, setCooldownSaving] = useState(false);
+
+  // Daily Video Limit Engine States
+  const [dailyLimitConfig, setDailyLimitConfig] = useState<DailyLimitConfig>({
+    enableDailyLimit: false,
+    maxDailyVideos: 50,
+  });
+  const [dailyLimitSaving, setDailyLimitSaving] = useState(false);
 
   // Telemetry & Data lists
   const [stats, setStats] = useState<any>(null);
@@ -156,7 +168,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
         apiRequest<User[]>('/admin/users'),
         apiRequest<Campaign[]>('/admin/campaigns'),
         apiRequest<Payout[]>('/admin/payouts'),
-        apiRequest<{ usdToBdt: number; pricingTiers: PricingTierItem[]; cooldownSettings: CooldownConfig }>('/admin/settings'),
+        apiRequest<{
+          usdToBdt: number;
+          pricingTiers: any;
+          pricingTiersList?: PricingTierItem[];
+          cooldownSettings: any;
+          dailyLimitSettings?: any;
+        }>('/admin/settings'),
       ]);
 
       if (statsRes.success) setStats(statsRes.data);
@@ -164,11 +182,43 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
       if (campRes.success) setCampaignsList(campRes.data || []);
       if (payRes.success) setPayoutsList(payRes.data || []);
       if (settingsRes.success && settingsRes.data) {
-        if (settingsRes.data.pricingTiers && Array.isArray(settingsRes.data.pricingTiers)) {
-          setPricingTiers(settingsRes.data.pricingTiers);
+        // 1. Pricing Tiers: handle array or object
+        if (settingsRes.data.pricingTiersList && Array.isArray(settingsRes.data.pricingTiersList)) {
+          setPricingTiers(settingsRes.data.pricingTiersList);
+        } else if (settingsRes.data.pricingTiers) {
+          if (Array.isArray(settingsRes.data.pricingTiers)) {
+            setPricingTiers(settingsRes.data.pricingTiers);
+          } else if (typeof settingsRes.data.pricingTiers === 'object') {
+            const list: PricingTierItem[] = Object.entries(settingsRes.data.pricingTiers).map(([sec, t]: [string, any]) => ({
+              duration: parseInt(sec, 10),
+              campaignerCost: Number(t?.campaignerCost || 0),
+              viewerReward: Number(t?.viewerReward || 0),
+            })).filter((item) => !isNaN(item.duration) && item.duration > 0).sort((a, b) => a.duration - b.duration);
+            if (list.length > 0) setPricingTiers(list);
+          }
         }
+
+        // 2. Cooldown Settings: normalize properties
         if (settingsRes.data.cooldownSettings) {
-          setCooldownConfig(settingsRes.data.cooldownSettings);
+          const cd = settingsRes.data.cooldownSettings as any;
+          setCooldownConfig({
+            enabled: Boolean(cd.enabled ?? cd.enableCooldown),
+            durationSeconds: Number(cd.durationSeconds ?? cd.videoCooldownSeconds ?? 3600),
+          });
+        }
+
+        // 3. Daily Limit Settings: normalize properties
+        if (settingsRes.data.dailyLimitSettings) {
+          const dl = settingsRes.data.dailyLimitSettings as any;
+          setDailyLimitConfig({
+            enableDailyLimit: Boolean(dl.enableDailyLimit ?? dl.enabled),
+            maxDailyVideos: Number(dl.maxDailyVideos ?? dl.limit ?? 50),
+          });
+        }
+
+        // 4. USD to BDT Currency Rate
+        if (settingsRes.data.usdToBdt) {
+          setDollarRateInput(String(settingsRes.data.usdToBdt));
         }
       }
     } catch {
@@ -182,13 +232,26 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
   const handleSavePricing = async () => {
     setPricingSaving(true);
     try {
-      const res = await apiRequest<{ message: string; pricingTiers: PricingTierItem[] }>('/admin/settings/pricing', {
+      const res = await apiRequest<{ message?: string; pricingTiers: any; pricingTiersList?: PricingTierItem[] }>('/admin/settings/pricing', {
         method: 'POST',
         body: JSON.stringify({ pricingTiers }),
       });
       if (res.success) {
-        setActionNotice({ type: 'success', message: 'Pricing tiers per view saved successfully!' });
-        if (res.data?.pricingTiers) setPricingTiers(res.data.pricingTiers);
+        setActionNotice({ type: 'success', message: (res as any).message || 'Pricing tiers per view saved successfully!' });
+        if (res.data?.pricingTiersList && Array.isArray(res.data.pricingTiersList)) {
+          setPricingTiers(res.data.pricingTiersList);
+        } else if (res.data?.pricingTiers) {
+          if (Array.isArray(res.data.pricingTiers)) {
+            setPricingTiers(res.data.pricingTiers);
+          } else if (typeof res.data.pricingTiers === 'object') {
+            const list: PricingTierItem[] = Object.entries(res.data.pricingTiers).map(([sec, t]: [string, any]) => ({
+              duration: parseInt(sec, 10),
+              campaignerCost: Number(t?.campaignerCost || 0),
+              viewerReward: Number(t?.viewerReward || 0),
+            })).filter((item) => !isNaN(item.duration) && item.duration > 0).sort((a, b) => a.duration - b.duration);
+            if (list.length > 0) setPricingTiers(list);
+          }
+        }
       } else {
         setActionNotice({ type: 'error', message: res.error || 'Failed to save pricing tiers' });
       }
@@ -225,13 +288,24 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
   const handleSaveCooldown = async () => {
     setCooldownSaving(true);
     try {
-      const res = await apiRequest<{ message: string; cooldownSettings: CooldownConfig }>('/admin/settings/cooldown', {
+      const res = await apiRequest<{ message?: string; cooldownSettings: any }>('/admin/settings/cooldown', {
         method: 'POST',
-        body: JSON.stringify(cooldownConfig),
+        body: JSON.stringify({
+          enabled: cooldownConfig.enabled,
+          durationSeconds: cooldownConfig.durationSeconds,
+          enableCooldown: cooldownConfig.enabled,
+          videoCooldownSeconds: cooldownConfig.durationSeconds,
+        }),
       });
       if (res.success) {
-        setActionNotice({ type: 'success', message: 'Anti-spam cooldown timer settings saved successfully!' });
-        if (res.data?.cooldownSettings) setCooldownConfig(res.data.cooldownSettings);
+        setActionNotice({ type: 'success', message: (res as any).message || 'Anti-spam cooldown timer settings saved successfully!' });
+        if (res.data?.cooldownSettings) {
+          const cd = res.data.cooldownSettings as any;
+          setCooldownConfig({
+            enabled: Boolean(cd.enabled ?? cd.enableCooldown),
+            durationSeconds: Number(cd.durationSeconds ?? cd.videoCooldownSeconds ?? 3600),
+          });
+        }
       } else {
         setActionNotice({ type: 'error', message: res.error || 'Failed to save cooldown settings' });
       }
@@ -239,6 +313,38 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
       setActionNotice({ type: 'error', message: err.message || 'Error saving cooldown settings' });
     } finally {
       setCooldownSaving(false);
+    }
+  };
+
+  // Daily Limit Settings Handlers
+  const handleSaveDailyLimit = async () => {
+    setDailyLimitSaving(true);
+    try {
+      const res = await apiRequest<{ message?: string; dailyLimitSettings: any }>('/admin/settings/daily-limit', {
+        method: 'POST',
+        body: JSON.stringify({
+          enableDailyLimit: dailyLimitConfig.enableDailyLimit,
+          maxDailyVideos: dailyLimitConfig.maxDailyVideos,
+          enabled: dailyLimitConfig.enableDailyLimit,
+          limit: dailyLimitConfig.maxDailyVideos,
+        }),
+      });
+      if (res.success) {
+        setActionNotice({ type: 'success', message: (res as any).message || 'Daily watch limit saved successfully!' });
+        if (res.data?.dailyLimitSettings) {
+          const dl = res.data.dailyLimitSettings as any;
+          setDailyLimitConfig({
+            enableDailyLimit: Boolean(dl.enableDailyLimit ?? dl.enabled),
+            maxDailyVideos: Number(dl.maxDailyVideos ?? dl.limit ?? 50),
+          });
+        }
+      } else {
+        setActionNotice({ type: 'error', message: res.error || 'Failed to save daily limit settings' });
+      }
+    } catch (err: any) {
+      setActionNotice({ type: 'error', message: err.message || 'Error saving daily limit settings' });
+    } finally {
+      setDailyLimitSaving(false);
     }
   };
 
@@ -824,22 +930,29 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
       {actionNotice && (
         <div
           style={{
-            padding: '12px 18px',
-            borderRadius: 12,
+            position: 'sticky',
+            top: 16,
+            zIndex: 100,
+            padding: '14px 20px',
+            borderRadius: 14,
             background: actionNotice.type === 'success' ? '#f0fdf4' : '#fef2f2',
-            border: actionNotice.type === 'success' ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)',
+            border: actionNotice.type === 'success' ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(239, 68, 68, 0.4)',
             color: actionNotice.type === 'success' ? '#059669' : '#b91c1c',
             fontSize: '0.88rem',
-            fontWeight: 600,
+            fontWeight: 700,
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
           }}
         >
-          <span>{actionNotice.message}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {actionNotice.type === 'success' ? <CheckCircle2 size={18} color="#059669" /> : <AlertCircle size={18} color="#ef4444" />}
+            <span>{actionNotice.message}</span>
+          </div>
           <button
             onClick={() => setActionNotice(null)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', fontWeight: 700 }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', fontWeight: 700, fontSize: '1rem', padding: '0 4px' }}
           >
             ✕
           </button>
@@ -957,7 +1070,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
         </button>
 
         <button
-          onClick={() => setActiveTab('settings')}
+          onClick={() => {
+            setActiveTab('settings');
+            fetchAdminData();
+          }}
           className="btn"
           style={{
             padding: '8px 16px',
@@ -2247,6 +2363,245 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
               >
                 {rateUpdating ? 'Updating...' : 'Update Exchange Rate'}
               </button>
+            </div>
+          </div>
+
+          {/* Card 4: Daily Video Watch Limit per Viewer Controller */}
+          <div
+            className="glass-card"
+            style={{
+              padding: '24px 28px',
+              borderRadius: 20,
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.03)',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                flexWrap: 'wrap',
+                gap: 16,
+                marginBottom: 20,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 12,
+                    background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+                    color: '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
+                  }}
+                >
+                  <Eye size={22} />
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <h2 className="font-display" style={{ fontSize: '1.25rem', color: '#0f172a', margin: 0 }}>
+                      Daily Video Watch Limit per Viewer
+                    </h2>
+                    <span
+                      className="badge-pill"
+                      style={{
+                        background: dailyLimitConfig.enableDailyLimit ? '#f0fdf4' : '#f8fafc',
+                        color: dailyLimitConfig.enableDailyLimit ? '#059669' : '#64748b',
+                        border: `1px solid ${dailyLimitConfig.enableDailyLimit ? 'rgba(16, 185, 129, 0.3)' : '#cbd5e1'}`,
+                        fontSize: '0.72rem',
+                        padding: '2px 8px',
+                        fontWeight: 800,
+                      }}
+                    >
+                      {dailyLimitConfig.enableDailyLimit
+                        ? `ACTIVE (${dailyLimitConfig.maxDailyVideos} VIDEOS/DAY)`
+                        : 'DISABLED (UNLIMITED)'}
+                    </span>
+                  </div>
+                  <p style={{ color: '#64748b', fontSize: '0.84rem', margin: '3px 0 0' }}>
+                    Configure the maximum number of videos a viewer can watch per calendar day (resets at midnight).
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                disabled={dailyLimitSaving}
+                onClick={handleSaveDailyLimit}
+                className="btn btn-neon glow-neon"
+                style={{
+                  padding: '9px 18px',
+                  fontSize: '0.86rem',
+                  fontWeight: 700,
+                  borderRadius: 10,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 7,
+                }}
+              >
+                <Save size={15} />
+                {dailyLimitSaving ? 'Saving...' : 'Save Daily Limit Rule'}
+              </button>
+            </div>
+
+            {/* Toggle & Limit Form */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+              {/* Status Switcher */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '14px 18px',
+                  background: '#f8fafc',
+                  borderRadius: 14,
+                  border: '1px solid #e2e8f0',
+                  flexWrap: 'wrap',
+                  gap: 12,
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.92rem' }}>
+                    Daily Cap Protection Status
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                    When enabled, viewers cannot watch more than the configured videos per day.
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    type="button"
+                    onClick={() => setDailyLimitConfig((prev) => ({ ...prev, enableDailyLimit: true }))}
+                    className="btn"
+                    style={{
+                      padding: '7px 16px',
+                      fontSize: '0.82rem',
+                      borderRadius: 8,
+                      fontWeight: 700,
+                      background: dailyLimitConfig.enableDailyLimit ? '#059669' : '#ffffff',
+                      color: dailyLimitConfig.enableDailyLimit ? '#ffffff' : '#64748b',
+                      border: dailyLimitConfig.enableDailyLimit ? 'none' : '1px solid #cbd5e1',
+                    }}
+                  >
+                    Enable Daily Limit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDailyLimitConfig((prev) => ({ ...prev, enableDailyLimit: false }))}
+                    className="btn"
+                    style={{
+                      padding: '7px 16px',
+                      fontSize: '0.82rem',
+                      borderRadius: 8,
+                      fontWeight: 700,
+                      background: !dailyLimitConfig.enableDailyLimit ? '#64748b' : '#ffffff',
+                      color: !dailyLimitConfig.enableDailyLimit ? '#ffffff' : '#64748b',
+                      border: !dailyLimitConfig.enableDailyLimit ? 'none' : '1px solid #cbd5e1',
+                    }}
+                  >
+                    Unlimited (Disabled)
+                  </button>
+                </div>
+              </div>
+
+              {/* Limit Input & Presets */}
+              <div
+                style={{
+                  padding: '16px 18px',
+                  background: '#ffffff',
+                  borderRadius: 14,
+                  border: '1px solid #e2e8f0',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 12,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span className="font-mono" style={{ fontSize: '0.82rem', fontWeight: 700, color: '#334155' }}>
+                      MAX VIDEOS PER DAY (PER VIEWER):
+                    </span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="10000"
+                      value={dailyLimitConfig.maxDailyVideos}
+                      onChange={(e) =>
+                        setDailyLimitConfig((prev) => ({
+                          ...prev,
+                          maxDailyVideos: Math.max(1, parseInt(e.target.value, 10) || 1),
+                        }))
+                      }
+                      className="input-field"
+                      style={{
+                        width: 100,
+                        padding: '8px 12px',
+                        fontSize: '0.94rem',
+                        fontWeight: 700,
+                        borderRadius: 10,
+                      }}
+                    />
+                    <span className="font-mono" style={{ fontSize: '0.82rem', color: '#64748b' }}>
+                      videos / day
+                    </span>
+                  </div>
+
+                  <span
+                    className="badge-pill"
+                    style={{
+                      background: '#eff6ff',
+                      color: '#1d4ed8',
+                      fontSize: '0.74rem',
+                      padding: '3px 10px',
+                      fontWeight: 700,
+                    }}
+                  >
+                    {dailyLimitConfig.enableDailyLimit
+                      ? `Cap: ${dailyLimitConfig.maxDailyVideos} videos every 24 hours`
+                      : 'Unlimited viewing allowed'}
+                  </span>
+                </div>
+
+                {/* Quick Presets */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '0.76rem', color: '#64748b', fontWeight: 600 }}>Quick Presets:</span>
+                  {[10, 25, 50, 100, 200, 500].map((preset) => {
+                    const isSelected = dailyLimitConfig.maxDailyVideos === preset;
+                    return (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() =>
+                          setDailyLimitConfig((prev) => ({
+                            ...prev,
+                            maxDailyVideos: preset,
+                          }))
+                        }
+                        className="btn"
+                        style={{
+                          padding: '5px 12px',
+                          borderRadius: 8,
+                          fontSize: '0.78rem',
+                          fontWeight: isSelected ? 700 : 500,
+                          background: isSelected ? 'var(--primary-neon)' : '#f8fafc',
+                          color: isSelected ? '#ffffff' : '#475569',
+                          border: isSelected ? 'none' : '1px solid #e2e8f0',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        {preset} videos
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
         </div>
