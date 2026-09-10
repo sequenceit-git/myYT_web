@@ -63,7 +63,7 @@ interface ViewerPortalProps {
 
 type ViewerTab = 'overview' | 'watch' | 'withdraw' | 'transactions' | 'referrals' | 'profile';
 
-type PayoutMethodType = 'bkash' | 'nagad' | 'faucetpay' | 'crypto' | 'webmoney';
+type PayoutMethodType = 'bkash' | 'nagad' | 'rocket' | 'faucetpay' | 'crypto' | 'webmoney';
 
 interface PayoutMethodConfig {
   id: PayoutMethodType;
@@ -96,6 +96,17 @@ const getPayoutMethods = (usdToBdt: number): PayoutMethodConfig[] => [
     logoMark: 'Nagad',
     logoUrl: '/payment-methods/nagad.svg',
     inputLabel: 'Nagad Personal Mobile Number',
+    placeholder: '01XXXXXXXXX',
+    rateText: `1 USD = ${usdToBdt} BDT`,
+    isBDT: true,
+  },
+  {
+    id: 'rocket',
+    name: 'Rocket',
+    logoBg: '#ffffff',
+    logoMark: 'Rocket',
+    logoUrl: '/payment-methods/rocket.svg',
+    inputLabel: 'DBBL Rocket Personal Mobile Number',
     placeholder: '01XXXXXXXXX',
     rateText: `1 USD = ${usdToBdt} BDT`,
     isBDT: true,
@@ -494,6 +505,16 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
     }
   }, [user]);
 
+  // Auto-fill account details from saved verified payment methods
+  useEffect(() => {
+    if (user?.savedPaymentMethods) {
+      const bound = user.savedPaymentMethods.find((p) => p.method === withdrawMethod);
+      if (bound) {
+        setAccountDetails(bound.accountNumber);
+      }
+    }
+  }, [withdrawMethod, user?.savedPaymentMethods]);
+
   // Handle Withdrawal
   const handleWithdraw = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -522,19 +543,20 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
     }
 
     setLoading(true);
+    const deviceInfo = navigator.userAgent.includes('Mobile') ? 'Mobile Web Browser' : 'Desktop Browser';
     const res = await apiRequest<any>('/wallet/withdraw', {
       method: 'POST',
       body: JSON.stringify({
         amount: Number(withdrawAmount),
         method: withdrawMethod,
-        accountDetails,
+        accountDetails: accountDetails.trim(),
+        deviceInfo,
       }),
     });
     setLoading(false);
 
     if (res.success) {
       setMsg({ type: 'success', text: '✓ Withdrawal submitted successfully! Payout will be disbursed shortly.' });
-      setAccountDetails('');
       onRefreshUser();
       fetchTransactions();
     } else {

@@ -16,6 +16,7 @@ import {
   CreditCard,
   Rocket,
   UserCheck,
+  Gift,
 } from 'lucide-react';
 import { User } from '../types';
 
@@ -750,6 +751,39 @@ export const Header: React.FC<HeaderProps> = ({
                           <History size={16} color="var(--primary-neon)" />
                           <span>Payout Ledger</span>
                         </div>
+                      </button>
+
+                      {/* Referrals (10%) */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigate('/viewer?tab=referrals');
+                          closeMenu();
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '9px 12px',
+                          borderRadius: 10,
+                          border: currentPath === '/viewer' && currentTab === 'referrals' ? '1.5px solid var(--primary-neon)' : '1px solid #f1f5f9',
+                          background: currentPath === '/viewer' && currentTab === 'referrals' ? '#e0f2fe' : '#ffffff',
+                          color: currentPath === '/viewer' && currentTab === 'referrals' ? '#0284c7' : '#334155',
+                          fontWeight: currentPath === '/viewer' && currentTab === 'referrals' ? 700 : 600,
+                          fontSize: '0.84rem',
+                          cursor: 'pointer',
+                          width: '100%',
+                          textAlign: 'left',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Gift size={16} color="var(--primary-neon)" />
+                          <span>Referral Program</span>
+                        </div>
+                        <span className="badge-pill badge-cyan" style={{ fontSize: '0.62rem', padding: '1px 6px' }}>
+                          10% COMM
+                        </span>
                       </button>
 
                       {/* Account Profile */}

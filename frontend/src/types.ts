@@ -1,3 +1,10 @@
+export interface SavedPaymentMethod {
+  method: string;
+  accountNumber: string;
+  accountName?: string;
+  updatedAt?: string;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -16,6 +23,7 @@ export interface User {
   status?: string;
   avatar?: string;
   phoneNumber?: string;
+  savedPaymentMethods?: SavedPaymentMethod[];
   referralCode?: string;
   referralEarnings?: number;
   referralCount?: number;
@@ -64,13 +72,18 @@ export interface Payout {
     viewerBalance?: number;
     totalEarned?: number;
     totalWithdrawn?: number;
+    createdAt?: string;
   };
   amount: number;
-  method: 'bkash' | 'nagad' | 'crypto' | 'faucetpay' | 'webmoney';
+  method: 'bkash' | 'nagad' | 'rocket' | 'crypto' | 'faucetpay' | 'webmoney';
   accountDetails: string;
   status: 'pending' | 'processing' | 'approved' | 'rejected';
   transactionRef?: string;
   adminNotes?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  deviceInfo?: string;
+  clientPlatform?: string;
   requestedAt?: string;
   createdAt?: string;
   processedAt?: string;

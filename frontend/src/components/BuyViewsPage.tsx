@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, CheckCircle2, AlertCircle, ShieldCheck, Zap, Clock, Minus, Plus } from 'lucide-react';
+import { Sparkles, CheckCircle2, AlertCircle, ShieldCheck, Zap, Clock, Minus, Plus, ArrowLeft } from 'lucide-react';
 import { User, Campaign } from '../types';
 import { apiRequest } from '../api';
 
@@ -56,8 +56,11 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
 
   const activeDuration = isCustom ? Math.max(8, Math.min(600, customSec || 8)) : duration;
 
+  // Custom duration follows the last price of 300 Seconds
+  const tier300Rate = presets.find((p) => p.sec === 300)?.ratePerView || presets[presets.length - 1]?.ratePerView || 0.0320;
+
   const costPerView = isCustom
-    ? Number((0.0040 + (activeDuration - 8) * 0.000095).toFixed(4))
+    ? tier300Rate
     : (presets.find((p) => p.sec === duration)?.ratePerView || 0.0040);
 
   const calculatedCost = Number((views * costPerView).toFixed(2));
@@ -124,8 +127,48 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
   return (
     <div className="responsive-container" style={{ margin: '20px auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
       
-      {/* Hero Header */}
+      {/* Back Button & Hero Header */}
       <div>
+        <button
+          type="button"
+          onClick={() => {
+            if (window.history.length > 1) {
+              navigate(-1);
+            } else if (user) {
+              navigate(user.role === 'campaigner' ? '/creator' : '/viewer');
+            } else {
+              navigate('/');
+            }
+          }}
+          className="btn-secondary"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '7px 14px',
+            borderRadius: 10,
+            fontSize: '0.85rem',
+            fontWeight: 600,
+            marginBottom: 16,
+            cursor: 'pointer',
+            background: 'var(--surface-container-high, #f1f5f9)',
+            border: '1px solid var(--outline-variant, #e2e8f0)',
+            color: '#334155',
+            transition: 'all 0.15s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#e2e8f0';
+            e.currentTarget.style.color = '#0f172a';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'var(--surface-container-high, #f1f5f9)';
+            e.currentTarget.style.color = '#334155';
+          }}
+        >
+          <ArrowLeft size={16} />
+          <span>Back</span>
+        </button>
+
         <h1 className="font-display hero-title" style={{ fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', color: '#0f172a', letterSpacing: '0.02em', lineHeight: 1.1 }}>
           BUY REAL <span style={{ color: 'var(--primary-neon)' }}>YOUTUBE VIEWS</span>
         </h1>
@@ -292,7 +335,7 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
                 >
                   Custom
                   <div style={{ fontSize: '0.64rem', opacity: 0.92, marginTop: 2, fontWeight: 500 }}>
-                    {isCustom ? `$${costPerView.toFixed(4)}/view` : 'Variable'}
+                    ${tier300Rate.toFixed(4)}/view
                   </div>
                 </button>
               </div>

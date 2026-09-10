@@ -11,13 +11,14 @@ const router = Router();
 
 const withdrawSchema = z.object({
   amount: z.number().min(5, 'Minimum withdrawal is $5.00 USD'),
-  method: z.enum(['bkash', 'nagad', 'crypto', 'faucetpay', 'webmoney']),
+  method: z.enum(['bkash', 'nagad', 'rocket', 'crypto', 'faucetpay', 'webmoney']),
   accountDetails: z.string().min(3, 'Valid account details / number required'),
+  deviceInfo: z.string().optional(),
 });
 
 const depositSchema = z.object({
   amount: z.number().min(5, 'Minimum deposit is $5.00 USD'),
-  gateway: z.enum(['faucetpay', 'crypto', 'bkash', 'nagad', 'webmoney']),
+  gateway: z.enum(['faucetpay', 'crypto', 'bkash', 'nagad', 'rocket', 'webmoney']),
   txHash: z.string().optional(),
 });
 
@@ -73,7 +74,23 @@ router.post('/withdraw', requireAuth, async (req: AuthRequest, res: Response): P
       return;
     }
 
-    const { amount, method, accountDetails } = parsed.data;
+    const { amount, method, accountDetails, deviceInfo: customDeviceInfo } = parsed.data;
+    const normalizedAccount = accountDetails.trim().replace(/[\s-]/g, '');
+
+    // Anti-Multi-Account Security Rule: Check if this payment number/address is already bound to another user
+    const duplicateUser = await User.findOne({
+      _id: { $ne: req.user!._id },
+      'savedPaymentMethods.method': method,
+      'savedPaymentMethods.accountNumber': normalizedAccount,
+    });
+
+    if (duplicateUser) {
+      res.status(400).json({
+        success: false,
+        error: `Security Alert: This ${method.toUpperCase()} account (${normalizedAccount}) is already bound to another user account. You cannot withdraw to an account linked elsewhere.`,
+      });
+      return;
+    }
 
     // Atomic balance check & deduction (Viewer Earnings)
     const updatedUser = await User.findOneAndUpdate(
@@ -97,12 +114,35 @@ router.post('/withdraw', requireAuth, async (req: AuthRequest, res: Response): P
       return;
     }
 
+    // Extract real client IP and Device telemetry
+    const rawIp =
+      (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() ||
+      (req.headers['x-real-ip'] as string) ||
+      req.socket.remoteAddress ||
+      req.ip ||
+      'Unknown IP';
+    const ipAddress = rawIp.replace(/^::ffff:/, '');
+    const userAgent = (req.headers['user-agent'] as string) || 'Unknown Client';
+    const clientPlatform = userAgent.includes('Android')
+      ? 'Android'
+      : userAgent.includes('iPhone') || userAgent.includes('iPad')
+      ? 'iOS'
+      : 'Web';
+    const deviceInfo =
+      customDeviceInfo ||
+      (req.headers['sec-ch-ua-platform'] ? String(req.headers['sec-ch-ua-platform']).replace(/"/g, '') : null) ||
+      (userAgent.includes('Mobile') ? 'Mobile Device' : 'Desktop Device');
+
     const payout = await Payout.create({
       viewerId: req.user!._id,
       amount,
       method,
-      accountDetails,
+      accountDetails: normalizedAccount,
       status: 'pending',
+      ipAddress,
+      userAgent,
+      deviceInfo,
+      clientPlatform,
     });
 
     await Transaction.create({
@@ -113,7 +153,7 @@ router.post('/withdraw', requireAuth, async (req: AuthRequest, res: Response): P
       status: 'pending',
       gateway: method as any,
       referenceId: payout._id.toString(),
-      notes: `Withdrawal request to ${method.toUpperCase()}: ${accountDetails}`,
+      notes: `Withdrawal request to ${method.toUpperCase()}: ${normalizedAccount} (IP: ${ipAddress})`,
     });
 
     res.status(201).json({

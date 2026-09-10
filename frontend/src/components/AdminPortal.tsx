@@ -26,6 +26,9 @@ import {
   RotateCcw,
   Timer,
   Save,
+  Globe,
+  Smartphone,
+  ShieldAlert,
 } from 'lucide-react';
 import { User, Campaign, Payout } from '../types';
 import { apiRequest, setAuthToken, clearAuthToken } from '../api';
@@ -59,6 +62,8 @@ const getPaymentLogo = (method: string): string => {
       return '/payment-methods/bkash.svg';
     case 'nagad':
       return '/payment-methods/nagad.svg';
+    case 'rocket':
+      return '/payment-methods/rocket.svg';
     case 'faucetpay':
       return '/payment-methods/faucetpay.svg';
     case 'crypto':
@@ -1370,6 +1375,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
                       <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.76rem', fontWeight: 700 }}>User</th>
                       <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.76rem', fontWeight: 700 }}>Amount</th>
                       <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.76rem', fontWeight: 700 }}>Recipient Account</th>
+                      <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.76rem', fontWeight: 700 }}>IP & Device Info</th>
                       <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.76rem', fontWeight: 700 }}>Status</th>
                       <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.76rem', fontWeight: 700 }}>Date</th>
                       <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.76rem', fontWeight: 700, textAlign: 'right' }}>Actions</th>
@@ -1379,7 +1385,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
                     {filteredPayouts
                       .slice((payoutPage - 1) * PAGE_SIZE, payoutPage * PAGE_SIZE)
                       .map((p) => {
-                        const isBDT = p.method === 'bkash' || p.method === 'nagad';
+                        const isBDT = p.method === 'bkash' || p.method === 'nagad' || p.method === 'rocket';
                         const logo = getPaymentLogo(p.method);
 
                         return (
@@ -1451,6 +1457,37 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
                                   {p.accountDetails}
                                 </span>
                                 {copiedId === p._id ? <Check size={12} color="#059669" /> : <Copy size={12} color="#64748b" />}
+                              </div>
+                            </td>
+
+                            {/* IP & Device Telemetry */}
+                            <td style={{ padding: '10px 12px' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <div
+                                  onClick={() => p.ipAddress && handleCopy(p.ipAddress, `ip-${p._id}`)}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 5,
+                                    background: '#f1f5f9',
+                                    padding: '2px 8px',
+                                    borderRadius: 6,
+                                    fontSize: '0.74rem',
+                                    fontWeight: 700,
+                                    color: '#334155',
+                                    cursor: p.ipAddress ? 'pointer' : 'default',
+                                    width: 'fit-content',
+                                  }}
+                                  title="User IP Address (Click to copy)"
+                                >
+                                  <Globe size={11} color="var(--primary-neon)" />
+                                  <span className="font-mono">{p.ipAddress || 'IP: Unknown'}</span>
+                                  {p.ipAddress && (copiedId === `ip-${p._id}` ? <Check size={10} color="#059669" /> : <Copy size={10} color="#94a3b8" />)}
+                                </div>
+                                <div style={{ fontSize: '0.72rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                  <Smartphone size={11} />
+                                  <span>{p.deviceInfo || p.clientPlatform || 'Web / Mobile'}</span>
+                                </div>
                               </div>
                             </td>
 
@@ -2691,6 +2728,18 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
                 <strong className="font-mono" style={{ color: 'var(--primary-neon)', wordBreak: 'break-all' }}>{approveModalPayout.accountDetails}</strong>
               </div>
 
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6, fontSize: '0.84rem' }}>
+                <span style={{ color: '#64748b' }}>Request IP & Device:</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <span className="font-mono" style={{ background: '#e2e8f0', color: '#0f172a', padding: '2px 6px', borderRadius: 4, fontSize: '0.8rem', fontWeight: 600 }}>
+                    {approveModalPayout.ipAddress || 'Not recorded'}
+                  </span>
+                  <span style={{ color: '#64748b', fontSize: '0.8rem' }}>
+                    • {approveModalPayout.deviceInfo || approveModalPayout.clientPlatform || 'Web Browser'}
+                  </span>
+                </span>
+              </div>
+
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6, paddingTop: 6, borderTop: '1px solid #e2e8f0' }}>
                 <span style={{ color: '#64748b', fontSize: '0.86rem' }}>Payout Amount:</span>
                 <strong className="font-mono" style={{ fontSize: '1.3rem', color: '#059669' }}>
@@ -2778,7 +2827,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
           <div
             className="glass-card modal-card"
             style={{
-              maxWidth: 460,
+              maxWidth: 480,
               width: '100%',
               padding: 28,
               borderRadius: 20,
@@ -2814,8 +2863,40 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
               </button>
             </div>
 
-            <p style={{ fontSize: '0.86rem', color: '#64748b', marginBottom: 16 }}>
-              The payout amount of <strong>${rejectModalPayout.amount.toFixed(2)} USD</strong> will be automatically credited back to the viewer's balance.
+            {/* Reject summary info */}
+            <div
+              style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: 12,
+                padding: '12px 14px',
+                marginBottom: 14,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 6,
+                fontSize: '0.84rem',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#64748b' }}>User:</span>
+                <strong style={{ color: '#0f172a' }}>{rejectModalPayout.viewerId?.name} ({rejectModalPayout.viewerId?.email})</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#64748b' }}>Method & Account:</span>
+                <span className="font-mono" style={{ color: '#0f172a' }}><strong style={{ textTransform: 'uppercase' }}>{rejectModalPayout.method}</strong> • {rejectModalPayout.accountDetails}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#64748b' }}>Request IP & Device:</span>
+                <span className="font-mono" style={{ color: '#475569', fontSize: '0.8rem' }}>{rejectModalPayout.ipAddress || 'Not recorded'} ({rejectModalPayout.deviceInfo || rejectModalPayout.clientPlatform || 'Web'})</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 4, borderTop: '1px solid #e2e8f0' }}>
+                <span style={{ color: '#64748b' }}>Refund Amount:</span>
+                <strong style={{ color: '#ef4444' }}>${rejectModalPayout.amount.toFixed(2)} USD</strong>
+              </div>
+            </div>
+
+            <p style={{ fontSize: '0.84rem', color: '#64748b', marginBottom: 14 }}>
+              The payout amount of <strong>${rejectModalPayout.amount.toFixed(2)} USD</strong> will be automatically credited back to the user's wallet balance.
             </p>
 
             <div style={{ marginBottom: 18 }}>
@@ -2823,7 +2904,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
                 Rejection Reason:
               </label>
               <textarea
-                placeholder="e.g. Invalid account number, account not receiving funds, or policy infraction."
+                placeholder="e.g. Invalid account number, duplicate account detected, or account not receiving funds."
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
                 className="input-field"

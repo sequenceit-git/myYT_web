@@ -1,5 +1,12 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+export interface ISavedPaymentMethod {
+  method: string; // 'bkash' | 'nagad' | 'rocket' | 'crypto' | 'faucetpay' | 'webmoney'
+  accountNumber: string;
+  accountName?: string;
+  updatedAt?: Date;
+}
+
 export interface IUser extends Document {
   email: string;
   name: string;
@@ -18,6 +25,7 @@ export interface IUser extends Document {
   totalWithdrawn: number;
   kycStatus: 'none' | 'pending' | 'verified' | 'rejected';
   phoneNumber?: string;
+  savedPaymentMethods?: ISavedPaymentMethod[];
   referralCode?: string;
   referredBy?: mongoose.Types.ObjectId | string;
   referralEarnings: number;
@@ -34,6 +42,14 @@ const UserSchema = new Schema<IUser>(
     email: { type: String, required: true, unique: true, index: true, lowercase: true, trim: true },
     name: { type: String, required: true },
     phoneNumber: { type: String, trim: true },
+    savedPaymentMethods: [
+      {
+        method: { type: String, required: true },
+        accountNumber: { type: String, required: true, trim: true },
+        accountName: { type: String, trim: true },
+        updatedAt: { type: Date, default: Date.now },
+      },
+    ],
     referralCode: { type: String, unique: true, sparse: true, index: true, uppercase: true, trim: true },
     referredBy: { type: Schema.Types.ObjectId, ref: 'User', index: true },
     referralEarnings: { type: Number, default: 0, min: 0 },
@@ -58,5 +74,7 @@ const UserSchema = new Schema<IUser>(
   },
   { timestamps: true }
 );
+
+UserSchema.index({ 'savedPaymentMethods.accountNumber': 1 });
 
 export const User = mongoose.model<IUser>('User', UserSchema);

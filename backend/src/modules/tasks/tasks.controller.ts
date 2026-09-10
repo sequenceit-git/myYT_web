@@ -80,8 +80,8 @@ router.get('/next', requireAuth, async (req: AuthRequest, res: Response): Promis
       return;
     }
 
-    const tier = pricingTiers[selectedCampaign.watchDurationSec];
-    const rewardAmount = tier ? tier.viewerReward : Number(((selectedCampaign.pricePerView || 0.005) * 0.72).toFixed(4));
+    const tier = pricingTiers[selectedCampaign.watchDurationSec] || pricingTiers[300];
+    const rewardAmount = tier ? tier.viewerReward : Number(((selectedCampaign.pricePerView || 0.0320) * 0.72).toFixed(4));
 
     // Create assigned task
     const task = await Task.create({
@@ -185,10 +185,10 @@ router.post('/:id/complete', requireAuth, async (req: AuthRequest, res: Response
     };
     await task.save();
 
-    // Calculate USD cash reward based on pricing tier (fallback $0.0035)
+    // Calculate USD cash reward based on pricing tier (fallback to 300s tier)
     const pricingTiers = await getSystemPricingTiers();
-    const tier = pricingTiers[task.requiredDurationSec];
-    const rewardAmount = tier ? tier.viewerReward : (task.rewardAmount || 0.0035);
+    const tier = pricingTiers[task.requiredDurationSec] || pricingTiers[300];
+    const rewardAmount = tier ? tier.viewerReward : (task.rewardAmount || 0.0230);
 
     // Atomic direct USD balance and totalEarned increment to viewer
     const updatedUser = await User.findByIdAndUpdate(

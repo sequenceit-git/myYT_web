@@ -49,10 +49,8 @@ router.get('/calculate-price', async (req, res) => {
   }
 
   const pricingTiers = await getSystemPricingTiers();
-  const tier = pricingTiers[duration] || {
-    campaignerCost: Number((0.0040 + (Math.max(8, duration) - 8) * 0.000095).toFixed(4)),
-    viewerReward: Number(((0.0040 + (Math.max(8, duration) - 8) * 0.000095) * 0.72).toFixed(4)),
-  };
+  const tier300 = pricingTiers[300] || { campaignerCost: 0.0320, viewerReward: 0.0230 };
+  const tier = pricingTiers[duration] || tier300;
   const rate = tier.campaignerCost;
   const totalCost = Number((rate * views).toFixed(4));
 
@@ -73,10 +71,9 @@ export const getPricingTier = async (sec: number) => {
   if (pricingTiers[sec]) {
     return pricingTiers[sec];
   }
-  const safeSec = Math.max(8, sec);
-  const campaignerCost = Number((0.0040 + (safeSec - 8) * 0.000095).toFixed(4));
-  const viewerReward = Number((campaignerCost * 0.72).toFixed(4));
-  return { campaignerCost, viewerReward };
+  // Custom duration follows the last price of 300 Seconds
+  const tier300 = pricingTiers[300] || { campaignerCost: 0.0320, viewerReward: 0.0230 };
+  return tier300;
 };
 
 // Create campaign & deduct balance atomically

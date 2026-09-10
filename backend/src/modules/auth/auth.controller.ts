@@ -357,6 +357,7 @@ router.get('/me', requireAuth, async (req: AuthRequest, res: Response): Promise<
       dailySpend,
       dailyEarnings,
       status: u.status,
+      savedPaymentMethods: u.savedPaymentMethods || [],
       avatar: (u.avatar ? u.avatar.replace('/svg', '/png') : `https://api.dicebear.com/7.x/adventurer/png?seed=${encodeURIComponent(u.email)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`),
     },
   });
@@ -539,6 +540,119 @@ router.put('/profile', requireAuth, async (req: AuthRequest, res: Response): Pro
     });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message || 'Failed to update profile' });
+  }
+});
+
+const savePaymentMethodSchema = z.object({
+  method: z.enum(['bkash', 'nagad', 'rocket', 'crypto', 'faucetpay', 'webmoney']),
+  accountNumber: z.string().min(3, 'Account number / address is required'),
+  accountName: z.string().optional(),
+});
+
+// GET /api/auth/payment-methods - Get current user's saved payment methods
+router.get('/payment-methods', requireAuth, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const user = await User.findById(req.user!._id);
+    res.json({
+      success: true,
+      data: user?.savedPaymentMethods || [],
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/auth/payment-methods - Save/Update payment method (1 method per account only!)
+router.post('/payment-methods', requireAuth, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const parsed = savePaymentMethodSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ success: false, error: parsed.error.issues[0].message });
+      return;
+    }
+
+    const { method, accountNumber, accountName } = parsed.data;
+    const normalized = accountNumber.trim().replace(/[\s-]/g, '');
+
+    // Anti-Multi-Account Rule: Verify if this payment account is already linked to another user
+    const duplicate = await User.findOne({
+      _id: { $ne: req.user!._id },
+      savedPaymentMethods: {
+        $elemMatch: {
+          method,
+          accountNumber: normalized,
+        },
+      },
+    });
+
+    if (duplicate) {
+      res.status(400).json({
+        success: false,
+        error: `This ${method.toUpperCase()} number/address (${normalized}) is already bound with another user account. Each payment method can only be linked to one account.`,
+      });
+      return;
+    }
+
+    const user = await User.findById(req.user!._id);
+    if (!user) {
+      res.status(404).json({ success: false, error: 'User not found' });
+      return;
+    }
+
+    if (!user.savedPaymentMethods) {
+      user.savedPaymentMethods = [];
+    }
+
+    const idx = user.savedPaymentMethods.findIndex((p) => p.method === method);
+    if (idx >= 0) {
+      user.savedPaymentMethods[idx].accountNumber = normalized;
+      user.savedPaymentMethods[idx].accountName = accountName?.trim() || undefined;
+      user.savedPaymentMethods[idx].updatedAt = new Date();
+    } else {
+      user.savedPaymentMethods.push({
+        method,
+        accountNumber: normalized,
+        accountName: accountName?.trim() || undefined,
+        updatedAt: new Date(),
+      });
+    }
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: `✓ ${method.toUpperCase()} account (${normalized}) successfully bound to your profile!`,
+      data: {
+        savedPaymentMethods: user.savedPaymentMethods,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// DELETE /api/auth/payment-methods/:method - Remove saved payment method
+router.delete('/payment-methods/:method', requireAuth, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { method } = req.params;
+    const user = await User.findById(req.user!._id);
+    if (!user) {
+      res.status(404).json({ success: false, error: 'User not found' });
+      return;
+    }
+
+    user.savedPaymentMethods = (user.savedPaymentMethods || []).filter((p) => p.method !== method);
+    await user.save();
+
+    res.json({
+      success: true,
+      message: `${String(method).toUpperCase()} account removed from profile`,
+      data: {
+        savedPaymentMethods: user.savedPaymentMethods,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
