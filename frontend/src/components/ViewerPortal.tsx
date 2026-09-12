@@ -2048,99 +2048,111 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
 
               {/* Share Your Referral Link Banner */}
               <div
-                className="glass-card"
+                className="glass-card mobile-p-small"
                 style={{
                   background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #f8fafc 100%)',
                   border: '1.5px solid rgba(14, 165, 233, 0.4)',
                   borderRadius: 18,
-                  padding: '24px',
+                  padding: '22px',
                   position: 'relative',
                   overflow: 'hidden',
+                  width: '100%',
+                  boxSizing: 'border-box',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--primary-neon)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--primary-neon)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <Share2 size={18} />
                   </div>
-                  <div>
+                  <div style={{ minWidth: 0 }}>
                     <h3 className="font-display" style={{ margin: 0, fontSize: '1.15rem', color: '#0f172a' }}>
                       YOUR UNIQUE INVITE LINK
                     </h3>
-                    <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                    <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 2 }}>
                       Share this link. Anyone who registers will be permanently linked to your account.
                     </div>
                   </div>
                 </div>
 
-                {/* Link Box with Copy Button */}
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginTop: 12 }}>
-                  <div
-                    style={{
-                      flex: 1,
-                      minWidth: 260,
-                      background: '#ffffff',
-                      border: '1.5px solid #cbd5e1',
-                      borderRadius: 12,
-                      padding: '10px 14px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 8,
-                    }}
-                  >
-                    <span
-                      className="font-mono"
+                {/* Link Box with Copy Button & Code Badge */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12, width: '100%' }}>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'stretch', width: '100%' }}>
+                    <div
                       style={{
-                        fontSize: '0.88rem',
-                        color: '#0f172a',
-                        fontWeight: 600,
+                        flex: '1 1 200px',
+                        minWidth: 0,
+                        background: '#ffffff',
+                        border: '1.5px solid #cbd5e1',
+                        borderRadius: 12,
+                        padding: '10px 14px',
+                        display: 'flex',
+                        alignItems: 'center',
                         overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
+                        boxSizing: 'border-box',
                       }}
                     >
-                      {`${window.location.origin}/?ref=${referralStats?.referralCode || user.referralCode || 'MYYT'}`}
-                    </span>
+                      <span
+                        className="font-mono"
+                        style={{
+                          fontSize: '0.85rem',
+                          color: '#0f172a',
+                          fontWeight: 600,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          width: '100%',
+                        }}
+                      >
+                        {`${window.location.origin}/?ref=${referralStats?.referralCode || user.referralCode || 'MYYT'}`}
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() => handleCopyReferral(`${window.location.origin}/?ref=${referralStats?.referralCode || user.referralCode || 'MYYT'}`)}
+                      className="btn btn-neon glow-neon btn-mobile-full"
+                      style={{
+                        padding: '10px 20px',
+                        fontSize: '0.88rem',
+                        borderRadius: 12,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 7,
+                        fontWeight: 700,
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {referralCopied ? <Check size={16} /> : <Copy size={16} />}
+                      <span>{referralCopied ? 'Copied Link!' : 'Copy Link'}</span>
+                    </button>
                   </div>
 
-                  <button
-                    onClick={() => handleCopyReferral(`${window.location.origin}/?ref=${referralStats?.referralCode || user.referralCode || 'MYYT'}`)}
-                    className="btn btn-neon glow-neon"
-                    style={{
-                      padding: '10px 20px',
-                      fontSize: '0.88rem',
-                      borderRadius: 12,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 7,
-                      fontWeight: 700,
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {referralCopied ? <Check size={16} /> : <Copy size={16} />}
-                    <span>{referralCopied ? 'Copied Link!' : 'Copy Link'}</span>
-                  </button>
-
-                  <button
-                    onClick={() => handleCopyReferral(referralStats?.referralCode || user.referralCode || 'MYYT')}
-                    className="btn btn-ghost"
-                    style={{
-                      padding: '10px 16px',
-                      fontSize: '0.85rem',
-                      borderRadius: 12,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      border: '1px solid #cbd5e1',
-                      background: '#ffffff',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    <span style={{ color: '#64748b' }}>Code:</span>
-                    <strong className="font-mono" style={{ color: 'var(--primary-neon)' }}>
-                      {referralStats?.referralCode || user.referralCode || 'MYYT'}
-                    </strong>
-                  </button>
+                  {/* Referral Code Quick Copy */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <button
+                      onClick={() => handleCopyReferral(referralStats?.referralCode || user.referralCode || 'MYYT')}
+                      className="btn btn-ghost"
+                      style={{
+                        padding: '8px 14px',
+                        fontSize: '0.82rem',
+                        borderRadius: 10,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        border: '1px solid #cbd5e1',
+                        background: '#ffffff',
+                        cursor: 'pointer',
+                      }}
+                      title="Click to copy referral code"
+                    >
+                      <span style={{ color: '#64748b' }}>Referral Code:</span>
+                      <strong className="font-mono" style={{ color: 'var(--primary-neon)' }}>
+                        {referralStats?.referralCode || user.referralCode || 'MYYT'}
+                      </strong>
+                      <Copy size={13} color="var(--primary-neon)" style={{ marginLeft: 2 }} />
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -2178,8 +2190,8 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                   </div>
                 </div>
 
-                {/* 3. Total Referral Earnings */}
-                <div className="glass-card responsive-kpi-card" style={{ padding: '20px', borderRadius: 16 }}>
+                {/* 3. Total Referral Earnings - Feature full width on mobile 2-col layout */}
+                <div className="glass-card responsive-kpi-card responsive-kpi-featured" style={{ padding: '20px', borderRadius: 16 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span className="font-mono" style={{ fontSize: '0.82rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', fontWeight: 700 }}>
                       Referral Earnings

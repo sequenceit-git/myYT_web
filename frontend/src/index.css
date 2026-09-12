@@ -818,3 +818,52 @@ h1, h2, h3, h4, h5, h6 {
     grid-column: span 1;
   }
 }
+
+/* Campaign Duration & Quick Preset Responsive Grid */
+.duration-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
+.duration-btn {
+  padding: 10px 4px;
+  border-radius: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 520px) {
+  .duration-grid {
+    gap: 6px !important;
+  }
+  .duration-btn {
+    padding: 8px 2px !important;
+    font-size: 0.80rem !important;
+    border-radius: 10px !important;
+  }
+  .duration-btn div {
+    font-size: 0.58rem !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .duration-grid {
+    gap: 4px !important;
+  }
+  .duration-btn {
+    padding: 6px 2px !important;
+    font-size: 0.74rem !important;
+  }
+  .duration-btn div {
+    font-size: 0.52rem !important;
+  }
+}

@@ -125,7 +125,7 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
   };
 
   return (
-    <div className="responsive-container" style={{ margin: '20px auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div className="responsive-container" style={{ margin: '16px auto 40px auto', display: 'flex', flexDirection: 'column', gap: 20, width: '100%', boxSizing: 'border-box' }}>
       
       {/* Back Button & Hero Header */}
       <div>
@@ -169,7 +169,7 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
           <span>Back</span>
         </button>
 
-        <h1 className="font-display hero-title" style={{ fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', color: '#0f172a', letterSpacing: '0.02em', lineHeight: 1.1 }}>
+        <h1 className="font-display hero-title" style={{ fontSize: 'clamp(1.6rem, 4.5vw, 2.8rem)', color: '#0f172a', letterSpacing: '0.02em', lineHeight: 1.15 }}>
           BUY REAL <span style={{ color: 'var(--primary-neon)' }}>YOUTUBE VIEWS</span>
         </h1>
         <p className="font-body" style={{ color: 'var(--on-surface-variant)', marginTop: 8, fontSize: '0.92rem', maxWidth: 840, lineHeight: 1.5 }}>
@@ -196,14 +196,14 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
       )}
 
       {/* 2-Column Responsive Order & Cost Simulator Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: 20, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: 20, alignItems: 'start', width: '100%' }}>
         
         {/* Left Column: Cost Simulator & Campaign Order Builder */}
-        <div className="glass-card mobile-p-small" style={{ padding: 24, borderRadius: 18, border: '1px solid var(--glass-stroke)' }}>
+        <div className="glass-card mobile-p-small" style={{ padding: 24, borderRadius: 18, border: '1px solid var(--glass-stroke)', width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, flexWrap: 'wrap', gap: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Sparkles size={18} color="var(--primary-neon)" />
-              <h2 className="font-display" style={{ fontSize: '1.3rem', color: '#0f172a', letterSpacing: '0.02em' }}>
+              <h2 className="font-display" style={{ fontSize: '1.25rem', color: '#0f172a', letterSpacing: '0.02em', margin: 0 }}>
                 NEW CAMPAIGN ORDER
               </h2>
             </div>
@@ -232,7 +232,7 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
                 onChange={(e) => setYoutubeUrl(e.target.value)}
                 required
                 className="input-field"
-                style={{ padding: '12px 14px', fontSize: '0.9rem' }}
+                style={{ padding: '12px 14px', fontSize: '0.9rem', width: '100%', boxSizing: 'border-box' }}
               />
             </div>
 
@@ -242,11 +242,11 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
                 <img
                   src={`https://img.youtube.com/vi/${previewVideoId}/hqdefault.jpg`}
                   alt="YouTube Preview"
-                  style={{ width: 100, height: 60, objectFit: 'cover', borderRadius: 8 }}
+                  style={{ width: 100, height: 60, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }}
                 />
-                <div>
+                <div style={{ minWidth: 0 }}>
                   <div className="font-mono" style={{ fontSize: '0.72rem', color: 'var(--primary-neon)', fontWeight: 700 }}>✓ Valid Video Detected</div>
-                  <div className="font-mono" style={{ fontSize: '0.68rem', color: 'var(--on-surface-variant)', marginTop: 2 }}>ID: {previewVideoId}</div>
+                  <div className="font-mono" style={{ fontSize: '0.68rem', color: 'var(--on-surface-variant)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>ID: {previewVideoId}</div>
                 </div>
               </div>
             )}
@@ -262,13 +262,13 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 className="input-field"
-                style={{ padding: '10px 14px', fontSize: '0.88rem' }}
+                style={{ padding: '10px 14px', fontSize: '0.88rem', width: '100%', boxSizing: 'border-box' }}
               />
             </div>
 
             {/* 3. Duration Selector (7 Preset Cards + 1 Custom = 8 Cards) */}
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 4 }}>
                 <label className="font-mono" style={{ fontSize: '0.75rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   Viewer Watch Duration:
                 </label>
@@ -277,7 +277,7 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
                 </span>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+              <div className="duration-grid">
                 {presets.map((p) => {
                   const isSelected = !isCustom && duration === p.sec;
                   return (
@@ -288,23 +288,16 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
                         setIsCustom(false);
                         setDuration(p.sec);
                       }}
+                      className="duration-btn"
                       style={{
-                        padding: '10px 6px',
-                        borderRadius: 12,
                         background: isSelected ? 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)' : '#ffffff',
                         color: isSelected ? '#ffffff' : 'var(--on-surface-variant)',
                         border: isSelected ? '1.5px solid var(--primary-neon)' : '1px solid #cbd5e1',
-                        fontFamily: 'JetBrains Mono, monospace',
-                        fontWeight: 700,
-                        fontSize: '0.88rem',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease',
                         boxShadow: isSelected ? '0 3px 10px rgba(14, 165, 233, 0.35)' : 'none',
-                        textAlign: 'center',
                       }}
                     >
-                      {p.sec}s
-                      <div style={{ fontSize: '0.64rem', opacity: 0.92, marginTop: 2, fontWeight: 500 }}>
+                      <div>{p.sec}s</div>
+                      <div style={{ opacity: 0.92, marginTop: 2, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         ${p.ratePerView.toFixed(4)}/view
                       </div>
                     </button>
@@ -318,23 +311,16 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
                     setIsCustom(true);
                     setDuration(Math.max(8, Math.min(600, customSec || 8)));
                   }}
+                  className="duration-btn"
                   style={{
-                    padding: '10px 6px',
-                    borderRadius: 12,
                     background: isCustom ? 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)' : '#ffffff',
                     color: isCustom ? '#ffffff' : 'var(--on-surface-variant)',
                     border: isCustom ? '1.5px solid var(--primary-neon)' : '1px solid #cbd5e1',
-                    fontFamily: 'JetBrains Mono, monospace',
-                    fontWeight: 700,
-                    fontSize: '0.88rem',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
                     boxShadow: isCustom ? '0 3px 10px rgba(14, 165, 233, 0.35)' : 'none',
-                    textAlign: 'center',
                   }}
                 >
-                  Custom
-                  <div style={{ fontSize: '0.64rem', opacity: 0.92, marginTop: 2, fontWeight: 500 }}>
+                  <div>Custom</div>
+                  <div style={{ opacity: 0.92, marginTop: 2, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     ${tier300Rate.toFixed(4)}/view
                   </div>
                 </button>
@@ -342,8 +328,8 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
 
               {/* Custom Duration Input Field */}
               {isCustom && (
-                <div style={{ marginTop: 10, padding: '10px 14px', borderRadius: 12, background: '#f0f9ff', border: '1.5px solid rgba(14, 165, 233, 0.35)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                  <Clock size={16} color="var(--primary-neon)" />
+                <div style={{ marginTop: 10, padding: '10px 14px', borderRadius: 12, background: '#f0f9ff', border: '1.5px solid rgba(14, 165, 233, 0.35)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <Clock size={16} color="var(--primary-neon)" style={{ flexShrink: 0 }} />
                   <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0f172a' }}>
                     Custom Seconds:
                   </span>
@@ -367,11 +353,11 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
                       }
                     }}
                     className="input-field font-mono"
-                    style={{ width: 85, padding: '6px 10px', fontSize: '0.9rem', textAlign: 'center', fontWeight: 700, borderRadius: 8 }}
+                    style={{ width: 75, padding: '6px 8px', fontSize: '0.88rem', textAlign: 'center', fontWeight: 700, borderRadius: 8 }}
                     placeholder="180"
                   />
-                  <span style={{ fontSize: '0.78rem', color: '#64748b' }}>(8s – 600s)</span>
-                  <span className="font-mono" style={{ marginLeft: 'auto', fontSize: '0.82rem', fontWeight: 800, color: 'var(--primary-neon)' }}>
+                  <span style={{ fontSize: '0.75rem', color: '#64748b' }}>(8s – 600s)</span>
+                  <span className="font-mono" style={{ marginLeft: 'auto', fontSize: '0.80rem', fontWeight: 800, color: 'var(--primary-neon)' }}>
                     ${costPerView.toFixed(4)} USD / View
                   </span>
                 </div>
@@ -380,7 +366,7 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
 
             {/* 4. Target Views: Manual Number Input & +/- 100 Stepper Buttons */}
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 4 }}>
                 <label className="font-mono" style={{ fontSize: '0.75rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   Target Views (Min 1,000):
                 </label>
@@ -390,7 +376,7 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
               </div>
 
               {/* Stepper with - / + buttons and manual number input */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
                 <button
                   type="button"
                   onClick={() => setViews((prev) => Math.max(1000, (prev || 1000) - 100))}
@@ -402,7 +388,7 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
                   <Minus size={20} strokeWidth={2.8} />
                 </button>
 
-                <div style={{ position: 'relative', flex: 1 }}>
+                <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
                   <input
                     type="number"
                     min={1000}
@@ -426,6 +412,8 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
                       color: '#0f172a',
                       padding: '8px 45px 8px 14px',
                       borderRadius: 12,
+                      width: '100%',
+                      boxSizing: 'border-box',
                     }}
                     placeholder="1000"
                   />
@@ -446,7 +434,7 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
               </div>
 
               {/* Quick Preset Buttons */}
-              <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', gap: 6, marginTop: 8, width: '100%' }}>
                 {[1000, 2000, 5000, 10000, 25000, 50000].map((preset) => (
                   <button
                     key={preset}
@@ -458,10 +446,14 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
                       background: views === preset ? '#e0f2fe' : '#ffffff',
                       color: views === preset ? '#0369a1' : '#64748b',
                       fontWeight: 700,
-                      fontSize: '0.75rem',
-                      padding: '4px 10px',
+                      fontSize: '0.74rem',
+                      padding: '6px 2px',
+                      justifyContent: 'center',
                       cursor: 'pointer',
                       transition: 'all 0.15s ease',
+                      minWidth: 0,
+                      width: '100%',
+                      boxSizing: 'border-box',
                     }}
                   >
                     {preset >= 1000 ? `${preset / 1000}k` : preset}
