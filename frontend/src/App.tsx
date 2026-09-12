@@ -23,6 +23,9 @@ export function App() {
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [authRole, setAuthRole] = useState<'viewer' | 'campaigner'>('viewer');
 
+  // Mobile App OAuth Bridge
+  const [mobileAuthUrl, setMobileAuthUrl] = useState<string | null>(null);
+
   // Check auth on load
   const fetchMe = async () => {
     const token = localStorage.getItem('myyt_token');
@@ -34,6 +37,24 @@ export function App() {
   };
 
   useEffect(() => {
+    // Check if this is a mobile OAuth return callback
+    try {
+      const hash = window.location.hash ? window.location.hash.substring(1) : '';
+      const search = window.location.search ? window.location.search.substring(1) : '';
+      const fullQuery = hash || search;
+      if (fullQuery) {
+        const params = new URLSearchParams(fullQuery);
+        const state = params.get('state');
+        const hasToken = fullQuery.indexOf('access_token=') !== -1;
+        if (state === 'mobile_auth' || (hasToken && (state === 'mobile_auth' || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)))) {
+          const deepLink = `myyt://oauth#${fullQuery}`;
+          setMobileAuthUrl(deepLink);
+          window.location.replace(deepLink);
+          return;
+        }
+      }
+    } catch {}
+
     const params = new URLSearchParams(window.location.search);
     const refCode = params.get('ref');
     if (refCode) {
@@ -108,6 +129,38 @@ export function App() {
   };
 
   const isLandingPage = location.pathname === '/';
+
+  if (mobileAuthUrl) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#090d16', color: '#f8fafc', padding: 24, textAlign: 'center' }}>
+        <div style={{ width: 72, height: 72, borderRadius: 20, background: 'rgba(2, 132, 199, 0.15)', border: '1px solid rgba(2, 132, 199, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+          <div style={{ width: 28, height: 28, border: '3px solid #38bdf8', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+        </div>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 8, fontFamily: 'Outfit, sans-serif' }}>Returning to myYT Mobile App...</h1>
+        <p style={{ color: '#94a3b8', fontSize: '0.9rem', maxWidth: 360, marginBottom: 24, lineHeight: 1.5 }}>
+          Google sign-in completed! Returning back to your mobile app to finish logging you in.
+        </p>
+        <a
+          href={mobileAuthUrl}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '14px 28px',
+            background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+            color: '#ffffff',
+            fontWeight: 600,
+            borderRadius: 12,
+            textDecoration: 'none',
+            boxShadow: '0 8px 24px rgba(239, 68, 68, 0.35)',
+            fontSize: '1rem',
+          }}
+        >
+          Open myYT Mobile App
+        </a>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--surface-container-lowest)' }}>
