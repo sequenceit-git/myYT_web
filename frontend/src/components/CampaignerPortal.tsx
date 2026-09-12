@@ -1325,25 +1325,26 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                   SPEND LEDGER
                 </h3>
 
-                {/* Sub-Tab Selector (Touch-Scrollable on Mobile) */}
+                {/* Sub-Tab Selector (Responsive 2-column on mobile) */}
                 <div
-                  className="mobile-scroll-x"
+                  className="mobile-ledger-tabs"
                   style={{
-                    display: 'flex',
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
                     gap: 6,
                     background: '#f1f5f9',
                     padding: '4px',
                     borderRadius: 12,
                     border: '1px solid #e2e8f0',
-                    maxWidth: '100%',
-                    overflowX: 'auto',
+                    width: '100%',
+                    maxWidth: 420,
                   }}
                 >
                   <button
                     onClick={() => setLedgerTab('my_tx')}
                     style={{
-                      padding: '7px 16px',
-                      fontSize: '0.84rem',
+                      padding: '7px 8px',
+                      fontSize: 'clamp(0.74rem, 2.4vw, 0.84rem)',
                       fontWeight: 700,
                       borderRadius: 10,
                       border: 'none',
@@ -1353,20 +1354,21 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                       boxShadow: ledgerTab === 'my_tx' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 6,
-                      flexShrink: 0,
+                      justifyContent: 'center',
+                      gap: 5,
                       whiteSpace: 'nowrap',
                       transition: 'all 0.15s ease',
                     }}
                   >
-                    <Wallet size={15} /> My Transactions ({transactions.length})
+                    <Wallet size={14} style={{ flexShrink: 0 }} />
+                    <span>My Transactions ({transactions.length})</span>
                   </button>
 
                   <button
                     onClick={() => { setLedgerTab('platform'); fetchPlatformStats(); }}
                     style={{
-                      padding: '7px 16px',
-                      fontSize: '0.84rem',
+                      padding: '7px 8px',
+                      fontSize: 'clamp(0.74rem, 2.4vw, 0.84rem)',
                       fontWeight: 700,
                       borderRadius: 10,
                       border: 'none',
@@ -1376,13 +1378,14 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                       boxShadow: ledgerTab === 'platform' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 6,
-                      flexShrink: 0,
+                      justifyContent: 'center',
+                      gap: 5,
                       whiteSpace: 'nowrap',
                       transition: 'all 0.15s ease',
                     }}
                   >
-                    <Globe size={15} /> Total Spend & Stats
+                    <Globe size={14} style={{ flexShrink: 0 }} />
+                    <span>Total Spend & Stats</span>
                   </button>
                 </div>
               </div>
@@ -1427,39 +1430,29 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                               .map((tx) => (
                                 <tr key={tx._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                                   <td style={{ padding: '10px 12px' }}>
-                                    {tx.type === 'deposit' ? (
-                                      <span
-                                        className="badge-pill"
-                                        style={{
-                                          padding: '2px 8px',
-                                          fontSize: '0.72rem',
-                                          fontWeight: 700,
-                                          background: '#ecfdf5',
-                                          color: '#059669',
-                                          border: '1px solid rgba(16, 185, 129, 0.3)',
-                                          textTransform: 'uppercase',
-                                        }}
-                                      >
-                                        Deposit {tx.gateway ? `(${tx.gateway.toUpperCase()})` : ''}
-                                      </span>
-                                    ) : (
-                                      <span
-                                        className="badge-pill"
-                                        style={{
-                                          padding: '2px 8px',
-                                          fontSize: '0.72rem',
-                                          fontWeight: 700,
-                                          background: '#f0f9ff',
-                                          color: '#0284c7',
-                                          border: '1px solid rgba(14, 165, 233, 0.3)',
-                                          textTransform: 'uppercase',
-                                        }}
-                                      >
-                                        Campaign Spend
-                                      </span>
-                                    )}
+                                    <span
+                                      className="badge-pill"
+                                      style={{
+                                        padding: '2px 8px',
+                                        fontSize: '0.72rem',
+                                        fontWeight: 700,
+                                        background: tx.type === 'deposit' ? '#ecfdf5' : '#f0f9ff',
+                                        color: tx.type === 'deposit' ? '#059669' : '#0284c7',
+                                        border: `1px solid ${tx.type === 'deposit' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(14, 165, 233, 0.3)'}`,
+                                        textTransform: 'uppercase',
+                                      }}
+                                    >
+                                      {tx.type === 'deposit' ? `Deposit (${(tx.gateway || 'ssl').toUpperCase()})` : 'Campaign Spend'}
+                                    </span>
                                   </td>
-                                  <td className="font-mono" style={{ padding: '10px 12px', fontWeight: 700, color: tx.type === 'deposit' || tx.amount > 0 ? '#059669' : '#ef4444' }}>
+                                  <td
+                                    className="font-mono"
+                                    style={{
+                                      padding: '10px 12px',
+                                      fontWeight: 700,
+                                      color: tx.type === 'deposit' || tx.amount > 0 ? '#059669' : '#ef4444',
+                                    }}
+                                  >
                                     {tx.type === 'deposit' || tx.amount > 0
                                       ? `+$${tx.amount.toFixed(2)}`
                                       : `-$${Math.abs(tx.amount).toFixed(2)}`}
@@ -1568,65 +1561,73 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                   {/* 4 Real Data Metric Cards in Responsive Fluid Grid */}
                   <div className="responsive-kpi-grid">
                     {/* 1. Total Views Delivered */}
-                    <div className="glass-card responsive-kpi-card" style={{ padding: '18px', borderRadius: 16, border: '1.5px solid rgba(14, 165, 233, 0.3)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span className="font-mono" style={{ fontSize: '0.8rem', color: 'var(--primary-neon)', textTransform: 'uppercase', fontWeight: 700 }}>
+                    <div className="glass-card responsive-kpi-card" style={{ padding: '16px 14px', borderRadius: 16, border: '1.5px solid rgba(14, 165, 233, 0.3)', overflow: 'hidden' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
+                        <span className="font-mono" style={{ fontSize: '0.74rem', color: 'var(--primary-neon)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           Views Delivered
                         </span>
-                        <PlaySquare size={18} color="var(--primary-neon)" />
+                        <div style={{ width: 28, height: 28, borderRadius: 8, background: '#f0f9ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <PlaySquare size={15} color="var(--primary-neon)" />
+                        </div>
                       </div>
-                      <div className="font-mono responsive-kpi-val" style={{ fontSize: '2.1rem', fontWeight: 800, color: 'var(--primary-neon)', marginTop: 6, lineHeight: 1 }}>
+                      <div className="font-mono responsive-kpi-val" style={{ fontSize: '1.65rem', fontWeight: 800, color: 'var(--primary-neon)', marginTop: 8, lineHeight: 1 }}>
                         {(platformStats?.totalViewsDelivered || 0).toLocaleString()}
                       </div>
-                      <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 4 }}>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         Total real YouTube views
                       </div>
                     </div>
 
                     {/* 2. Total Ad Spend */}
-                    <div className="glass-card responsive-kpi-card" style={{ padding: '18px', borderRadius: 16, border: '1.5px solid rgba(16, 185, 129, 0.3)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span className="font-mono" style={{ fontSize: '0.8rem', color: '#059669', textTransform: 'uppercase', fontWeight: 700 }}>
+                    <div className="glass-card responsive-kpi-card" style={{ padding: '16px 14px', borderRadius: 16, border: '1.5px solid rgba(16, 185, 129, 0.3)', overflow: 'hidden' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
+                        <span className="font-mono" style={{ fontSize: '0.74rem', color: '#059669', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           Total Ad Spend
                         </span>
-                        <CreditCard size={18} color="#059669" />
+                        <div style={{ width: 28, height: 28, borderRadius: 8, background: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <CreditCard size={15} color="#059669" />
+                        </div>
                       </div>
-                      <div className="font-mono responsive-kpi-val" style={{ fontSize: '2.1rem', fontWeight: 800, color: '#059669', marginTop: 6, lineHeight: 1 }}>
+                      <div className="font-mono responsive-kpi-val" style={{ fontSize: '1.65rem', fontWeight: 800, color: '#059669', marginTop: 8, lineHeight: 1 }}>
                         ${(platformStats?.totalSpendUsd || 0).toFixed(2)}
                       </div>
-                      <div className="font-mono" style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600, marginTop: 4 }}>
+                      <div className="font-mono" style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         ≈ ৳{Math.round((platformStats?.totalSpendUsd || 0) * bdtRate).toLocaleString()} BDT
                       </div>
                     </div>
 
                     {/* 3. Active Campaigns */}
-                    <div className="glass-card responsive-kpi-card" style={{ padding: '18px', borderRadius: 16 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span className="font-mono" style={{ fontSize: '0.8rem', color: '#7c3aed', textTransform: 'uppercase', fontWeight: 700 }}>
+                    <div className="glass-card responsive-kpi-card" style={{ padding: '16px 14px', borderRadius: 16, border: '1px solid #f1f5f9', overflow: 'hidden' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
+                        <span className="font-mono" style={{ fontSize: '0.74rem', color: '#7c3aed', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           Active Campaigns
                         </span>
-                        <Activity size={18} color="#7c3aed" />
+                        <div style={{ width: 28, height: 28, borderRadius: 8, background: '#f5f3ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <Activity size={15} color="#7c3aed" />
+                        </div>
                       </div>
-                      <div className="font-mono responsive-kpi-val" style={{ fontSize: '2.1rem', fontWeight: 800, color: '#7c3aed', marginTop: 6, lineHeight: 1 }}>
+                      <div className="font-mono responsive-kpi-val" style={{ fontSize: '1.65rem', fontWeight: 800, color: '#7c3aed', marginTop: 8, lineHeight: 1 }}>
                         {(platformStats?.activeCampaigns || 0).toLocaleString()}
                       </div>
-                      <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 4 }}>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         Promotions running now
                       </div>
                     </div>
 
                     {/* 4. Total Campaigns Created */}
-                    <div className="glass-card responsive-kpi-card" style={{ padding: '18px', borderRadius: 16 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span className="font-mono" style={{ fontSize: '0.8rem', color: '#d97706', textTransform: 'uppercase', fontWeight: 700 }}>
+                    <div className="glass-card responsive-kpi-card" style={{ padding: '16px 14px', borderRadius: 16, border: '1px solid #f1f5f9', overflow: 'hidden' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
+                        <span className="font-mono" style={{ fontSize: '0.74rem', color: '#d97706', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           Total Campaigns
                         </span>
-                        <Megaphone size={18} color="#d97706" />
+                        <div style={{ width: 28, height: 28, borderRadius: 8, background: '#fffbeb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <Megaphone size={15} color="#d97706" />
+                        </div>
                       </div>
-                      <div className="font-mono responsive-kpi-val" style={{ fontSize: '2.1rem', fontWeight: 800, color: '#d97706', marginTop: 6, lineHeight: 1 }}>
+                      <div className="font-mono responsive-kpi-val" style={{ fontSize: '1.65rem', fontWeight: 800, color: '#d97706', marginTop: 8, lineHeight: 1 }}>
                         {(platformStats?.totalCampaigns || 0).toLocaleString()}
                       </div>
-                      <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 4 }}>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         Platform promotions
                       </div>
                     </div>

@@ -39,6 +39,35 @@ async function getDailyStats(userId: any) {
   }
 }
 
+export function formatUserResponse(u: any, dailySpend: number = 0, dailyEarnings: number = 0) {
+  const viewerBal = u.viewerBalance !== undefined ? u.viewerBalance : Math.max(0, (u.totalEarned || 0) - (u.totalWithdrawn || 0));
+  const creatorBal = u.creatorBalance !== undefined ? u.creatorBalance : (u.balance || 0);
+
+  return {
+    id: u._id,
+    email: u.email,
+    name: u.name,
+    phoneNumber: u.phoneNumber || '',
+    role: u.role,
+    balance: u.balance ?? 0,
+    viewerBalance: viewerBal,
+    creatorBalance: creatorBal,
+    credits: u.credits || 0,
+    totalCreditsEarned: u.totalCreditsEarned || 0,
+    totalEarned: u.totalEarned || 0,
+    totalSpent: u.totalSpent || 0,
+    totalWithdrawn: u.totalWithdrawn || 0,
+    referralCode: u.referralCode,
+    referralEarnings: u.referralEarnings || 0,
+    referralCount: u.referralCount || 0,
+    dailySpend,
+    dailyEarnings,
+    status: u.status || 'active',
+    savedPaymentMethods: u.savedPaymentMethods || [],
+    avatar: (u.avatar ? u.avatar.replace('/svg', '/png') : `https://api.dicebear.com/7.x/adventurer/png?seed=${encodeURIComponent(u.email)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`),
+  };
+}
+
 const generateReferralCode = (): string => {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = 'MY';
@@ -122,18 +151,7 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
     res.status(201).json({
       success: true,
       data: {
-        user: {
-          id: user._id,
-          email: user.email,
-          name: user.name,
-          phoneNumber: user.phoneNumber || '',
-          role: user.role,
-          balance: user.balance,
-          avatar: user.avatar || randomAvatar,
-          referralCode: user.referralCode,
-          referralEarnings: user.referralEarnings || 0,
-          referralCount: user.referralCount || 0,
-        },
+        user: formatUserResponse(user, 0, 0),
         ...tokens,
       },
     });
@@ -175,21 +193,7 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
     res.json({
       success: true,
       data: {
-        user: {
-          id: user._id,
-          email: user.email,
-          name: user.name,
-          phoneNumber: user.phoneNumber || '',
-          role: user.role,
-          balance: user.balance,
-          credits: user.credits || 0,
-          totalCreditsEarned: user.totalCreditsEarned || 0,
-          totalEarned: user.totalEarned,
-          totalSpent: user.totalSpent,
-          dailySpend,
-          dailyEarnings,
-          avatar: (user.avatar ? user.avatar.replace('/svg', '/png') : `https://api.dicebear.com/7.x/adventurer/png?seed=${encodeURIComponent(user.email)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`),
-        },
+        user: formatUserResponse(user, dailySpend, dailyEarnings),
         ...tokens,
       },
     });
@@ -293,24 +297,7 @@ router.post('/google', async (req: Request, res: Response): Promise<void> => {
     res.json({
       success: true,
       data: {
-        user: {
-          id: user._id,
-          email: user.email,
-          name: user.name,
-          phoneNumber: user.phoneNumber || '',
-          role: user.role,
-          balance: user.balance,
-          credits: user.credits || 0,
-          totalCreditsEarned: user.totalCreditsEarned || 0,
-          avatar: user.avatar,
-          totalEarned: user.totalEarned,
-          totalSpent: user.totalSpent,
-          referralCode: user.referralCode,
-          referralEarnings: user.referralEarnings || 0,
-          referralCount: user.referralCount || 0,
-          dailySpend,
-          dailyEarnings,
-        },
+        user: formatUserResponse(user, dailySpend, dailyEarnings),
         ...tokens,
       },
     });
@@ -331,35 +318,11 @@ router.get('/me', requireAuth, async (req: AuthRequest, res: Response): Promise<
     await u.save();
   }
 
-  const viewerBal = u.viewerBalance !== undefined ? u.viewerBalance : Math.max(0, (u.totalEarned || 0) - (u.totalWithdrawn || 0));
-  const creatorBal = u.creatorBalance !== undefined ? u.creatorBalance : (u.balance || 0);
   const { dailySpend, dailyEarnings } = await getDailyStats(u._id);
 
   res.json({
     success: true,
-    data: {
-      id: u._id,
-      email: u.email,
-      name: u.name,
-      phoneNumber: u.phoneNumber || '',
-      role: u.role,
-      balance: u.balance,
-      viewerBalance: viewerBal,
-      creatorBalance: creatorBal,
-      credits: u.credits || 0,
-      totalCreditsEarned: u.totalCreditsEarned || 0,
-      totalEarned: u.totalEarned,
-      totalSpent: u.totalSpent,
-      totalWithdrawn: u.totalWithdrawn,
-      referralCode: u.referralCode,
-      referralEarnings: u.referralEarnings || 0,
-      referralCount: u.referralCount || 0,
-      dailySpend,
-      dailyEarnings,
-      status: u.status,
-      savedPaymentMethods: u.savedPaymentMethods || [],
-      avatar: (u.avatar ? u.avatar.replace('/svg', '/png') : `https://api.dicebear.com/7.x/adventurer/png?seed=${encodeURIComponent(u.email)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`),
-    },
+    data: formatUserResponse(u, dailySpend, dailyEarnings),
   });
 });
 
@@ -416,32 +379,12 @@ router.post('/switch-profile', requireAuth, async (req: AuthRequest, res: Respon
     }
 
     const tokens = generateTokens(user._id.toString(), user.role);
-    const viewerBal = user.viewerBalance !== undefined ? user.viewerBalance : Math.max(0, (user.totalEarned || 0) - (user.totalWithdrawn || 0));
-    const creatorBal = user.creatorBalance !== undefined ? user.creatorBalance : (user.balance || 0);
     const { dailySpend, dailyEarnings } = await getDailyStats(user._id);
 
     res.json({
       success: true,
       data: {
-        user: {
-          id: user._id,
-          email: user.email,
-          name: user.name,
-          phoneNumber: user.phoneNumber || '',
-          role: user.role,
-          balance: user.balance,
-          viewerBalance: viewerBal,
-          creatorBalance: creatorBal,
-          credits: user.credits || 0,
-          totalCreditsEarned: user.totalCreditsEarned || 0,
-          totalEarned: user.totalEarned,
-          totalSpent: user.totalSpent,
-          totalWithdrawn: user.totalWithdrawn,
-          dailySpend,
-          dailyEarnings,
-          status: user.status,
-          avatar: (user.avatar ? user.avatar.replace('/svg', '/png') : `https://api.dicebear.com/7.x/adventurer/png?seed=${encodeURIComponent(user.email)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`),
-        },
+        user: formatUserResponse(user, dailySpend, dailyEarnings),
         ...tokens,
       },
     });
@@ -490,15 +433,7 @@ router.post('/admin-login', async (req: Request, res: Response): Promise<void> =
     res.json({
       success: true,
       data: {
-        user: {
-          id: adminUser._id,
-          email: adminUser.email,
-          name: adminUser.name,
-          phoneNumber: adminUser.phoneNumber || '',
-          role: 'admin',
-          balance: adminUser.balance,
-          avatar: adminUser.avatar,
-        },
+        user: formatUserResponse(adminUser, 0, 0),
         ...tokens,
       },
     });
@@ -524,19 +459,12 @@ router.put('/profile', requireAuth, async (req: AuthRequest, res: Response): Pro
     }
 
     await user.save();
+    const { dailySpend, dailyEarnings } = await getDailyStats(user._id);
 
     res.json({
       success: true,
       message: 'Profile updated successfully',
-      data: {
-        id: user._id,
-        email: user.email,
-        name: user.name,
-        phoneNumber: user.phoneNumber || '',
-        role: user.role,
-        avatar: user.avatar,
-        balance: user.balance,
-      },
+      data: formatUserResponse(user, dailySpend, dailyEarnings),
     });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message || 'Failed to update profile' });

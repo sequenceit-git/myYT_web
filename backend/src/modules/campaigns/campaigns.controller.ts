@@ -146,6 +146,8 @@ router.post('/', requireAuth, async (req: AuthRequest, res: Response): Promise<v
       data: {
         campaign,
         newBalance: updatedUser.balance,
+        creatorBalance: updatedUser.creatorBalance,
+        viewerBalance: updatedUser.viewerBalance,
       },
     });
   } catch (error: any) {

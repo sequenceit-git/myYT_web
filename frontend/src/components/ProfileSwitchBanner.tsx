@@ -80,7 +80,7 @@ export const ProfileSwitchBanner: React.FC<ProfileSwitchBannerProps> = ({
         <div
           className="font-display"
           style={{
-            fontSize: 'clamp(0.68rem, 2.9vw, 1.12rem)',
+            fontSize: 'clamp(0.82rem, 3.4vw, 1.16rem)',
             color: '#ffffff',
             letterSpacing: '0.01em',
             margin: 0,
@@ -110,7 +110,7 @@ export const ProfileSwitchBanner: React.FC<ProfileSwitchBannerProps> = ({
         className="btn-mobile-full"
         style={{
           padding: '10px 22px',
-          fontSize: '0.88rem',
+          fontSize: '0.92rem',
           fontWeight: 800,
           fontFamily: 'JetBrains Mono, monospace',
           letterSpacing: '0.03em',

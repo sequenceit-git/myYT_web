@@ -16,7 +16,6 @@ import {
   Check,
   Smartphone,
   Download,
-  ExternalLink,
   Users,
   BarChart3,
   Globe,
@@ -29,6 +28,7 @@ import {
   Copy,
   Share2,
   Gift,
+  Lock,
 } from 'lucide-react';
 import { User, Task, Transaction } from '../types';
 import { apiRequest } from '../api';
@@ -511,6 +511,8 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
       const bound = user.savedPaymentMethods.find((p) => p.method === withdrawMethod);
       if (bound) {
         setAccountDetails(bound.accountNumber);
+      } else {
+        setAccountDetails('');
       }
     }
   }, [withdrawMethod, user?.savedPaymentMethods]);
@@ -537,8 +539,12 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
       return;
     }
 
-    if (!accountDetails.trim()) {
-      setMsg({ type: 'error', text: 'Please enter recipient account / wallet details.' });
+    const linkedMethod = user.savedPaymentMethods?.find((p) => p.method === withdrawMethod);
+    if (!linkedMethod || !linkedMethod.accountNumber || !linkedMethod.accountNumber.trim()) {
+      setMsg({
+        type: 'error',
+        text: `Please link and save your verified ${selectedConfig.name} account in Profile Settings before withdrawing.`,
+      });
       return;
     }
 
@@ -549,7 +555,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
       body: JSON.stringify({
         amount: Number(withdrawAmount),
         method: withdrawMethod,
-        accountDetails: accountDetails.trim(),
+        accountDetails: linkedMethod.accountNumber.trim(),
         deviceInfo,
       }),
     });
@@ -609,7 +615,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
     return `https://www.google.com/url?sa=t&url=${encodeURIComponent(`https://www.youtube.com/watch?v=${videoId}`)}`;
   };
 
-  // Render Status Badge: Verified (Green) vs In Progress (Orange-Red)
+  // Render Status Badge: Verified (Green) vs Interrupted (Orange-Red)
   const renderWatchStatusBadge = (status: string) => {
     const isCompleted = status === 'completed';
     if (isCompleted) {
@@ -647,7 +653,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
           border: '1px solid rgba(234, 88, 12, 0.35)',
         }}
       >
-        <Clock size={12} /> In Progress
+        <Clock size={12} /> Interrupted
       </span>
     );
   };
@@ -672,6 +678,8 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
 
   const payoutMethods = getPayoutMethods(usdToBdt);
   const selectedConfig = payoutMethods.find((m) => m.id === withdrawMethod) || payoutMethods[0];
+  const linkedPaymentMethod = user?.savedPaymentMethods?.find((p) => p.method === withdrawMethod);
+  const isLinked = !!(linkedPaymentMethod && linkedPaymentMethod.accountNumber);
 
   return (
     <div className="responsive-container">
@@ -1209,22 +1217,6 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                   >
                     <Download size={16} /> Download APK
                   </a>
-                  <a
-                    href="https://expo.dev/accounts/ovijitm/projects/myyt/builds"
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{
-                      padding: '7px 10px',
-                      fontSize: '0.78rem',
-                      color: 'rgba(255, 255, 255, 0.85)',
-                      textDecoration: 'none',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 4,
-                    }}
-                  >
-                    <ExternalLink size={12} /> Builds
-                  </a>
                 </div>
               </div>
 
@@ -1624,21 +1616,140 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
 
                   {/* Account Details */}
                   <div>
-                    <label className="font-mono" style={{ fontSize: '0.84rem', color: '#475569', fontWeight: 700, display: 'block', marginBottom: 6 }}>
-                      {selectedConfig.inputLabel}:
-                    </label>
-                    <input
-                      type="text"
-                      placeholder={selectedConfig.placeholder}
-                      value={accountDetails}
-                      onChange={(e) => setAccountDetails(e.target.value)}
-                      className="input-field"
-                      style={{ padding: '11px 14px', fontSize: '0.98rem' }}
-                      required
-                    />
-                    <span style={{ fontSize: '0.78rem', color: '#64748b', display: 'block', marginTop: 4 }}>
-                      Ensure correct details for instant disbursement.
-                    </span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <label className="font-mono" style={{ fontSize: '0.84rem', color: '#475569', fontWeight: 700 }}>
+                        {selectedConfig.inputLabel}:
+                      </label>
+                      {isLinked ? (
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            color: '#059669',
+                            background: '#ecfdf5',
+                            border: '1px solid #a7f3d0',
+                            padding: '2px 8px',
+                            borderRadius: 6,
+                          }}
+                        >
+                          <Lock size={11} /> Linked & Locked
+                        </span>
+                      ) : (
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            color: '#b45309',
+                            background: '#fef3c7',
+                            border: '1px solid #fde68a',
+                            padding: '2px 8px',
+                            borderRadius: 6,
+                          }}
+                        >
+                          <AlertCircle size={11} /> Not Linked
+                        </span>
+                      )}
+                    </div>
+
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type="text"
+                        placeholder={isLinked ? selectedConfig.placeholder : `No linked ${selectedConfig.name} account found in profile`}
+                        value={isLinked ? (linkedPaymentMethod?.accountNumber || accountDetails) : ''}
+                        readOnly={true}
+                        disabled={!isLinked}
+                        className="input-field"
+                        style={{
+                          padding: isLinked ? '11px 38px 11px 14px' : '11px 14px',
+                          fontSize: '0.98rem',
+                          background: '#f8fafc',
+                          borderColor: isLinked ? '#cbd5e1' : '#fde68a',
+                          cursor: 'not-allowed',
+                          color: isLinked ? '#0f172a' : '#94a3b8',
+                          fontWeight: isLinked ? 600 : 400,
+                        }}
+                        required={isLinked}
+                      />
+                      {isLinked && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            right: 12,
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            color: '#059669',
+                            display: 'flex',
+                            alignItems: 'center',
+                          }}
+                          title="This payment method is bound to your account profile."
+                        >
+                          <Lock size={15} />
+                        </div>
+                      )}
+                    </div>
+
+                    {isLinked ? (
+                      <span style={{ fontSize: '0.78rem', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 5, flexWrap: 'wrap', gap: 6 }}>
+                        <span>✓ Pre-filled from your linked account.</span>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('profile')}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--primary-neon)',
+                            fontSize: '0.78rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            textDecoration: 'underline',
+                            padding: 0,
+                          }}
+                        >
+                          Edit in Profile Settings
+                        </button>
+                      </span>
+                    ) : (
+                      <div
+                        style={{
+                          marginTop: 8,
+                          padding: '10px 14px',
+                          background: '#fffbeb',
+                          border: '1px solid #fde68a',
+                          borderRadius: 10,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          flexWrap: 'wrap',
+                          gap: 8,
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.82rem', color: '#92400e', fontWeight: 600 }}>
+                          <AlertCircle size={16} color="#d97706" style={{ flexShrink: 0 }} />
+                          <span>You must link your verified {selectedConfig.name} account in Profile Settings before withdrawing.</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('profile')}
+                          className="btn btn-ghost"
+                          style={{
+                            padding: '4px 10px',
+                            fontSize: '0.78rem',
+                            fontWeight: 700,
+                            background: '#fef3c7',
+                            borderColor: '#f59e0b',
+                            color: '#b45309',
+                          }}
+                        >
+                          Set Up in Profile Settings →
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1698,16 +1809,38 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                   </div>
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={loading || viewerBal < 5.0}
-                  className="btn btn-neon glow-neon"
-                  style={{ padding: '13px', fontSize: '0.96rem', borderRadius: 12, marginTop: 4 }}
-                >
-                  {loading
-                    ? 'Submitting Request...'
-                    : `Withdraw $${withdrawAmount.toFixed(2)} USD via ${selectedConfig.name}`}
-                </button>
+                {isLinked ? (
+                  <button
+                    type="submit"
+                    disabled={loading || viewerBal < 5.0}
+                    className="btn btn-neon glow-neon"
+                    style={{ padding: '13px', fontSize: '0.96rem', borderRadius: 12, marginTop: 4 }}
+                  >
+                    {loading
+                      ? 'Submitting Request...'
+                      : `Withdraw $${withdrawAmount.toFixed(2)} USD via ${selectedConfig.name}`}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('profile')}
+                    className="btn btn-ghost"
+                    style={{
+                      padding: '13px',
+                      fontSize: '0.96rem',
+                      borderRadius: 12,
+                      marginTop: 4,
+                      borderColor: '#f59e0b',
+                      background: '#fef3c7',
+                      color: '#b45309',
+                      fontWeight: 700,
+                      justifyContent: 'center',
+                      gap: 8,
+                    }}
+                  >
+                    <AlertCircle size={18} /> Link {selectedConfig.name} in Profile Settings to Withdraw
+                  </button>
+                )}
               </form>
             </div>
           )}
@@ -1716,30 +1849,30 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
           {activeTab === 'transactions' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {/* Header with Sub-tab Switcher */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-                <h3 className="font-display" style={{ fontSize: '1.5rem', color: '#0f172a', margin: 0 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                <h3 className="font-display" style={{ fontSize: 'clamp(1.2rem, 4vw, 1.5rem)', color: '#0f172a', margin: 0 }}>
                   PAYOUT LEDGER
                 </h3>
 
-                {/* Sub-Tab Selector (Touch-Scrollable on Mobile) */}
+                {/* Sub-Tab Selector */}
                 <div
-                  className="mobile-scroll-x"
                   style={{
-                    display: 'flex',
-                    gap: 6,
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: 4,
                     background: '#f1f5f9',
-                    padding: '4px',
+                    padding: '3px',
                     borderRadius: 12,
                     border: '1px solid #e2e8f0',
-                    maxWidth: '100%',
-                    overflowX: 'auto',
+                    width: '100%',
+                    maxWidth: 420,
                   }}
                 >
                   <button
                     onClick={() => setLedgerTab('my_tx')}
                     style={{
-                      padding: '7px 16px',
-                      fontSize: '0.84rem',
+                      padding: '7px 8px',
+                      fontSize: 'clamp(0.74rem, 2.4vw, 0.84rem)',
                       fontWeight: 700,
                       borderRadius: 10,
                       border: 'none',
@@ -1749,20 +1882,21 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                       boxShadow: ledgerTab === 'my_tx' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 6,
-                      flexShrink: 0,
+                      justifyContent: 'center',
+                      gap: 5,
                       whiteSpace: 'nowrap',
                       transition: 'all 0.15s ease',
                     }}
                   >
-                    <CreditCard size={15} /> My Withdrawals ({transactions.length})
+                    <CreditCard size={14} style={{ flexShrink: 0 }} />
+                    <span>My Payouts ({transactions.length})</span>
                   </button>
 
                   <button
                     onClick={() => { setLedgerTab('platform'); fetchPlatformStats(); }}
                     style={{
-                      padding: '7px 16px',
-                      fontSize: '0.84rem',
+                      padding: '7px 8px',
+                      fontSize: 'clamp(0.74rem, 2.4vw, 0.84rem)',
                       fontWeight: 700,
                       borderRadius: 10,
                       border: 'none',
@@ -1772,13 +1906,14 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                       boxShadow: ledgerTab === 'platform' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 6,
-                      flexShrink: 0,
+                      justifyContent: 'center',
+                      gap: 5,
                       whiteSpace: 'nowrap',
                       transition: 'all 0.15s ease',
                     }}
                   >
-                    <Globe size={15} /> Total Withdrawals & Stats
+                    <Globe size={14} style={{ flexShrink: 0 }} />
+                    <span>Total Stats & Feed</span>
                   </button>
                 </div>
               </div>
@@ -1896,65 +2031,73 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                   {/* 4 Real Data Metric Cards in Fluid Responsive Grid */}
                   <div className="responsive-kpi-grid">
                     {/* 1. Total Withdrawals Done */}
-                    <div className="glass-card responsive-kpi-card" style={{ padding: '18px', borderRadius: 16, border: '1.5px solid rgba(16, 185, 129, 0.3)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span className="font-mono" style={{ fontSize: '0.8rem', color: '#059669', textTransform: 'uppercase', fontWeight: 700 }}>
+                    <div className="glass-card responsive-kpi-card" style={{ padding: '16px 14px', borderRadius: 16, border: '1.5px solid rgba(16, 185, 129, 0.3)', overflow: 'hidden' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
+                        <span className="font-mono" style={{ fontSize: '0.74rem', color: '#059669', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           Total Paid Out
                         </span>
-                        <CreditCard size={18} color="#059669" />
+                        <div style={{ width: 28, height: 28, borderRadius: 8, background: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <CreditCard size={15} color="#059669" />
+                        </div>
                       </div>
-                      <div className="font-mono responsive-kpi-val" style={{ fontSize: '2.1rem', fontWeight: 800, color: '#059669', marginTop: 6, lineHeight: 1 }}>
+                      <div className="font-mono responsive-kpi-val" style={{ fontSize: '1.65rem', fontWeight: 800, color: '#059669', marginTop: 8, lineHeight: 1 }}>
                         ${(platformStats?.totalWithdrawnUsd || 0).toFixed(2)}
                       </div>
-                      <div className="font-mono" style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600, marginTop: 4 }}>
+                      <div className="font-mono" style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         ≈ ৳{Math.round((platformStats?.totalWithdrawnUsd || 0) * bdtRate).toLocaleString()} BDT
                       </div>
                     </div>
 
                     {/* 2. Total Times Watched */}
-                    <div className="glass-card responsive-kpi-card" style={{ padding: '18px', borderRadius: 16, border: '1.5px solid rgba(14, 165, 233, 0.3)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span className="font-mono" style={{ fontSize: '0.8rem', color: 'var(--primary-neon)', textTransform: 'uppercase', fontWeight: 700 }}>
+                    <div className="glass-card responsive-kpi-card" style={{ padding: '16px 14px', borderRadius: 16, border: '1.5px solid rgba(14, 165, 233, 0.3)', overflow: 'hidden' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
+                        <span className="font-mono" style={{ fontSize: '0.74rem', color: 'var(--primary-neon)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           Total Watched
                         </span>
-                        <PlaySquare size={18} color="var(--primary-neon)" />
+                        <div style={{ width: 28, height: 28, borderRadius: 8, background: '#f0f9ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <PlaySquare size={15} color="var(--primary-neon)" />
+                        </div>
                       </div>
-                      <div className="font-mono responsive-kpi-val" style={{ fontSize: '2.1rem', fontWeight: 800, color: 'var(--primary-neon)', marginTop: 6, lineHeight: 1 }}>
+                      <div className="font-mono responsive-kpi-val" style={{ fontSize: '1.65rem', fontWeight: 800, color: 'var(--primary-neon)', marginTop: 8, lineHeight: 1 }}>
                         {(platformStats?.totalTimesWatched || 0).toLocaleString()}
                       </div>
-                      <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 4 }}>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         Completed views
                       </div>
                     </div>
 
                     {/* 3. Active Community Earners */}
-                    <div className="glass-card responsive-kpi-card" style={{ padding: '18px', borderRadius: 16 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span className="font-mono" style={{ fontSize: '0.8rem', color: '#7c3aed', textTransform: 'uppercase', fontWeight: 700 }}>
+                    <div className="glass-card responsive-kpi-card" style={{ padding: '16px 14px', borderRadius: 16, border: '1px solid #f1f5f9', overflow: 'hidden' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
+                        <span className="font-mono" style={{ fontSize: '0.74rem', color: '#7c3aed', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           Total Members
                         </span>
-                        <Users size={18} color="#7c3aed" />
+                        <div style={{ width: 28, height: 28, borderRadius: 8, background: '#f5f3ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <Users size={15} color="#7c3aed" />
+                        </div>
                       </div>
-                      <div className="font-mono responsive-kpi-val" style={{ fontSize: '2.1rem', fontWeight: 800, color: '#7c3aed', marginTop: 6, lineHeight: 1 }}>
+                      <div className="font-mono responsive-kpi-val" style={{ fontSize: '1.65rem', fontWeight: 800, color: '#7c3aed', marginTop: 8, lineHeight: 1 }}>
                         {(platformStats?.activeEarnersCount || 0).toLocaleString()}
                       </div>
-                      <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 4 }}>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         Registered users
                       </div>
                     </div>
 
                     {/* 4. Average Payout Turnaround */}
-                    <div className="glass-card responsive-kpi-card" style={{ padding: '18px', borderRadius: 16 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span className="font-mono" style={{ fontSize: '0.8rem', color: '#d97706', textTransform: 'uppercase', fontWeight: 700 }}>
+                    <div className="glass-card responsive-kpi-card" style={{ padding: '16px 14px', borderRadius: 16, border: '1px solid #f1f5f9', overflow: 'hidden' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
+                        <span className="font-mono" style={{ fontSize: '0.74rem', color: '#d97706', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           Avg Payout Time
                         </span>
-                        <Activity size={18} color="#d97706" />
+                        <div style={{ width: 28, height: 28, borderRadius: 8, background: '#fffbeb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <Activity size={15} color="#d97706" />
+                        </div>
                       </div>
-                      <div className="font-mono responsive-kpi-val" style={{ fontSize: '2.1rem', fontWeight: 800, color: '#d97706', marginTop: 6, lineHeight: 1 }}>
+                      <div className="font-mono responsive-kpi-val" style={{ fontSize: '1.65rem', fontWeight: 800, color: '#d97706', marginTop: 8, lineHeight: 1 }}>
                         &lt; 15 min
                       </div>
-                      <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 4 }}>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         Disbursement speed
                       </div>
                     </div>

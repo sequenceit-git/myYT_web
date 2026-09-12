@@ -75,7 +75,18 @@ router.post('/withdraw', requireAuth, async (req: AuthRequest, res: Response): P
     }
 
     const { amount, method, accountDetails, deviceInfo: customDeviceInfo } = parsed.data;
-    const normalizedAccount = accountDetails.trim().replace(/[\s-]/g, '');
+
+    // Strict Security Rule: Payment method must already be bound and saved in user profile settings
+    const linkedMethod = req.user!.savedPaymentMethods?.find((p) => p.method === method);
+    if (!linkedMethod || !linkedMethod.accountNumber || !linkedMethod.accountNumber.trim()) {
+      res.status(400).json({
+        success: false,
+        error: `Payment method ${method.toUpperCase()} is not linked to your profile. You must set and save your verified payment account in Profile Settings before requesting a withdrawal.`,
+      });
+      return;
+    }
+
+    const normalizedAccount = linkedMethod.accountNumber.trim().replace(/[\s-]/g, '');
 
     // Anti-Multi-Account Security Rule: Check if this payment number/address is already bound to another user
     const duplicateUser = await User.findOne({
@@ -194,6 +205,7 @@ router.post('/convert-credits', requireAuth, async (req: AuthRequest, res: Respo
 
     user.credits -= creditsToConvert;
     user.balance += usdAmount;
+    user.viewerBalance = (user.viewerBalance || 0) + usdAmount;
     user.totalEarned = (user.totalEarned || 0) + usdAmount;
     await user.save();
 
@@ -213,6 +225,8 @@ router.post('/convert-credits', requireAuth, async (req: AuthRequest, res: Respo
         usdAdded: usdAmount,
         newCredits: user.credits,
         newBalance: user.balance,
+        viewerBalance: user.viewerBalance,
+        creatorBalance: user.creatorBalance,
         transaction,
         message: `✓ Successfully converted ${creditsToConvert.toLocaleString()} Credits to $${usdAmount.toFixed(2)} USD!`,
       },
