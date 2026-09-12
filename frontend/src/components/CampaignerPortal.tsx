@@ -852,6 +852,7 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                 padding: '12px 16px',
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: 'space-between',
                 gap: 10,
                 borderRadius: 12,
                 borderLeft: feedback.type === 'success' ? '4px solid var(--primary-neon)' : '4px solid #ef4444',
@@ -861,8 +862,19 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                 color: feedback.type === 'success' ? '#0369a1' : '#b91c1c',
               }}
             >
-              {feedback.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-              <span>{feedback.message}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {feedback.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+                <span>{feedback.message}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFeedback(null)}
+                className="btn btn-ghost"
+                style={{ padding: 4, borderRadius: '50%', color: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                title="Dismiss"
+              >
+                <X size={16} />
+              </button>
             </div>
           )}
 
@@ -1401,28 +1413,6 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                   Manual Deposit • Admin Approved
                 </span>
               </div>
-
-              {/* Feedback Alert */}
-              {feedback && (
-                <div
-                  style={{
-                    padding: '12px 16px',
-                    borderRadius: 12,
-                    marginBottom: 16,
-                    fontSize: '0.88rem',
-                    fontWeight: 600,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    background: feedback.type === 'success' ? '#f0fdf4' : '#fef2f2',
-                    border: feedback.type === 'success' ? '1px solid #86efac' : '1px solid #fca5a5',
-                    color: feedback.type === 'success' ? '#15803d' : '#b91c1c',
-                  }}
-                >
-                  {feedback.type === 'success' ? <CheckCircle2 size={18} color="#16a34a" /> : <AlertCircle size={18} color="#dc2626" />}
-                  <span>{feedback.message}</span>
-                </div>
-              )}
 
               {/* INDIVIDUAL DEPOSIT METHOD CARDS */}
               <div style={{ marginBottom: 20 }}>
