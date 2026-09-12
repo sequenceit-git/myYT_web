@@ -205,11 +205,31 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
 // Google One-Tap / OAuth Sign-in
 router.post('/google', async (req: Request, res: Response): Promise<void> => {
   try {
-    let { email, name, avatar, googleId, role, credential } = req.body;
+    let { email, name, avatar, googleId, role, credential, accessToken } = req.body;
 
-    // If a Google GIS JWT credential is provided, decode payload
+    // 1. If Google ID token (credential) is passed (e.g. from Google Identity Services on Web)
     if (credential && typeof credential === 'string') {
       try {
+        const verifyRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`);
+        if (verifyRes.ok) {
+          const googleData: any = await verifyRes.json();
+          if (googleData && googleData.email) {
+            email = googleData.email;
+            name = name || googleData.name || googleData.given_name;
+            avatar = avatar || googleData.picture;
+            googleId = googleId || googleData.sub;
+          }
+        } else {
+          // Fallback to JWT payload decode
+          const decoded: any = jwt.decode(credential);
+          if (decoded && decoded.email) {
+            email = decoded.email;
+            name = name || decoded.name || decoded.given_name;
+            avatar = avatar || decoded.picture;
+            googleId = googleId || decoded.sub;
+          }
+        }
+      } catch {
         const decoded: any = jwt.decode(credential);
         if (decoded && decoded.email) {
           email = decoded.email;
@@ -217,8 +237,26 @@ router.post('/google', async (req: Request, res: Response): Promise<void> => {
           avatar = avatar || decoded.picture;
           googleId = googleId || decoded.sub;
         }
-      } catch (e) {
-        // Fallback to direct parameters
+      }
+    }
+
+    // 2. If Google OAuth Access Token is passed
+    if (accessToken && typeof accessToken === 'string' && !email) {
+      try {
+        const userinfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (userinfoRes.ok) {
+          const info: any = await userinfoRes.json();
+          if (info && info.email) {
+            email = info.email;
+            name = name || info.name || info.given_name;
+            avatar = avatar || info.picture;
+            googleId = googleId || info.sub;
+          }
+        }
+      } catch (err) {
+        console.warn('[GoogleAuth] Failed to fetch userinfo with access token:', err);
       }
     }
 
@@ -228,8 +266,10 @@ router.post('/google', async (req: Request, res: Response): Promise<void> => {
     }
 
     email = email.toLowerCase().trim();
-    name = name || email.split('@')[0];
-    const generatedAvatar = avatar ? avatar.replace('/svg', '/png') : `https://api.dicebear.com/7.x/adventurer/png?seed=${encodeURIComponent(email)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`;
+    name = name ? name.trim() : email.split('@')[0];
+    const generatedAvatar = avatar
+      ? avatar.replace('/svg', '/png')
+      : `https://api.dicebear.com/7.x/adventurer/png?seed=${encodeURIComponent(email)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`;
 
     let user = await User.findOne({ email });
 
@@ -265,7 +305,11 @@ router.post('/google', async (req: Request, res: Response): Promise<void> => {
       });
     } else {
       let updated = false;
-      if (avatar && !user.avatar) {
+      if (name && (!user.name || user.name === user.email.split('@')[0])) {
+        user.name = name;
+        updated = true;
+      }
+      if (avatar && (!user.avatar || user.avatar.includes('dicebear'))) {
         user.avatar = avatar;
         updated = true;
       }

@@ -11,6 +11,8 @@ export const config = {
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173',
   adminSecretKey: process.env.ADMIN_SECRET_KEY || 'admin123',
   adminPassword: process.env.ADMIN_PASSWORD || process.env.ADMIN_SECRET_KEY || 'myyt@2026',
+  googleClientId: process.env.GOOGLE_CLIENT_ID || '',
+  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
   
   // Platform Pricing Tiers (Durations: 8, 16, 45, 60, 120, 180, 300s)
   pricingTiers: {
@@ -23,9 +25,9 @@ export const config = {
     300: { campaignerCost: 0.0320, viewerReward: 0.0240 },
   } as Record<number, { campaignerCost: number; viewerReward: number }>,
 
-  // Cooldown in seconds before a viewer can watch the same video again (default: 1 hour, disabled if ENABLE_COOLDOWN=false)
-  enableCooldown: process.env.ENABLE_COOLDOWN === 'true',
-  videoCooldownSeconds: parseInt(process.env.VIDEO_COOLDOWN_SECONDS || '3600', 10),
+  // Cooldown in seconds before a viewer can watch the same video again (Controlled dynamically from Admin Panel)
+  enableCooldown: false,
+  videoCooldownSeconds: 0,
   
   // Timing tolerance for server watch verification (in seconds)
   timeToleranceSeconds: 2,

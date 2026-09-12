@@ -58,40 +58,89 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   if (!isOpen) return null;
 
+  const GOOGLE_CLIENT_ID = '529404531479-ai5jg8o79napkjsb2ivjfrh1bp4tejf6.apps.googleusercontent.com';
+
   const handleGoogleAuth = async () => {
     setLoading(true);
     setError(null);
     setSuccessMsg(null);
-    try {
-      const demoEmail = `user.${Math.floor(Math.random() * 9000 + 1000)}@gmail.com`;
-      const res = await apiRequest<{ token: string; user: User }>('/auth/google', {
-        method: 'POST',
-        body: JSON.stringify({
-          email: demoEmail,
-          name: 'Verified Google User',
-          googleId: `goog_${Date.now()}`,
-          avatar: `https://api.dicebear.com/7.x/adventurer/png?seed=${encodeURIComponent(
-            demoEmail
-          )}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`,
-          role: 'viewer',
-          referralCode: referralCode ? referralCode.trim().toUpperCase() : undefined,
-        }),
-      });
 
-      if (res.success && res.data) {
-        if (res.data.token) {
-          setAuthToken(res.data.token);
+    const performTokenAuth = () => {
+      try {
+        const win = window as any;
+        if (win.google?.accounts?.oauth2) {
+          const client = win.google.accounts.oauth2.initTokenClient({
+            client_id: GOOGLE_CLIENT_ID,
+            scope: 'openid email profile',
+            callback: async (tokenResponse: any) => {
+              if (tokenResponse.error) {
+                setError(tokenResponse.error_description || 'Google sign-in was cancelled.');
+                setLoading(false);
+                return;
+              }
+
+              try {
+                // Fetch real verified Google user account info (name, email, avatar)
+                const userinfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                  headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+                });
+
+                if (!userinfoRes.ok) {
+                  throw new Error('Failed to fetch profile info from Google.');
+                }
+
+                const profile = await userinfoRes.json();
+                const res = await apiRequest<{ token: string; user: User }>('/auth/google', {
+                  method: 'POST',
+                  body: JSON.stringify({
+                    email: profile.email,
+                    name: profile.name || profile.given_name || profile.email.split('@')[0],
+                    avatar: profile.picture,
+                    googleId: profile.sub,
+                    accessToken: tokenResponse.access_token,
+                    role: 'viewer',
+                    referralCode: referralCode ? referralCode.trim().toUpperCase() : undefined,
+                  }),
+                });
+
+                if (res.success && res.data) {
+                  if (res.data.token) {
+                    setAuthToken(res.data.token);
+                  }
+                  if (onAuthSuccess) onAuthSuccess(res.data.user, res.data.token);
+                  onClose();
+                } else {
+                  setError(res.error || 'Google Authentication failed on server');
+                }
+              } catch (err: any) {
+                setError(err.message || 'An unexpected error occurred during Google sign in');
+              } finally {
+                setLoading(false);
+              }
+            },
+          });
+          client.requestAccessToken({ prompt: 'select_account' });
+        } else {
+          // Fallback: Google GIS script loading
+          const script = document.createElement('script');
+          script.src = 'https://accounts.google.com/gsi/client';
+          script.async = true;
+          script.onload = () => {
+            performTokenAuth();
+          };
+          script.onerror = () => {
+            setError('Could not load Google Sign-In SDK. Please check your connection.');
+            setLoading(false);
+          };
+          document.head.appendChild(script);
         }
-        if (onAuthSuccess) onAuthSuccess(res.data.user, res.data.token);
-        onClose();
-      } else {
-        setError(res.error || 'Google Authentication failed');
+      } catch (err: any) {
+        setError(err.message || 'Failed to initialize Google Sign-In');
+        setLoading(false);
       }
-    } catch (err: any) {
-      setError(err.message || 'An unexpected error occurred');
-    } finally {
-      setLoading(false);
-    }
+    };
+
+    performTokenAuth();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
