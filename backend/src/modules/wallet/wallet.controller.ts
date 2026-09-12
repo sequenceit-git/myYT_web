@@ -6,23 +6,47 @@ import { Payout } from '../../models/Payout.js';
 import { Task } from '../../models/Task.js';
 import { Campaign } from '../../models/Campaign.js';
 import { requireAuth, AuthRequest } from '../../middleware/auth.middleware.js';
+import { getSystemDepositMethods, getSystemWithdrawMethods } from '../admin/admin.controller.js';
 
 const router = Router();
 
 const withdrawSchema = z.object({
-  amount: z.number().min(5, 'Minimum withdrawal is $5.00 USD'),
+  amount: z.number().positive('Withdrawal amount must be greater than 0'),
   method: z.enum(['bkash', 'nagad', 'rocket', 'crypto', 'faucetpay', 'webmoney']),
   accountDetails: z.string().min(3, 'Valid account details / number required'),
   deviceInfo: z.string().optional(),
 });
 
 const depositSchema = z.object({
-  amount: z.number().min(5, 'Minimum deposit is $5.00 USD'),
+  amount: z.number().min(1, 'Minimum deposit is $1.00 USD'),
   gateway: z.enum(['faucetpay', 'crypto', 'bkash', 'nagad', 'rocket', 'webmoney']),
-  txHash: z.string().optional(),
+  senderAccount: z.string().min(2, 'Sender account / phone / wallet address is required'),
+  transactionHash: z.string().min(2, 'Transaction ID / Trx Hash is required'),
+  notes: z.string().optional(),
+  proofImage: z.string().optional(),
 });
 
-// POST /api/wallet/deposit - Instant deposit handler (FaucetPay / Crypto)
+// GET /api/wallet/deposit-methods - Public/Authenticated available deposit options
+router.get('/deposit-methods', async (_req, res: Response): Promise<void> => {
+  try {
+    const methods = await getSystemDepositMethods();
+    res.json({ success: true, data: methods });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/wallet/withdraw-methods - Public/Authenticated available withdrawal options & limits
+router.get('/withdraw-methods', async (_req, res: Response): Promise<void> => {
+  try {
+    const methods = await getSystemWithdrawMethods();
+    res.json({ success: true, data: methods });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/wallet/deposit - Manual deposit request submission (pending Admin manual approval)
 router.post('/deposit', requireAuth, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const parsed = depositSchema.safeParse(req.body);
@@ -31,33 +55,33 @@ router.post('/deposit', requireAuth, async (req: AuthRequest, res: Response): Pr
       return;
     }
 
-    const { amount, gateway, txHash } = parsed.data;
+    const { amount, gateway, senderAccount, transactionHash, notes, proofImage } = parsed.data;
 
-    // Atomic balance credit (Creator Ad Budget)
-    const updatedUser = await User.findByIdAndUpdate(
-      req.user!._id,
-      { $inc: { creatorBalance: amount, balance: amount } },
-      { new: true }
-    );
+    // Fetch system deposit methods to get admin receiver account info
+    const depositMethods = await getSystemDepositMethods();
+    const currentMethod = depositMethods.find((m) => m.id === gateway);
+    const receiverAccount = currentMethod?.accountNumber || 'Admin Account';
 
+    // Record manual deposit transaction with status 'pending' (Admin will manually verify & approve)
     const transaction = await Transaction.create({
       userId: req.user!._id,
       type: 'deposit',
       amount,
-      balanceAfter: updatedUser?.balance || 0,
-      status: 'completed',
+      balanceAfter: req.user!.balance, // Unchanged until admin approves
+      status: 'pending',
       gateway,
-      referenceId: txHash || `DEP-${Date.now()}`,
-      notes: `Instant deposit via ${gateway.toUpperCase()}`,
+      senderAccount: senderAccount.trim(),
+      receiverAccount,
+      referenceId: transactionHash.trim(),
+      proofImage,
+      notes: notes || `Manual deposit request via ${gateway.toUpperCase()} (Pending Admin Approval)`,
     });
 
     res.json({
       success: true,
       data: {
-        newBalance: updatedUser?.balance,
-        creatorBalance: updatedUser?.creatorBalance,
         transaction,
-        message: `Deposit of $${amount.toFixed(2)} credited successfully!`,
+        message: `Deposit request of $${amount.toFixed(2)} USD submitted! Admin will verify your transaction and approve the funds to your ad budget.`,
       },
     });
   } catch (error: any) {
@@ -75,6 +99,27 @@ router.post('/withdraw', requireAuth, async (req: AuthRequest, res: Response): P
     }
 
     const { amount, method, accountDetails, deviceInfo: customDeviceInfo } = parsed.data;
+
+    // Fetch dynamic withdraw methods configuration from admin settings
+    const withdrawMethods = await getSystemWithdrawMethods();
+    const currentMethod = withdrawMethods.find((m) => m.id === method);
+
+    if (currentMethod && currentMethod.enabled === false) {
+      res.status(400).json({
+        success: false,
+        error: `Withdrawals via ${currentMethod.name || method.toUpperCase()} are currently disabled by administration.`,
+      });
+      return;
+    }
+
+    const minWithdrawUsd = currentMethod?.minWithdrawUsd ?? 5.0;
+    if (amount < minWithdrawUsd) {
+      res.status(400).json({
+        success: false,
+        error: `Minimum withdrawal amount for ${currentMethod?.name || method.toUpperCase()} is $${minWithdrawUsd.toFixed(2)} USD.`,
+      });
+      return;
+    }
 
     // Strict Security Rule: Payment method must already be bound and saved in user profile settings
     const linkedMethod = req.user!.savedPaymentMethods?.find((p) => p.method === method);

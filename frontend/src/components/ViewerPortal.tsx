@@ -30,7 +30,7 @@ import {
   Gift,
   Lock,
 } from 'lucide-react';
-import { User, Task, Transaction } from '../types';
+import { User, Task, Transaction, WithdrawMethod } from '../types';
 import { apiRequest } from '../api';
 import { ProfileSwitchBanner } from './ProfileSwitchBanner';
 import { ProfileSettingsSection } from './ProfileSettingsSection';
@@ -74,77 +74,126 @@ interface PayoutMethodConfig {
   inputLabel: string;
   placeholder: string;
   rateText: string;
+  minLimitText: string;
+  minWithdrawUsd: number;
+  instructions?: string;
+  enabled?: boolean;
   isBDT: boolean;
 }
 
-const getPayoutMethods = (usdToBdt: number): PayoutMethodConfig[] => [
-  {
-    id: 'bkash',
-    name: 'bKash',
-    logoBg: '#ffffff',
-    logoMark: 'bK',
-    logoUrl: '/payment-methods/bkash.svg',
-    inputLabel: 'bKash Personal Mobile Number',
-    placeholder: '01XXXXXXXXX',
-    rateText: `1 USD = ${usdToBdt} BDT`,
-    isBDT: true,
-  },
-  {
-    id: 'nagad',
-    name: 'Nagad',
-    logoBg: '#ffffff',
-    logoMark: 'Nagad',
-    logoUrl: '/payment-methods/nagad.svg',
-    inputLabel: 'Nagad Personal Mobile Number',
-    placeholder: '01XXXXXXXXX',
-    rateText: `1 USD = ${usdToBdt} BDT`,
-    isBDT: true,
-  },
-  {
-    id: 'rocket',
-    name: 'Rocket',
-    logoBg: '#ffffff',
-    logoMark: 'Rocket',
-    logoUrl: '/payment-methods/rocket.svg',
-    inputLabel: 'DBBL Rocket Personal Mobile Number',
-    placeholder: '01XXXXXXXXX',
-    rateText: `1 USD = ${usdToBdt} BDT`,
-    isBDT: true,
-  },
-  {
-    id: 'faucetpay',
-    name: 'FaucetPay',
-    logoBg: '#ffffff',
-    logoMark: 'FP',
-    logoUrl: '/payment-methods/faucetpay.svg',
-    inputLabel: 'FaucetPay Registered Email',
-    placeholder: 'your-email@example.com',
-    rateText: 'Instant Automated • Zero Fee',
-    isBDT: false,
-  },
-  {
-    id: 'crypto',
-    name: 'USDT (BEP-20)',
-    logoBg: '#ffffff',
-    logoMark: '₮',
-    logoUrl: '/payment-methods/crypto.svg',
-    inputLabel: 'BEP-20 USDT Wallet Address (BNB Smart Chain)',
-    placeholder: '0x... (BEP-20 USDT only)',
-    rateText: 'Only BEP-20 USDT Supported (BNB Smart Chain)',
-    isBDT: false,
-  },
-  {
-    id: 'webmoney',
-    name: 'WebMoney',
-    logoBg: '#ffffff',
-    logoMark: 'WM',
-    logoUrl: '/payment-methods/webmoney.svg',
-    inputLabel: 'WebMoney WMZ Purse ID',
-    placeholder: 'Z123456789012',
-    rateText: 'USD Purse (WMZ)',
-    isBDT: false,
-  },
-];
+const getPayoutMethods = (usdToBdt: number, dynamicMethods?: WithdrawMethod[]): PayoutMethodConfig[] => {
+  const getMin = (id: string, defaultMin = 5.0): number => {
+    const found = dynamicMethods?.find((m) => m.id === id);
+    return typeof found?.minWithdrawUsd === 'number' && found.minWithdrawUsd > 0 ? found.minWithdrawUsd : defaultMin;
+  };
+  const getEnabled = (id: string): boolean => {
+    const found = dynamicMethods?.find((m) => m.id === id);
+    return found?.enabled !== false;
+  };
+  const getInstr = (id: string): string | undefined => {
+    const found = dynamicMethods?.find((m) => m.id === id);
+    return found?.instructions;
+  };
+  const getName = (id: string, defName: string): string => {
+    const found = dynamicMethods?.find((m) => m.id === id);
+    return found?.name || defName;
+  };
+
+  const methods: PayoutMethodConfig[] = [
+    {
+      id: 'bkash',
+      name: getName('bkash', 'bKash'),
+      logoBg: '#ffffff',
+      logoMark: 'bK',
+      logoUrl: '/payment-methods/bkash.svg',
+      inputLabel: 'bKash Account Number',
+      placeholder: '01XXXXXXXXX',
+      rateText: `1 USD = ${usdToBdt} BDT`,
+      minLimitText: `Min: $${getMin('bkash').toFixed(2)} USD`,
+      minWithdrawUsd: getMin('bkash'),
+      instructions: getInstr('bkash'),
+      enabled: getEnabled('bkash'),
+      isBDT: true,
+    },
+    {
+      id: 'nagad',
+      name: getName('nagad', 'Nagad'),
+      logoBg: '#ffffff',
+      logoMark: 'Nagad',
+      logoUrl: '/payment-methods/nagad.svg',
+      inputLabel: 'Nagad Account Number',
+      placeholder: '01XXXXXXXXX',
+      rateText: `1 USD = ${usdToBdt} BDT`,
+      minLimitText: `Min: $${getMin('nagad').toFixed(2)} USD`,
+      minWithdrawUsd: getMin('nagad'),
+      instructions: getInstr('nagad'),
+      enabled: getEnabled('nagad'),
+      isBDT: true,
+    },
+    {
+      id: 'rocket',
+      name: getName('rocket', 'Rocket'),
+      logoBg: '#ffffff',
+      logoMark: 'Rocket',
+      logoUrl: '/payment-methods/rocket.svg',
+      inputLabel: 'Rocket Account Number',
+      placeholder: '01XXXXXXXXX',
+      rateText: `1 USD = ${usdToBdt} BDT`,
+      minLimitText: `Min: $${getMin('rocket').toFixed(2)} USD`,
+      minWithdrawUsd: getMin('rocket'),
+      instructions: getInstr('rocket'),
+      enabled: getEnabled('rocket'),
+      isBDT: true,
+    },
+    {
+      id: 'faucetpay',
+      name: getName('faucetpay', 'FaucetPay'),
+      logoBg: '#ffffff',
+      logoMark: 'FP',
+      logoUrl: '/payment-methods/faucetpay.svg',
+      inputLabel: 'FaucetPay Email',
+      placeholder: 'your-email@example.com',
+      rateText: 'Instant Automated • Zero Fee',
+      minLimitText: `Min: $${getMin('faucetpay').toFixed(2)} USD`,
+      minWithdrawUsd: getMin('faucetpay'),
+      instructions: getInstr('faucetpay'),
+      enabled: getEnabled('faucetpay'),
+      isBDT: false,
+    },
+    {
+      id: 'crypto',
+      name: getName('crypto', 'USDT (BEP-20)'),
+      logoBg: '#ffffff',
+      logoMark: '₮',
+      logoUrl: '/payment-methods/crypto.svg',
+      inputLabel: 'USDT (BEP-20) Address',
+      placeholder: '0x... (BNB Smart Chain BEP-20)',
+      rateText: 'Only BEP-20 USDT Supported (BNB Smart Chain)',
+      minLimitText: `Min: $${getMin('crypto').toFixed(2)} USD`,
+      minWithdrawUsd: getMin('crypto'),
+      instructions: getInstr('crypto'),
+      enabled: getEnabled('crypto'),
+      isBDT: false,
+    },
+    {
+      id: 'webmoney',
+      name: getName('webmoney', 'WebMoney'),
+      logoBg: '#ffffff',
+      logoMark: 'WM',
+      logoUrl: '/payment-methods/webmoney.svg',
+      inputLabel: 'WebMoney Purse ID',
+      placeholder: 'Z123456789012',
+      rateText: 'USD Purse (WMZ)',
+      minLimitText: `Min: $${getMin('webmoney').toFixed(2)} USD`,
+      minWithdrawUsd: getMin('webmoney'),
+      instructions: getInstr('webmoney'),
+      enabled: getEnabled('webmoney'),
+      isBDT: false,
+    },
+  ];
+
+  return methods.filter((m) => m.enabled !== false);
+};
 
 // Helper to render smooth SVG curve for platform withdrawal volume
 const renderWithdrawalCurve = (data: number[], labels: string[]) => {
@@ -329,8 +378,9 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
 
   // Withdraw State
   const [withdrawMethod, setWithdrawMethod] = useState<PayoutMethodType>('bkash');
-  const [withdrawAmount, setWithdrawAmount] = useState<number>(5.0);
+  const [withdrawAmount, setWithdrawAmount] = useState<string | number>('');
   const [accountDetails, setAccountDetails] = useState<string>('');
+  const [serverWithdrawMethods, setServerWithdrawMethods] = useState<WithdrawMethod[]>([]);
 
   const [loading, setLoading] = useState<boolean>(false);
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -339,6 +389,18 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
   const [ledgerTab, setLedgerTab] = useState<'my_tx' | 'platform'>('my_tx');
   const [platformStats, setPlatformStats] = useState<any | null>(null);
   const [platformStatsLoading, setPlatformStatsLoading] = useState<boolean>(false);
+
+  // Fetch Available Withdrawal Methods & Limits from Admin
+  const fetchWithdrawMethods = async () => {
+    try {
+      const res = await apiRequest<WithdrawMethod[]>('/wallet/withdraw-methods');
+      if (res.success && res.data && Array.isArray(res.data)) {
+        setServerWithdrawMethods(res.data);
+      }
+    } catch {
+      // fallback to defaults
+    }
+  };
 
   // Fetch Watch History (Videos Watch & Earn Ledger)
   const fetchWatchHistory = async () => {
@@ -392,11 +454,13 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
     } else {
       pages.push(1);
       if (currentPage > 3) pages.push('...');
-      const startP = Math.max(2, currentPage - 1);
-      const endP = Math.min(totalPages - 1, currentPage + 1);
-      for (let i = startP; i <= endP; i++) pages.push(i);
+      const middleStart = Math.max(2, currentPage - 1);
+      const middleEnd = Math.min(totalPages - 1, currentPage + 1);
+      for (let i = middleStart; i <= middleEnd; i++) {
+        if (!pages.includes(i)) pages.push(i);
+      }
       if (currentPage < totalPages - 2) pages.push('...');
-      pages.push(totalPages);
+      if (!pages.includes(totalPages)) pages.push(totalPages);
     }
 
     return (
@@ -498,6 +562,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
   };
 
   useEffect(() => {
+    fetchWithdrawMethods();
     if (user) {
       fetchWatchHistory();
       fetchTransactions();
@@ -517,6 +582,12 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
     }
   }, [withdrawMethod, user?.savedPaymentMethods]);
 
+  const { usdToBdt } = useExchangeRate();
+  const bdtRate = usdToBdt;
+  const payoutMethods = getPayoutMethods(usdToBdt, serverWithdrawMethods);
+  const selectedConfig = payoutMethods.find((m) => m.id === withdrawMethod) || payoutMethods[0];
+  const selectedMinWithdraw = selectedConfig?.minWithdrawUsd ?? 5.0;
+
   // Handle Withdrawal
   const handleWithdraw = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -528,13 +599,15 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
     }
 
     const currentViewerBal = user.viewerBalance !== undefined ? user.viewerBalance : Math.max(0, (user.totalEarned || 0) - (user.totalWithdrawn || 0));
+    const numWithdrawAmount = typeof withdrawAmount === 'string' ? (parseFloat(withdrawAmount) || 0) : (withdrawAmount || 0);
 
-    if (withdrawAmount < 5.0) {
-      setMsg({ type: 'error', text: 'Minimum withdrawal is $5.00 USD (≈ ৳610 BDT).' });
+    if (numWithdrawAmount < selectedMinWithdraw) {
+      const bdtPart = selectedConfig.isBDT ? ` (≈ ৳${Math.round(selectedMinWithdraw * bdtRate)} BDT)` : '';
+      setMsg({ type: 'error', text: `Minimum withdrawal for ${selectedConfig.name} is $${selectedMinWithdraw.toFixed(2)} USD${bdtPart}.` });
       return;
     }
 
-    if (currentViewerBal < withdrawAmount) {
+    if (currentViewerBal < numWithdrawAmount) {
       setMsg({ type: 'error', text: `Insufficient viewer balance ($${currentViewerBal.toFixed(4)} available).` });
       return;
     }
@@ -553,7 +626,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
     const res = await apiRequest<any>('/wallet/withdraw', {
       method: 'POST',
       body: JSON.stringify({
-        amount: Number(withdrawAmount),
+        amount: Number(numWithdrawAmount),
         method: withdrawMethod,
         accountDetails: linkedMethod.accountNumber.trim(),
         deviceInfo,
@@ -586,9 +659,15 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
   }
 
   const viewerBal = user.viewerBalance !== undefined ? user.viewerBalance : Math.max(0, (user.totalEarned || 0) - (user.totalWithdrawn || 0));
-  const { usdToBdt } = useExchangeRate();
-  const bdtRate = usdToBdt;
   const approxBDT = (viewerBal * bdtRate).toFixed(0);
+
+  const numWithdrawAmount = (withdrawAmount !== '' && withdrawAmount !== null && withdrawAmount !== undefined && withdrawAmount.toString().trim() !== '')
+    ? (parseFloat(withdrawAmount.toString()) || 0)
+    : 0;
+  const hasWithdrawInput = withdrawAmount !== '' && withdrawAmount !== null && withdrawAmount !== undefined && withdrawAmount.toString().trim() !== '';
+  const isWithdrawBelowMin = hasWithdrawInput && numWithdrawAmount < selectedMinWithdraw;
+  const isWithdrawExceedsBal = hasWithdrawInput && numWithdrawAmount > viewerBal;
+  const isWithdrawValid = hasWithdrawInput && numWithdrawAmount >= selectedMinWithdraw && numWithdrawAmount <= viewerBal;
 
   // Daily Earning & Watch Count (strictly completed/verified watch tasks)
   const startOfDay = new Date();
@@ -676,8 +755,6 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
     );
   };
 
-  const payoutMethods = getPayoutMethods(usdToBdt);
-  const selectedConfig = payoutMethods.find((m) => m.id === withdrawMethod) || payoutMethods[0];
   const linkedPaymentMethod = user?.savedPaymentMethods?.find((p) => p.method === withdrawMethod);
   const isLinked = !!(linkedPaymentMethod && linkedPaymentMethod.accountNumber);
 
@@ -1435,39 +1512,17 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                   </span>
                 </div>
                 <span className="badge-pill badge-cyan" style={{ fontSize: '0.74rem', padding: '4px 12px' }}>
-                  Min Payout: $5.00 USD (≈ ৳610 BDT)
+                  Min Payout: ${selectedMinWithdraw.toFixed(2)} USD {selectedConfig.isBDT ? `(≈ ৳${Math.round(selectedMinWithdraw * bdtRate)} BDT)` : ''}
                 </span>
               </div>
 
-              {/* Policy Notice: Min Payout & Crypto BEP20 */}
-              <div
-                style={{
-                  background: '#f0fdf4',
-                  border: '1px solid #bbf7d0',
-                  borderRadius: 12,
-                  padding: '10px 16px',
-                  marginBottom: 18,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  fontSize: '0.84rem',
-                  color: '#166534',
-                  fontWeight: 600,
-                }}
-              >
-                <AlertCircle size={18} color="#16a34a" style={{ flexShrink: 0 }} />
-                <div>
-                  <strong>Withdrawal Notice:</strong> Minimum cashout is <strong>$5.00 USD</strong>. For crypto withdrawals, only <strong>USDT (BEP-20)</strong> on BNB Smart Chain is supported.
-                </div>
-              </div>
-
-              {/* INDIVIDUAL METHOD CARDS - LOGO PLACEHOLDER + NAME ONLY */}
+              {/* INDIVIDUAL METHOD CARDS - LOGO + NAME + MIN WITHDRAW AMOUNT ON CARD */}
               <div style={{ marginBottom: 18 }}>
                 <label className="font-mono" style={{ fontSize: '0.84rem', color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: 10, fontWeight: 700 }}>
                   Select Withdrawal Method:
                 </label>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 120px), 1fr))', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 125px), 1fr))', gap: 12 }}>
                   {payoutMethods.map((m) => {
                     const isSelected = withdrawMethod === m.id;
                     return (
@@ -1481,14 +1536,14 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                           background: isSelected ? '#f0f9ff' : '#ffffff',
                           border: isSelected ? '2px solid var(--primary-neon)' : '1px solid #e2e8f0',
                           borderRadius: 14,
-                          padding: '16px 12px',
+                          padding: '14px 10px 12px',
                           cursor: 'pointer',
                           transition: 'all 0.18s ease',
                           display: 'flex',
                           flexDirection: 'column',
                           alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 10,
+                          justifyContent: 'space-between',
+                          minHeight: 142,
                           position: 'relative',
                           boxShadow: isSelected ? '0 4px 14px rgba(14, 165, 233, 0.2)' : '0 1px 3px rgba(0,0,0,0.02)',
                         }}
@@ -1498,8 +1553,8 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                           <div
                             style={{
                               position: 'absolute',
-                              top: 8,
-                              right: 8,
+                              top: 6,
+                              right: 6,
                               width: 18,
                               height: 18,
                               borderRadius: '50%',
@@ -1513,37 +1568,70 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                           </div>
                         )}
 
-                        {/* Official Brand Logo */}
-                        <div
-                          style={{
-                            width: 52,
-                            height: 52,
-                            borderRadius: 14,
-                            background: '#ffffff',
-                            border: isSelected ? '1.5px solid var(--primary-neon)' : '1px solid #e2e8f0',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            padding: 8,
-                            boxShadow: isSelected ? '0 4px 14px rgba(14, 165, 233, 0.22)' : '0 2px 6px rgba(0,0,0,0.04)',
-                            transition: 'all 0.18s ease',
-                          }}
-                        >
-                          <img
-                            src={m.logoUrl}
-                            alt={m.name}
+                        {/* Top Section: Logo & Name */}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: '100%' }}>
+                          {/* Official Brand Logo */}
+                          <div
                             style={{
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'contain',
-                              display: 'block',
+                              width: 48,
+                              height: 48,
+                              borderRadius: 12,
+                              background: '#ffffff',
+                              border: isSelected ? '1.5px solid var(--primary-neon)' : '1px solid #e2e8f0',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              padding: 6,
+                              boxShadow: isSelected ? '0 4px 14px rgba(14, 165, 233, 0.22)' : '0 2px 6px rgba(0,0,0,0.04)',
+                              transition: 'all 0.18s ease',
                             }}
-                          />
+                          >
+                            <img
+                              src={m.logoUrl}
+                              alt={m.name}
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'contain',
+                                display: 'block',
+                              }}
+                            />
+                          </div>
+
+                          {/* Brand Name */}
+                          <span
+                            style={{
+                              fontSize: '0.88rem',
+                              fontWeight: 800,
+                              color: '#0f172a',
+                              textAlign: 'center',
+                              lineHeight: 1.2,
+                              minHeight: 22,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            {m.name}
+                          </span>
                         </div>
 
-                        {/* Brand Name */}
-                        <span style={{ fontSize: '0.96rem', fontWeight: 800, color: '#0f172a', textAlign: 'center' }}>
-                          {m.name}
+                        {/* Min Limit Badge on Card */}
+                        <span
+                          style={{
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            color: isSelected ? 'var(--primary-neon)' : '#64748b',
+                            background: isSelected ? '#e0f2fe' : '#f1f5f9',
+                            border: isSelected ? '1px solid rgba(14, 165, 233, 0.3)' : '1px solid #e2e8f0',
+                            padding: '2px 8px',
+                            borderRadius: 6,
+                            textAlign: 'center',
+                            whiteSpace: 'nowrap',
+                            marginTop: 4,
+                          }}
+                        >
+                          {m.minLimitText}
                         </span>
                       </div>
                     );
@@ -1553,10 +1641,10 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
 
               {/* WITHDRAWAL FORM */}
               <form onSubmit={handleWithdraw} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: 14 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: 14, alignItems: 'start' }}>
                   {/* Amount Input */}
                   <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: 24, marginBottom: 6 }}>
                       <label className="font-mono" style={{ fontSize: '0.84rem', color: '#475569', fontWeight: 700 }}>
                         Amount (USD):
                       </label>
@@ -1567,15 +1655,34 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
 
                     <input
                       type="number"
-                      step="0.01"
-                      min="5.00"
-                      max={viewerBal}
+                      step="any"
+                      placeholder={`Enter amount (min $${selectedMinWithdraw.toFixed(2)})`}
                       value={withdrawAmount}
-                      onChange={(e) => setWithdrawAmount(parseFloat(e.target.value) || 0)}
+                      onChange={(e) => setWithdrawAmount(e.target.value)}
                       className="input-field"
-                      style={{ padding: '11px 14px', fontSize: '0.98rem' }}
+                      style={{
+                        padding: '11px 14px',
+                        fontSize: '0.98rem',
+                        borderColor: (isWithdrawBelowMin || isWithdrawExceedsBal) ? '#ef4444' : undefined,
+                        color: (isWithdrawBelowMin || isWithdrawExceedsBal) ? '#dc2626' : undefined,
+                        background: (isWithdrawBelowMin || isWithdrawExceedsBal) ? '#fff1f2' : undefined,
+                      }}
                       required
                     />
+
+                    {/* Warning Messages */}
+                    {isWithdrawBelowMin && (
+                      <div style={{ color: '#ef4444', fontSize: '0.82rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5, marginTop: 6 }}>
+                        <AlertCircle size={14} color="#ef4444" style={{ flexShrink: 0 }} />
+                        <span>Minimum cashout for {selectedConfig.name} is ${selectedMinWithdraw.toFixed(2)} USD{selectedConfig.isBDT ? ` (≈ ৳${Math.round(selectedMinWithdraw * bdtRate)} BDT)` : ''}.</span>
+                      </div>
+                    )}
+                    {!isWithdrawBelowMin && isWithdrawExceedsBal && (
+                      <div style={{ color: '#ef4444', fontSize: '0.82rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5, marginTop: 6 }}>
+                        <AlertCircle size={14} color="#ef4444" style={{ flexShrink: 0 }} />
+                        <span>Amount exceeds available balance (${viewerBal.toFixed(4)} USD).</span>
+                      </div>
+                    )}
 
                     {/* Quick Amount Pills ($5 Minimum) */}
                     <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
@@ -1589,9 +1696,10 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                             padding: '5px 12px',
                             fontSize: '0.84rem',
                             borderRadius: 8,
-                            background: withdrawAmount === preset ? '#e0f2fe' : '#ffffff',
-                            color: withdrawAmount === preset ? 'var(--primary-neon)' : '#64748b',
-                            fontWeight: withdrawAmount === preset ? 700 : 500,
+                            background: hasWithdrawInput && numWithdrawAmount === preset ? '#e0f2fe' : '#ffffff',
+                            color: hasWithdrawInput && numWithdrawAmount === preset ? 'var(--primary-neon)' : '#64748b',
+                            borderColor: hasWithdrawInput && numWithdrawAmount === preset ? 'var(--primary-neon)' : undefined,
+                            fontWeight: hasWithdrawInput && numWithdrawAmount === preset ? 700 : 500,
                           }}
                         >
                           ${preset}
@@ -1616,8 +1724,8 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
 
                   {/* Account Details */}
                   <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                      <label className="font-mono" style={{ fontSize: '0.84rem', color: '#475569', fontWeight: 700 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: 24, marginBottom: 6, gap: 6 }}>
+                      <label className="font-mono" style={{ fontSize: '0.84rem', color: '#475569', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={selectedConfig.inputLabel}>
                         {selectedConfig.inputLabel}:
                       </label>
                       {isLinked ? (
@@ -1633,6 +1741,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                             border: '1px solid #a7f3d0',
                             padding: '2px 8px',
                             borderRadius: 6,
+                            flexShrink: 0,
                           }}
                         >
                           <Lock size={11} /> Linked & Locked
@@ -1650,6 +1759,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                             border: '1px solid #fde68a',
                             padding: '2px 8px',
                             borderRadius: 6,
+                            flexShrink: 0,
                           }}
                         >
                           <AlertCircle size={11} /> Not Linked
@@ -1801,10 +1911,12 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
 
                   <div style={{ minWidth: 140 }}>
                     <span style={{ fontSize: '0.82rem', color: '#64748b', display: 'block' }}>You Receive:</span>
-                    <strong className="font-mono" style={{ fontSize: '1.5rem', color: '#059669' }}>
-                      {selectedConfig.isBDT
-                        ? `৳${(withdrawAmount * bdtRate).toFixed(0)} BDT`
-                        : `$${withdrawAmount.toFixed(2)} USD`}
+                    <strong className="font-mono" style={{ fontSize: '1.5rem', color: (isWithdrawBelowMin || isWithdrawExceedsBal) ? '#ef4444' : '#059669' }}>
+                      {hasWithdrawInput && numWithdrawAmount > 0
+                        ? (selectedConfig.isBDT
+                            ? `৳${(numWithdrawAmount * bdtRate).toFixed(0)} BDT`
+                            : `$${numWithdrawAmount.toFixed(2)} USD`)
+                        : (selectedConfig.isBDT ? '৳0 BDT' : '$0.00 USD')}
                     </strong>
                   </div>
                 </div>
@@ -1812,13 +1924,26 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                 {isLinked ? (
                   <button
                     type="submit"
-                    disabled={loading || viewerBal < 5.0}
+                    disabled={loading || viewerBal < 5.0 || !isWithdrawValid}
                     className="btn btn-neon glow-neon"
-                    style={{ padding: '13px', fontSize: '0.96rem', borderRadius: 12, marginTop: 4 }}
+                    style={{
+                      padding: '13px',
+                      fontSize: '0.96rem',
+                      borderRadius: 12,
+                      marginTop: 4,
+                      opacity: (!isWithdrawValid || viewerBal < 5.0) ? 0.6 : 1,
+                      cursor: (!isWithdrawValid || viewerBal < 5.0) ? 'not-allowed' : 'pointer',
+                    }}
                   >
                     {loading
                       ? 'Submitting Request...'
-                      : `Withdraw $${withdrawAmount.toFixed(2)} USD via ${selectedConfig.name}`}
+                      : !hasWithdrawInput
+                      ? 'Enter Amount to Cashout'
+                      : isWithdrawBelowMin
+                      ? 'Minimum Cashout is $5.00 USD'
+                      : isWithdrawExceedsBal
+                      ? 'Insufficient Balance'
+                      : `Withdraw $${numWithdrawAmount.toFixed(2)} USD via ${selectedConfig.name}`}
                   </button>
                 ) : (
                   <button

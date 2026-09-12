@@ -16,6 +16,7 @@ import {
   LayoutDashboard,
   PlaySquare,
   Check,
+  Copy,
   Wallet,
   Globe,
   Users,
@@ -25,8 +26,9 @@ import {
   Clock,
   Flame,
   UserCheck,
+  Lock,
 } from 'lucide-react';
-import { Campaign, User, Transaction } from '../types';
+import { Campaign, User, Transaction, DepositMethod } from '../types';
 import { apiRequest } from '../api';
 import { ProfileSwitchBanner } from './ProfileSwitchBanner';
 import { ProfileSettingsSection } from './ProfileSettingsSection';
@@ -44,57 +46,205 @@ type CreatorTab = 'overview' | 'campaigns' | 'deposit' | 'ledger' | 'profile';
 interface DepositMethodConfig {
   id: string;
   name: string;
+  type?: string;
+  accountType?: string;
+  accountNumber?: string;
+  instructions?: string;
   logoBg: string;
   logoMark: string;
   logoUrl: string;
   rateText: string;
+  minLimitText: string;
+  minDepositUsd?: number;
   isBDT?: boolean;
+  enabled?: boolean;
 }
 
-const getDepositMethods = (usdToBdt: number): DepositMethodConfig[] => [
-  {
-    id: 'faucetpay',
-    name: 'FaucetPay',
-    logoBg: '#ffffff',
-    logoMark: 'FP',
-    logoUrl: '/payment-methods/faucetpay.svg',
-    rateText: 'Instant Automated • Zero Fee (USDT / LTC / BTC)',
-  },
-  {
-    id: 'crypto',
-    name: 'USDT (BEP-20)',
-    logoBg: '#ffffff',
-    logoMark: '₮',
-    logoUrl: '/payment-methods/crypto.svg',
-    rateText: 'Only BEP-20 USDT Supported (BNB Smart Chain)',
-  },
-  {
-    id: 'bkash',
-    name: 'bKash',
+const DEFAULT_METHODS_META: Record<string, { logoBg: string; logoMark: string; logoUrl: string; isBDT?: boolean; defaultRateText: string; defaultAccountType: string; defaultInstructions: string; defaultAccount: string }> = {
+  bkash: {
     logoBg: '#ffffff',
     logoMark: 'bK',
     logoUrl: '/payment-methods/bkash.svg',
-    rateText: `1 USD = ${usdToBdt} BDT (Personal / Merchant MFS)`,
     isBDT: true,
+    defaultRateText: 'Send Money (Personal MFS)',
+    defaultAccountType: 'Personal',
+    defaultInstructions: 'Send Money (Personal) to this bKash number. Copy the TrxID and enter below.',
+    defaultAccount: '01XXXXXXXXX',
   },
-  {
-    id: 'nagad',
-    name: 'Nagad',
+  nagad: {
     logoBg: '#ffffff',
     logoMark: 'Nagad',
     logoUrl: '/payment-methods/nagad.svg',
-    rateText: `1 USD = ${usdToBdt} BDT (Personal / Merchant MFS)`,
     isBDT: true,
+    defaultRateText: 'Send Money (Personal MFS)',
+    defaultAccountType: 'Personal',
+    defaultInstructions: 'Send Money (Personal) to this Nagad number. Copy the TrxID and enter below.',
+    defaultAccount: '01XXXXXXXXX',
   },
-  {
-    id: 'webmoney',
-    name: 'WebMoney',
+  rocket: {
+    logoBg: '#ffffff',
+    logoMark: 'Rocket',
+    logoUrl: '/payment-methods/rocket.svg',
+    isBDT: true,
+    defaultRateText: 'Send Money (Personal MFS)',
+    defaultAccountType: 'Personal',
+    defaultInstructions: 'Send Money to this Rocket number. Copy the TrxID and enter below.',
+    defaultAccount: '01XXXXXXXXX',
+  },
+  crypto: {
+    logoBg: '#ffffff',
+    logoMark: '₮',
+    logoUrl: '/payment-methods/crypto.svg',
+    defaultRateText: 'USDT (BEP-20 / BNB Chain)',
+    defaultAccountType: 'BEP-20 (BNB Smart Chain)',
+    defaultInstructions: 'Send USDT (BEP-20 network only) to this wallet address. Paste the transaction hash below.',
+    defaultAccount: '0x0000000000000000000000000000000000000000',
+  },
+  faucetpay: {
+    logoBg: '#ffffff',
+    logoMark: 'FP',
+    logoUrl: '/payment-methods/faucetpay.svg',
+    defaultRateText: 'Micropayment USD / Crypto',
+    defaultAccountType: 'Email / Account',
+    defaultInstructions: 'Send payment via FaucetPay to this email/address and enter your FaucetPay TrxID.',
+    defaultAccount: 'admin@myyt.com',
+  },
+  webmoney: {
     logoBg: '#ffffff',
     logoMark: 'WM',
     logoUrl: '/payment-methods/webmoney.svg',
-    rateText: 'USD Purse (WMZ) • Instant Deposit',
+    defaultRateText: 'USD Purse (WMZ)',
+    defaultAccountType: 'WMZ Purse',
+    defaultInstructions: 'Transfer WMZ to this purse and enter the transaction number below.',
+    defaultAccount: 'Z000000000000',
   },
-];
+};
+
+const buildDepositMethods = (methodsList: DepositMethod[], usdToBdt: number): DepositMethodConfig[] => {
+  if (methodsList && methodsList.length > 0) {
+    return methodsList
+      .filter((m) => m.enabled !== false)
+      .map((m) => {
+        const meta = DEFAULT_METHODS_META[m.id] || {
+          logoBg: '#ffffff',
+          logoMark: m.name.slice(0, 2),
+          logoUrl: '/payment-methods/crypto.svg',
+          isBDT: false,
+          defaultRateText: m.accountType || 'Payment Gateway',
+          defaultAccountType: m.accountType || 'Account',
+          defaultInstructions: 'Send funds to the account details below and submit your TrxID.',
+          defaultAccount: '',
+        };
+
+        const isBDT = meta.isBDT || m.id === 'bkash' || m.id === 'nagad' || m.id === 'rocket';
+        const minUsd = m.minDepositUsd || 5.0;
+
+        return {
+          id: m.id,
+          name: m.name,
+          type: m.type,
+          accountType: m.accountType || meta.defaultAccountType,
+          accountNumber: m.accountNumber || meta.defaultAccount,
+          instructions: m.instructions || meta.defaultInstructions,
+          logoBg: meta.logoBg,
+          logoMark: meta.logoMark,
+          logoUrl: meta.logoUrl,
+          rateText: isBDT
+            ? `1 USD = ${usdToBdt} BDT (${m.accountType || meta.defaultAccountType})`
+            : `${m.accountType || meta.defaultAccountType}`,
+          minLimitText: `Min: $${minUsd.toFixed(2)} USD`,
+          minDepositUsd: minUsd,
+          isBDT,
+          enabled: m.enabled !== false,
+        };
+      });
+  }
+
+  // Fallback defaults
+  return [
+    {
+      id: 'faucetpay',
+      name: 'FaucetPay',
+      accountType: 'Email / Account',
+      accountNumber: 'admin@myyt.com',
+      instructions: 'Send payment via FaucetPay to this email/address and enter your FaucetPay TrxID.',
+      logoBg: '#ffffff',
+      logoMark: 'FP',
+      logoUrl: '/payment-methods/faucetpay.svg',
+      rateText: 'Micropayment USD / Crypto',
+      minLimitText: 'Min: $5.00 USD',
+      minDepositUsd: 5.0,
+    },
+    {
+      id: 'crypto',
+      name: 'USDT (BEP-20)',
+      accountType: 'BEP-20 (BNB Smart Chain)',
+      accountNumber: '0x0000000000000000000000000000000000000000',
+      instructions: 'Send USDT (BEP-20 network only) to this wallet address. Paste the transaction hash below.',
+      logoBg: '#ffffff',
+      logoMark: '₮',
+      logoUrl: '/payment-methods/crypto.svg',
+      rateText: 'Only BEP-20 USDT Supported (BNB Smart Chain)',
+      minLimitText: 'Min: $5.00 USD',
+      minDepositUsd: 5.0,
+    },
+    {
+      id: 'bkash',
+      name: 'bKash',
+      accountType: 'Personal',
+      accountNumber: '01XXXXXXXXX',
+      instructions: 'Send Money (Personal) to this bKash number. Copy the TrxID and enter below.',
+      logoBg: '#ffffff',
+      logoMark: 'bK',
+      logoUrl: '/payment-methods/bkash.svg',
+      rateText: `1 USD = ${usdToBdt} BDT (Personal MFS)`,
+      minLimitText: 'Min: $5.00 USD',
+      minDepositUsd: 5.0,
+      isBDT: true,
+    },
+    {
+      id: 'nagad',
+      name: 'Nagad',
+      accountType: 'Personal',
+      accountNumber: '01XXXXXXXXX',
+      instructions: 'Send Money (Personal) to this Nagad number. Copy the TrxID and enter below.',
+      logoBg: '#ffffff',
+      logoMark: 'Nagad',
+      logoUrl: '/payment-methods/nagad.svg',
+      rateText: `1 USD = ${usdToBdt} BDT (Personal MFS)`,
+      minLimitText: 'Min: $5.00 USD',
+      minDepositUsd: 5.0,
+      isBDT: true,
+    },
+    {
+      id: 'rocket',
+      name: 'Rocket',
+      accountType: 'Personal',
+      accountNumber: '01XXXXXXXXX',
+      instructions: 'Send Money to this Rocket number. Copy the TrxID and enter below.',
+      logoBg: '#ffffff',
+      logoMark: 'Rocket',
+      logoUrl: '/payment-methods/rocket.svg',
+      rateText: `1 USD = ${usdToBdt} BDT (Personal MFS)`,
+      minLimitText: 'Min: $5.00 USD',
+      minDepositUsd: 5.0,
+      isBDT: true,
+    },
+    {
+      id: 'webmoney',
+      name: 'WebMoney',
+      accountType: 'WMZ Purse',
+      accountNumber: 'Z000000000000',
+      instructions: 'Transfer WMZ to this purse and enter the transaction number below.',
+      logoBg: '#ffffff',
+      logoMark: 'WM',
+      logoUrl: '/payment-methods/webmoney.svg',
+      rateText: 'USD Purse (WMZ) • Manual Deposit',
+      minLimitText: 'Min: $5.00 USD',
+      minDepositUsd: 5.0,
+    },
+  ];
+};
 
 // Helper to render smooth SVG curve for creator spend volume
 const renderSpendCurve = (data: number[], labels: string[]) => {
@@ -228,9 +378,14 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
   const creatorBal = user?.creatorBalance !== undefined ? user.creatorBalance : (user?.balance || 0);
 
   // Deposit State
-  const [depositAmount, setDepositAmount] = useState<number>(5);
+  const [depositAmount, setDepositAmount] = useState<string | number>('');
   const [depositGateway, setDepositGateway] = useState<string>('faucetpay');
   const [depositLoading, setDepositLoading] = useState<boolean>(false);
+  const [depositMethodsList, setDepositMethodsList] = useState<DepositMethod[]>([]);
+  const [senderAccount, setSenderAccount] = useState<string>('');
+  const [transactionHash, setTransactionHash] = useState<string>('');
+  const [depositNotes, setDepositNotes] = useState<string>('');
+  const [copiedReceiver, setCopiedReceiver] = useState<boolean>(false);
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
 
@@ -271,6 +426,13 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
     }
   };
 
+  const fetchDepositMethods = async () => {
+    const res = await apiRequest<DepositMethod[]>('/wallet/deposit-methods');
+    if (res.success && res.data) {
+      setDepositMethodsList(res.data);
+    }
+  };
+
   // Fetch Creator Transactions (Deposits & Campaign Spends only)
   const fetchTransactions = async () => {
     setTxLoading(true);
@@ -299,16 +461,16 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
     const end = Math.min(currentPage * pageSize, totalItems);
 
     const pages: (number | string)[] = [];
-    if (totalPages <= 5) {
+    if (totalPages <= 7) {
       for (let i = 1; i <= totalPages; i++) pages.push(i);
     } else {
-      pages.push(1);
-      if (currentPage > 3) pages.push('...');
-      const startP = Math.max(2, currentPage - 1);
-      const endP = Math.min(totalPages - 1, currentPage + 1);
-      for (let i = startP; i <= endP; i++) pages.push(i);
-      if (currentPage < totalPages - 2) pages.push('...');
-      pages.push(totalPages);
+      if (currentPage <= 4) {
+        pages.push(1, 2, 3, 4, 5, '...', totalPages);
+      } else if (currentPage >= totalPages - 3) {
+        pages.push(1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
+      }
     }
 
     return (
@@ -319,21 +481,19 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
           alignItems: 'center',
           flexWrap: 'wrap',
           gap: 12,
-          paddingTop: 14,
+          padding: '12px 16px',
+          background: '#ffffff',
+          borderRadius: 12,
+          border: '1px solid #e2e8f0',
           marginTop: 14,
-          borderTop: '1px solid #f1f5f9',
-          fontSize: '0.84rem',
-          color: '#64748b',
         }}
       >
-        <div>
-          Showing <strong style={{ color: '#0f172a' }}>{start}</strong> to{' '}
-          <strong style={{ color: '#0f172a' }}>{end}</strong> of{' '}
-          <strong style={{ color: '#0f172a' }}>{totalItems}</strong> {itemName}
-        </div>
+        <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+          Showing <strong style={{ color: '#0f172a' }}>{start}-{end}</strong> of <strong style={{ color: '#0f172a' }}>{totalItems}</strong> {itemName}
+        </span>
 
         {totalPages > 1 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <button
               onClick={() => onPageChange(Math.max(1, currentPage - 1))}
               disabled={currentPage === 1}
@@ -341,7 +501,7 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 4,
-                padding: '6px 12px',
+                padding: '6px 10px',
                 borderRadius: 8,
                 border: '1px solid #e2e8f0',
                 background: currentPage === 1 ? '#f8fafc' : '#ffffff',
@@ -355,33 +515,31 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
               <ChevronLeft size={14} /> Prev
             </button>
 
-            {pages.map((p, idx) =>
-              typeof p === 'number' ? (
-                <button
-                  key={idx}
-                  onClick={() => onPageChange(p)}
-                  style={{
-                    minWidth: 32,
-                    height: 32,
-                    padding: '0 8px',
-                    borderRadius: 8,
-                    border: p === currentPage ? '1.5px solid var(--primary-neon)' : '1px solid #e2e8f0',
-                    background: p === currentPage ? 'var(--primary-neon)' : '#ffffff',
-                    color: p === currentPage ? '#ffffff' : '#334155',
-                    fontWeight: p === currentPage ? 700 : 600,
-                    fontSize: '0.8rem',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  {p}
-                </button>
-              ) : (
-                <span key={idx} style={{ padding: '0 4px', color: '#94a3b8' }}>
-                  …
-                </span>
-              )
-            )}
+            {pages.map((p, idx) => (
+              <button
+                key={idx}
+                onClick={() => typeof p === 'number' && onPageChange(p)}
+                disabled={typeof p !== 'number'}
+                style={{
+                  minWidth: 32,
+                  height: 32,
+                  padding: '0 8px',
+                  borderRadius: 8,
+                  border: p === currentPage ? '1px solid var(--primary-neon)' : '1px solid #e2e8f0',
+                  background: p === currentPage ? 'var(--primary-neon)' : typeof p === 'number' ? '#ffffff' : 'transparent',
+                  color: p === currentPage ? '#ffffff' : '#334155',
+                  cursor: typeof p === 'number' ? 'pointer' : 'default',
+                  fontWeight: p === currentPage ? 800 : 600,
+                  fontSize: '0.82rem',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                {p}
+              </button>
+            ))}
 
             <button
               onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
@@ -390,7 +548,7 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 4,
-                padding: '6px 12px',
+                padding: '6px 10px',
                 borderRadius: 8,
                 border: '1px solid #e2e8f0',
                 background: currentPage === totalPages ? '#f8fafc' : '#ffffff',
@@ -413,10 +571,11 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
     if (user) {
       fetchCampaigns();
       fetchTransactions();
+      fetchDepositMethods();
     }
   }, [user]);
 
-  // Handle Deposit
+  // Handle Deposit (Manual Deposit Submission for Admin Manual Approval)
   const handleDeposit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
@@ -424,8 +583,23 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
       return;
     }
 
-    if (depositAmount < 5) {
-      setFeedback({ type: 'error', message: 'Minimum deposit is $5.00 USD (≈ ৳610 BDT).' });
+    const hasDepositInput = depositAmount !== '' && depositAmount !== null && depositAmount !== undefined && depositAmount.toString().trim() !== '';
+    const numDepositAmount = hasDepositInput ? (parseFloat(depositAmount.toString()) || 0) : 0;
+    const currentMethodObj = depositMethods.find((m) => m.id === depositGateway) || depositMethods[0];
+    const minRequired = currentMethodObj?.minDepositUsd || 5.0;
+
+    if (!hasDepositInput || numDepositAmount < minRequired) {
+      setFeedback({ type: 'error', message: `Minimum deposit for ${currentMethodObj.name} is $${minRequired.toFixed(2)} USD.` });
+      return;
+    }
+
+    if (!senderAccount.trim()) {
+      setFeedback({ type: 'error', message: 'Please enter your sender account number, wallet address, or phone number.' });
+      return;
+    }
+
+    if (!transactionHash.trim()) {
+      setFeedback({ type: 'error', message: 'Please enter the transaction ID (TrxID) or TxHash.' });
       return;
     }
 
@@ -435,26 +609,48 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
     const res = await apiRequest<any>('/wallet/deposit', {
       method: 'POST',
       body: JSON.stringify({
-        amount: Number(depositAmount),
+        amount: Number(numDepositAmount),
         gateway: depositGateway,
+        senderAccount: senderAccount.trim(),
+        transactionHash: transactionHash.trim(),
+        notes: depositNotes.trim() || undefined,
       }),
     });
     setDepositLoading(false);
 
     if (res.success) {
-      setFeedback({ type: 'success', message: `✓ Successfully deposited $${depositAmount.toFixed(2)} USD ad budget!` });
+      setFeedback({
+        type: 'success',
+        message: `✓ Deposit request of $${numDepositAmount.toFixed(2)} USD submitted! It is currently pending Admin verification and will be credited once approved.`,
+      });
+      setDepositAmount('');
+      setSenderAccount('');
+      setTransactionHash('');
+      setDepositNotes('');
       onRefreshUser();
       fetchTransactions();
     } else {
-      setFeedback({ type: 'error', message: res.error || 'Deposit failed' });
+      setFeedback({ type: 'error', message: res.error || 'Deposit submission failed. Please try again.' });
     }
   };
 
   const togglePause = async (camp: Campaign) => {
+    if (camp.pausedByAdmin) {
+      setFeedback({
+        type: 'error',
+        message: 'This campaign was paused by an administrator. Contact to the admin to start the campaign again.',
+      });
+      return;
+    }
     const action = camp.status === 'active' ? 'pause' : 'resume';
     const res = await apiRequest<Campaign>(`/campaigns/${camp._id}/${action}`, { method: 'POST' });
     if (res.success) {
       fetchCampaigns();
+    } else {
+      setFeedback({
+        type: 'error',
+        message: res.error || 'Failed to update campaign status.',
+      });
     }
   };
 
@@ -467,22 +663,32 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
 
-  const txTodaySpend = transactions
-    .filter((tx) => tx.type === 'campaign_spend' && new Date(tx.createdAt) >= startOfDay)
-    .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+  const txTodaySpend = (transactions || [])
+    .filter((tx) => (tx.type === 'campaign_spend' || tx.type === 'campaign_creation') && tx.createdAt && new Date(tx.createdAt).getTime() >= startOfDay.getTime())
+    .reduce((sum, tx) => sum + Math.abs(Number(tx.amount) || 0), 0);
 
-  const campaignTodaySpend = campaigns
-    .filter((c) => new Date(c.createdAt) >= startOfDay)
-    .reduce((sum, c) => sum + (c.totalCost || 0), 0);
+  const campaignTodaySpend = (campaigns || [])
+    .filter((c) => c.createdAt && new Date(c.createdAt).getTime() >= startOfDay.getTime())
+    .reduce((sum, c) => sum + (Number(c.totalCost) || 0), 0);
 
-  const dailySpend = user?.dailySpend !== undefined
-    ? user.dailySpend
-    : (txTodaySpend > 0 ? txTodaySpend : campaignTodaySpend);
+  const dailySpend = Math.max(
+    Number(user?.dailySpend || 0),
+    txTodaySpend,
+    campaignTodaySpend
+  );
 
   const { usdToBdt } = useExchangeRate();
   const bdtRate = usdToBdt;
-  const depositMethods = getDepositMethods(usdToBdt);
+  const depositMethods = buildDepositMethods(depositMethodsList, usdToBdt);
   const selectedMethod = depositMethods.find((m) => m.id === depositGateway) || depositMethods[0];
+
+  const minRequiredUsd = selectedMethod?.minDepositUsd || 5.0;
+  const numDepositAmount = (depositAmount !== '' && depositAmount !== null && depositAmount !== undefined && depositAmount.toString().trim() !== '')
+    ? (parseFloat(depositAmount.toString()) || 0)
+    : 0;
+  const hasDepositInput = depositAmount !== '' && depositAmount !== null && depositAmount !== undefined && depositAmount.toString().trim() !== '';
+  const isDepositBelowMin = hasDepositInput && numDepositAmount < minRequiredUsd;
+  const isDepositValid = hasDepositInput && numDepositAmount >= minRequiredUsd && senderAccount.trim() !== '' && transactionHash.trim() !== '';
 
   return (
     <div className="responsive-container">
@@ -798,19 +1004,42 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                                 {camp.viewsDelivered.toLocaleString()} / {camp.targetViews.toLocaleString()}
                               </td>
                               <td style={{ padding: '10px 12px' }}>
-                                <span className="badge-pill" style={{ padding: '2px 8px', fontSize: '0.72rem', textTransform: 'uppercase', background: camp.status === 'active' ? '#e0f2fe' : '#f1f5f9', color: camp.status === 'active' ? 'var(--primary-neon)' : '#64748b' }}>
-                                  {camp.status}
+                                <span
+                                  className="badge-pill"
+                                  style={{
+                                    padding: '2px 8px',
+                                    fontSize: '0.72rem',
+                                    textTransform: 'uppercase',
+                                    background: camp.pausedByAdmin ? '#fef2f2' : camp.status === 'active' ? '#e0f2fe' : '#f1f5f9',
+                                    color: camp.pausedByAdmin ? '#ef4444' : camp.status === 'active' ? 'var(--primary-neon)' : '#64748b',
+                                    border: camp.pausedByAdmin ? '1px solid #fecaca' : undefined,
+                                    fontWeight: camp.pausedByAdmin ? 700 : 600,
+                                  }}
+                                >
+                                  {camp.pausedByAdmin ? 'Admin Paused' : camp.status}
                                 </span>
                               </td>
                               <td style={{ padding: '10px 12px' }}>
-                                <button
-                                  onClick={() => togglePause(camp)}
-                                  className="btn btn-ghost"
-                                  style={{ padding: '4px 10px', fontSize: '0.76rem', borderRadius: 6 }}
-                                >
-                                  {camp.status === 'active' ? <Pause size={13} /> : <Play size={13} />}
-                                  <span>{camp.status === 'active' ? 'Pause' : 'Resume'}</span>
-                                </button>
+                                {camp.pausedByAdmin ? (
+                                  <button
+                                    onClick={() => togglePause(camp)}
+                                    title="Contact to the admin to start the campaign again"
+                                    className="btn btn-ghost"
+                                    style={{ padding: '4px 10px', fontSize: '0.76rem', borderRadius: 6, color: '#ef4444', background: '#fef2f2', border: '1px solid #fecaca' }}
+                                  >
+                                    <Lock size={13} />
+                                    <span>Locked</span>
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => togglePause(camp)}
+                                    className="btn btn-ghost"
+                                    style={{ padding: '4px 10px', fontSize: '0.76rem', borderRadius: 6 }}
+                                  >
+                                    {camp.status === 'active' ? <Pause size={13} /> : <Play size={13} />}
+                                    <span>{camp.status === 'active' ? 'Pause' : 'Resume'}</span>
+                                  </button>
+                                )}
                               </td>
                             </tr>
                           ))}
@@ -842,11 +1071,13 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                                   fontSize: '0.72rem',
                                   textTransform: 'uppercase',
                                   flexShrink: 0,
-                                  background: camp.status === 'active' ? '#e0f2fe' : '#f1f5f9',
-                                  color: camp.status === 'active' ? 'var(--primary-neon)' : '#64748b'
+                                  background: camp.pausedByAdmin ? '#fef2f2' : camp.status === 'active' ? '#e0f2fe' : '#f1f5f9',
+                                  color: camp.pausedByAdmin ? '#ef4444' : camp.status === 'active' ? 'var(--primary-neon)' : '#64748b',
+                                  border: camp.pausedByAdmin ? '1px solid #fecaca' : undefined,
+                                  fontWeight: camp.pausedByAdmin ? 700 : 600,
                                 }}
                               >
-                                {camp.status}
+                                {camp.pausedByAdmin ? 'Admin Paused' : camp.status}
                               </span>
                             </div>
 
@@ -869,14 +1100,26 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                               />
                             </div>
 
-                            <button
-                              onClick={() => togglePause(camp)}
-                              className="btn btn-ghost mobile-btn-full"
-                              style={{ padding: '7px 12px', fontSize: '0.8rem', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6, border: '1px solid #e2e8f0', background: '#f8fafc' }}
-                            >
-                              {camp.status === 'active' ? <Pause size={13} /> : <Play size={13} />}
-                              <span>{camp.status === 'active' ? 'Pause Campaign' : 'Resume Campaign'}</span>
-                            </button>
+                            {camp.pausedByAdmin ? (
+                              <button
+                                onClick={() => togglePause(camp)}
+                                title="Contact to the admin to start the campaign again"
+                                className="btn btn-ghost mobile-btn-full"
+                                style={{ padding: '7px 12px', fontSize: '0.8rem', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, border: '1px solid #fecaca', background: '#fef2f2', color: '#ef4444', fontWeight: 600 }}
+                              >
+                                <Lock size={13} />
+                                <span>Contact Admin to Resume</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => togglePause(camp)}
+                                className="btn btn-ghost mobile-btn-full"
+                                style={{ padding: '7px 12px', fontSize: '0.8rem', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6, border: '1px solid #e2e8f0', background: '#f8fafc' }}
+                              >
+                                {camp.status === 'active' ? <Pause size={13} /> : <Play size={13} />}
+                                <span>{camp.status === 'active' ? 'Pause Campaign' : 'Resume Campaign'}</span>
+                              </button>
+                            )}
                           </div>
                         );
                       })}
@@ -959,18 +1202,41 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                               ${camp.totalCost.toFixed(2)}
                             </td>
                             <td style={{ padding: '10px 12px' }}>
-                              <span className="badge-pill" style={{ padding: '2px 8px', fontSize: '0.72rem', textTransform: 'uppercase', background: camp.status === 'active' ? '#e0f2fe' : '#f1f5f9', color: camp.status === 'active' ? 'var(--primary-neon)' : '#64748b' }}>
-                                {camp.status}
+                              <span
+                                className="badge-pill"
+                                style={{
+                                  padding: '2px 8px',
+                                  fontSize: '0.72rem',
+                                  textTransform: 'uppercase',
+                                  background: camp.pausedByAdmin ? '#fef2f2' : camp.status === 'active' ? '#e0f2fe' : '#f1f5f9',
+                                  color: camp.pausedByAdmin ? '#ef4444' : camp.status === 'active' ? 'var(--primary-neon)' : '#64748b',
+                                  border: camp.pausedByAdmin ? '1px solid #fecaca' : undefined,
+                                  fontWeight: camp.pausedByAdmin ? 700 : 600,
+                                }}
+                              >
+                                {camp.pausedByAdmin ? 'Admin Paused' : camp.status}
                               </span>
                             </td>
                             <td style={{ padding: '10px 12px' }}>
-                              <button
-                                onClick={() => togglePause(camp)}
-                                className="btn btn-ghost"
-                                style={{ padding: '4px 10px', fontSize: '0.76rem', borderRadius: 6 }}
-                              >
-                                {camp.status === 'active' ? 'Pause' : 'Resume'}
-                              </button>
+                              {camp.pausedByAdmin ? (
+                                <button
+                                  onClick={() => togglePause(camp)}
+                                  title="Contact to the admin to start the campaign again"
+                                  className="btn btn-ghost"
+                                  style={{ padding: '4px 10px', fontSize: '0.76rem', borderRadius: 6, color: '#ef4444', background: '#fef2f2', border: '1px solid #fecaca' }}
+                                >
+                                  <Lock size={13} />
+                                  <span>Locked</span>
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => togglePause(camp)}
+                                  className="btn btn-ghost"
+                                  style={{ padding: '4px 10px', fontSize: '0.76rem', borderRadius: 6 }}
+                                >
+                                  {camp.status === 'active' ? 'Pause' : 'Resume'}
+                                </button>
+                              )}
                             </td>
                           </tr>
                         ))}
@@ -1057,14 +1323,26 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                           </div>
 
                           {/* Touch-Friendly Action Button */}
-                          <button
-                            onClick={() => togglePause(camp)}
-                            className="btn btn-ghost mobile-btn-full"
-                            style={{ padding: '8px 14px', fontSize: '0.82rem', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6, border: '1px solid #e2e8f0', background: '#ffffff', fontWeight: 600 }}
-                          >
-                            {camp.status === 'active' ? <Pause size={14} /> : <Play size={14} />}
-                            <span>{camp.status === 'active' ? 'Pause Campaign' : 'Resume Campaign'}</span>
-                          </button>
+                          {camp.pausedByAdmin ? (
+                            <button
+                              onClick={() => togglePause(camp)}
+                              title="Contact to the admin to start the campaign again"
+                              className="btn btn-ghost mobile-btn-full"
+                              style={{ padding: '8px 14px', fontSize: '0.82rem', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, border: '1px solid #fecaca', background: '#fef2f2', color: '#ef4444', fontWeight: 600 }}
+                            >
+                              <Lock size={14} />
+                              <span>Contact Admin to Resume</span>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => togglePause(camp)}
+                              className="btn btn-ghost mobile-btn-full"
+                              style={{ padding: '8px 14px', fontSize: '0.82rem', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6, border: '1px solid #e2e8f0', background: '#ffffff', fontWeight: 600 }}
+                            >
+                              {camp.status === 'active' ? <Pause size={14} /> : <Play size={14} />}
+                              <span>{camp.status === 'active' ? 'Pause Campaign' : 'Resume Campaign'}</span>
+                            </button>
+                          )}
                         </div>
                       );
                     })}
@@ -1075,7 +1353,7 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
           )}
 
           {/* =========================================================================
-              TAB 3: DEPOSIT (INDIVIDUAL METHOD CARDS - PICK AMOUNT & DEPOSIT)
+              TAB 3: DEPOSIT (MANUAL DEPOSIT WITH ADMIN APPROVAL)
               ========================================================================= */}
           {activeTab === 'deposit' && (
             <div className="glass-card" style={{ padding: '24px', borderRadius: 18, border: '1.5px solid var(--primary-neon)' }}>
@@ -1091,39 +1369,39 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                   </span>
                 </div>
                 <span className="badge-pill badge-neon" style={{ fontSize: '0.74rem', padding: '4px 12px' }}>
-                  Min Deposit: $5.00 USD (≈ ৳{5 * bdtRate} BDT)
+                  Manual Deposit • Admin Approved
                 </span>
               </div>
 
-              {/* Policy Notice: Min Deposit $5 & Crypto BEP20 */}
-              <div
-                style={{
-                  background: '#fef3c7',
-                  border: '1px solid #fde047',
-                  borderRadius: 12,
-                  padding: '10px 16px',
-                  marginBottom: 18,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  fontSize: '0.84rem',
-                  color: '#854d0e',
-                  fontWeight: 600,
-                }}
-              >
-                <AlertCircle size={18} color="#ca8a04" style={{ flexShrink: 0 }} />
-                <div>
-                  <strong>Important Notice:</strong> Minimum deposit is <strong>$5.00 USD</strong> across all payment methods. For crypto deposits, only <strong>USDT (BEP-20)</strong> on BNB Smart Chain is supported.
+              {/* Feedback Alert */}
+              {feedback && (
+                <div
+                  style={{
+                    padding: '12px 16px',
+                    borderRadius: 12,
+                    marginBottom: 16,
+                    fontSize: '0.88rem',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    background: feedback.type === 'success' ? '#f0fdf4' : '#fef2f2',
+                    border: feedback.type === 'success' ? '1px solid #86efac' : '1px solid #fca5a5',
+                    color: feedback.type === 'success' ? '#15803d' : '#b91c1c',
+                  }}
+                >
+                  {feedback.type === 'success' ? <CheckCircle2 size={18} color="#16a34a" /> : <AlertCircle size={18} color="#dc2626" />}
+                  <span>{feedback.message}</span>
                 </div>
-              </div>
+              )}
 
-              {/* INDIVIDUAL DEPOSIT METHOD CARDS - LOGO PLACEHOLDER + NAME ONLY */}
+              {/* INDIVIDUAL DEPOSIT METHOD CARDS */}
               <div style={{ marginBottom: 18 }}>
                 <label className="font-mono" style={{ fontSize: '0.82rem', color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: 10, fontWeight: 700 }}>
-                  Select Deposit Method:
+                  1. Select Payment Method:
                 </label>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 120px), 1fr))', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 125px), 1fr))', gap: 12 }}>
                   {depositMethods.map((m) => {
                     const isSelected = depositGateway === m.id;
                     return (
@@ -1137,14 +1415,14 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                           background: isSelected ? '#f0f9ff' : '#ffffff',
                           border: isSelected ? '2px solid var(--primary-neon)' : '1px solid #e2e8f0',
                           borderRadius: 14,
-                          padding: '16px 12px',
+                          padding: '14px 10px 12px',
                           cursor: 'pointer',
                           transition: 'all 0.18s ease',
                           display: 'flex',
                           flexDirection: 'column',
                           alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 10,
+                          justifyContent: 'space-between',
+                          minHeight: 142,
                           position: 'relative',
                           boxShadow: isSelected ? '0 4px 14px rgba(14, 165, 233, 0.2)' : '0 1px 3px rgba(0,0,0,0.02)',
                         }}
@@ -1154,8 +1432,8 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                           <div
                             style={{
                               position: 'absolute',
-                              top: 8,
-                              right: 8,
+                              top: 6,
+                              right: 6,
                               width: 18,
                               height: 18,
                               borderRadius: '50%',
@@ -1169,37 +1447,68 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                           </div>
                         )}
 
-                        {/* Official Brand Logo */}
-                        <div
-                          style={{
-                            width: 52,
-                            height: 52,
-                            borderRadius: 14,
-                            background: '#ffffff',
-                            border: isSelected ? '1.5px solid var(--primary-neon)' : '1px solid #e2e8f0',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            padding: 8,
-                            boxShadow: isSelected ? '0 4px 14px rgba(14, 165, 233, 0.22)' : '0 2px 6px rgba(0,0,0,0.04)',
-                            transition: 'all 0.18s ease',
-                          }}
-                        >
-                          <img
-                            src={m.logoUrl}
-                            alt={m.name}
+                        {/* Top Section: Logo & Name */}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: '100%' }}>
+                          <div
                             style={{
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'contain',
-                              display: 'block',
+                              width: 48,
+                              height: 48,
+                              borderRadius: 12,
+                              background: '#ffffff',
+                              border: isSelected ? '1.5px solid var(--primary-neon)' : '1px solid #e2e8f0',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              padding: 6,
+                              boxShadow: isSelected ? '0 4px 14px rgba(14, 165, 233, 0.22)' : '0 2px 6px rgba(0,0,0,0.04)',
+                              transition: 'all 0.18s ease',
                             }}
-                          />
+                          >
+                            <img
+                              src={m.logoUrl}
+                              alt={m.name}
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'contain',
+                                display: 'block',
+                              }}
+                            />
+                          </div>
+
+                          <span
+                            style={{
+                              fontSize: '0.88rem',
+                              fontWeight: 800,
+                              color: '#0f172a',
+                              textAlign: 'center',
+                              lineHeight: 1.2,
+                              minHeight: 22,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            {m.name}
+                          </span>
                         </div>
 
-                        {/* Brand Name */}
-                        <span style={{ fontSize: '0.96rem', fontWeight: 800, color: '#0f172a', textAlign: 'center' }}>
-                          {m.name}
+                        {/* Min Limit Badge on Card */}
+                        <span
+                          style={{
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            color: isSelected ? 'var(--primary-neon)' : '#64748b',
+                            background: isSelected ? '#e0f2fe' : '#f1f5f9',
+                            border: isSelected ? '1px solid rgba(14, 165, 233, 0.3)' : '1px solid #e2e8f0',
+                            padding: '2px 8px',
+                            borderRadius: 6,
+                            textAlign: 'center',
+                            whiteSpace: 'nowrap',
+                            marginTop: 4,
+                          }}
+                        >
+                          {m.minLimitText}
                         </span>
                       </div>
                     );
@@ -1207,14 +1516,120 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                 </div>
               </div>
 
-              {/* DEPOSIT FORM: PICK AMOUNT & SUBMIT */}
+              {/* ADMIN RECEIVER ACCOUNT DETAILS CARD */}
+              <div
+                style={{
+                  background: '#f8fafc',
+                  border: '1.5px dashed rgba(14, 165, 233, 0.4)',
+                  borderRadius: 14,
+                  padding: '16px 18px',
+                  marginBottom: 20,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 8,
+                        background: '#ffffff',
+                        border: '1px solid #e2e8f0',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: 4,
+                      }}
+                    >
+                      <img src={selectedMethod.logoUrl} alt={selectedMethod.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                    </div>
+                    <div>
+                      <span className="font-mono" style={{ fontSize: '0.78rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>
+                        2. Send Money / Payment To ({selectedMethod.name}):
+                      </span>
+                      <div style={{ fontSize: '0.84rem', fontWeight: 700, color: '#0f172a' }}>
+                        Account Type: <span style={{ color: 'var(--primary-neon)' }}>{selectedMethod.accountType || 'Official Account'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <span className="badge-pill" style={{ background: '#e0f2fe', color: '#0369a1', fontSize: '0.74rem', border: '1px solid rgba(14, 165, 233, 0.3)' }}>
+                    {selectedMethod.rateText}
+                  </span>
+                </div>
+
+                {/* Account Number / Address with Copy Button */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 10,
+                    background: '#ffffff',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: 10,
+                    padding: '10px 14px',
+                  }}
+                >
+                  <span
+                    className="font-mono"
+                    style={{
+                      fontSize: '0.96rem',
+                      fontWeight: 700,
+                      color: '#0f172a',
+                      wordBreak: 'break-all',
+                      userSelect: 'all',
+                    }}
+                  >
+                    {selectedMethod.accountNumber || 'Contact Admin'}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedMethod.accountNumber) {
+                        navigator.clipboard.writeText(selectedMethod.accountNumber);
+                        setCopiedReceiver(true);
+                        setTimeout(() => setCopiedReceiver(false), 2000);
+                      }
+                    }}
+                    className="btn btn-ghost"
+                    style={{
+                      padding: '6px 12px',
+                      fontSize: '0.8rem',
+                      borderRadius: 8,
+                      border: '1px solid #e2e8f0',
+                      background: copiedReceiver ? '#f0fdf4' : '#f8fafc',
+                      color: copiedReceiver ? '#16a34a' : '#334155',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {copiedReceiver ? <Check size={14} color="#16a34a" /> : <Copy size={14} />}
+                    <span>{copiedReceiver ? 'Copied!' : 'Copy'}</span>
+                  </button>
+                </div>
+
+                {/* Payment Instructions Note */}
+                {selectedMethod.instructions && (
+                  <div style={{ marginTop: 10, fontSize: '0.82rem', color: '#475569', display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                    <span style={{ fontWeight: 700, color: '#0f172a' }}>Note:</span>
+                    <span>{selectedMethod.instructions}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* DEPOSIT FORM: PICK AMOUNT, SENDER DETAILS & SUBMIT */}
               <form onSubmit={handleDeposit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>
                   <label className="font-mono" style={{ fontSize: '0.84rem', color: '#475569', display: 'block', marginBottom: 6, fontWeight: 600 }}>
-                    Select or Enter Amount (USD):
+                    3. Select or Enter Amount (USD):
                   </label>
 
-                  {/* Preset Amount Pills ($5 Minimum) */}
+                  {/* Preset Amount Pills */}
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
                     {[5, 10, 25, 50, 100, 250].map((preset) => (
                       <button
@@ -1226,10 +1641,10 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                           padding: '6px 14px',
                           fontSize: '0.86rem',
                           borderRadius: 8,
-                          background: depositAmount === preset ? '#e0f2fe' : '#ffffff',
-                          color: depositAmount === preset ? 'var(--primary-neon)' : '#64748b',
-                          borderColor: depositAmount === preset ? 'var(--primary-neon)' : 'rgba(14, 165, 233, 0.25)',
-                          fontWeight: depositAmount === preset ? 800 : 500,
+                          background: hasDepositInput && numDepositAmount === preset ? '#e0f2fe' : '#ffffff',
+                          color: hasDepositInput && numDepositAmount === preset ? 'var(--primary-neon)' : '#64748b',
+                          borderColor: hasDepositInput && numDepositAmount === preset ? 'var(--primary-neon)' : 'rgba(14, 165, 233, 0.25)',
+                          fontWeight: hasDepositInput && numDepositAmount === preset ? 800 : 500,
                         }}
                       >
                         ${preset}
@@ -1239,16 +1654,90 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
 
                   <input
                     type="number"
-                    min="5"
+                    step="any"
+                    placeholder={`Enter amount (min $${minRequiredUsd.toFixed(2)})`}
                     value={depositAmount}
-                    onChange={(e) => setDepositAmount(parseFloat(e.target.value) || 5)}
+                    onChange={(e) => setDepositAmount(e.target.value)}
                     className="input-field"
-                    style={{ padding: '12px 14px', fontSize: '1rem' }}
+                    style={{
+                      padding: '12px 14px',
+                      fontSize: '1rem',
+                      borderColor: isDepositBelowMin ? '#ef4444' : undefined,
+                      color: isDepositBelowMin ? '#dc2626' : undefined,
+                      background: isDepositBelowMin ? '#fff1f2' : undefined,
+                    }}
                     required
+                  />
+
+                  {/* Warning Message */}
+                  {isDepositBelowMin && (
+                    <div style={{ color: '#ef4444', fontSize: '0.82rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5, marginTop: 6 }}>
+                      <AlertCircle size={14} color="#ef4444" style={{ flexShrink: 0 }} />
+                      <span>Minimum deposit is ${minRequiredUsd.toFixed(2)} USD for {selectedMethod.name}.</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Sender Account / Number / Address Input */}
+                <div>
+                  <label className="font-mono" style={{ fontSize: '0.84rem', color: '#475569', display: 'block', marginBottom: 6, fontWeight: 600 }}>
+                    4. Your Sender Account / Phone / Wallet Address <span style={{ color: '#ef4444' }}>*</span>:
+                  </label>
+                  <input
+                    type="text"
+                    placeholder={
+                      selectedMethod.isBDT
+                        ? 'e.g. 017XXXXXXXX (Your bKash/Nagad number)'
+                        : selectedMethod.id === 'crypto'
+                        ? 'e.g. 0x... (Your BEP-20 sender wallet)'
+                        : 'e.g. Your sender email, phone or account number'
+                    }
+                    value={senderAccount}
+                    onChange={(e) => setSenderAccount(e.target.value)}
+                    className="input-field"
+                    style={{ padding: '12px 14px', fontSize: '0.94rem' }}
+                    required
+                  />
+                  <span style={{ fontSize: '0.76rem', color: '#64748b', display: 'block', marginTop: 4 }}>
+                    Admin will verify this account number against incoming funds.
+                  </span>
+                </div>
+
+                {/* Transaction ID / TrxID / Hash Input */}
+                <div>
+                  <label className="font-mono" style={{ fontSize: '0.84rem', color: '#475569', display: 'block', marginBottom: 6, fontWeight: 600 }}>
+                    5. Transaction ID (TrxID) / TxHash <span style={{ color: '#ef4444' }}>*</span>:
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. BL76AK9X9Z or 0x8a92f..."
+                    value={transactionHash}
+                    onChange={(e) => setTransactionHash(e.target.value)}
+                    className="input-field font-mono"
+                    style={{ padding: '12px 14px', fontSize: '0.94rem' }}
+                    required
+                  />
+                  <span style={{ fontSize: '0.76rem', color: '#64748b', display: 'block', marginTop: 4 }}>
+                    Enter the exact transaction ID from your payment SMS, app, or blockchain explorer.
+                  </span>
+                </div>
+
+                {/* Optional Notes */}
+                <div>
+                  <label className="font-mono" style={{ fontSize: '0.84rem', color: '#475569', display: 'block', marginBottom: 6, fontWeight: 600 }}>
+                    Optional Note / Reference:
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Any extra info for Admin (optional)"
+                    value={depositNotes}
+                    onChange={(e) => setDepositNotes(e.target.value)}
+                    className="input-field"
+                    style={{ padding: '10px 14px', fontSize: '0.88rem' }}
                   />
                 </div>
 
-                {/* Real-Time Summary Box (Responsive Wrap) */}
+                {/* Real-Time Summary Box */}
                 <div
                   style={{
                     background: '#f0f9ff',
@@ -1286,7 +1775,7 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                     </div>
                     <div>
                       <span style={{ fontSize: '0.94rem', color: '#334155' }}>
-                        Deposit Method: <strong>{selectedMethod.name}</strong>
+                        Deposit Gateway: <strong>{selectedMethod.name}</strong>
                       </span>
                       <div style={{ fontSize: '0.82rem', color: '#64748b' }}>
                         {selectedMethod.rateText}
@@ -1295,22 +1784,41 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                   </div>
 
                   <div style={{ minWidth: 140 }}>
-                    <span style={{ fontSize: '0.74rem', color: '#64748b', display: 'block' }}>Total To Pay:</span>
-                    <strong className="font-mono" style={{ fontSize: '1.35rem', color: 'var(--primary-neon)' }}>
-                      {selectedMethod.isBDT
-                        ? `৳${(depositAmount * bdtRate).toLocaleString()} BDT`
-                        : `$${depositAmount.toFixed(2)} USD`}
+                    <span style={{ fontSize: '0.74rem', color: '#64748b', display: 'block' }}>Total Paid:</span>
+                    <strong className="font-mono" style={{ fontSize: '1.35rem', color: isDepositBelowMin ? '#ef4444' : 'var(--primary-neon)' }}>
+                      {hasDepositInput && numDepositAmount > 0
+                        ? (selectedMethod.isBDT
+                            ? `৳${(numDepositAmount * bdtRate).toLocaleString()} BDT`
+                            : `$${numDepositAmount.toFixed(2)} USD`)
+                        : (selectedMethod.isBDT ? '৳0 BDT' : '$0.00 USD')}
                     </strong>
                   </div>
                 </div>
 
                 <button
                   type="submit"
-                  disabled={depositLoading || depositAmount < 5}
+                  disabled={depositLoading || !isDepositValid}
                   className="btn btn-neon glow-neon"
-                  style={{ padding: '13px', fontSize: '0.96rem', borderRadius: 12, marginTop: 4 }}
+                  style={{
+                    padding: '13px',
+                    fontSize: '0.96rem',
+                    borderRadius: 12,
+                    marginTop: 4,
+                    opacity: !isDepositValid ? 0.6 : 1,
+                    cursor: !isDepositValid ? 'not-allowed' : 'pointer',
+                  }}
                 >
-                  {depositLoading ? 'Processing...' : `Confirm & Deposit $${depositAmount.toFixed(2)} USD via ${selectedMethod.name}`}
+                  {depositLoading
+                    ? 'Submitting...'
+                    : !hasDepositInput
+                    ? 'Enter Deposit Amount'
+                    : isDepositBelowMin
+                    ? `Minimum Deposit is $${minRequiredUsd.toFixed(2)} USD`
+                    : !senderAccount.trim()
+                    ? 'Enter Your Sender Account / Phone'
+                    : !transactionHash.trim()
+                    ? 'Enter Transaction ID (TrxID)'
+                    : `Submit Deposit Request ($${numDepositAmount.toFixed(2)} USD)`}
                 </button>
               </form>
             </div>

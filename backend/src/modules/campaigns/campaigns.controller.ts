@@ -168,15 +168,18 @@ router.get('/mine', requireAuth, async (req: AuthRequest, res: Response): Promis
 // Pause campaign
 router.post('/:id/pause', requireAuth, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const campaign = await Campaign.findOneAndUpdate(
-      { _id: req.params.id, ownerId: req.user!._id, status: 'active' },
-      { status: 'paused' },
-      { new: true }
-    );
+    const campaign = await Campaign.findOne({ _id: req.params.id, ownerId: req.user!._id });
     if (!campaign) {
-      res.status(404).json({ success: false, error: 'Active campaign not found' });
+      res.status(404).json({ success: false, error: 'Campaign not found' });
       return;
     }
+    if (campaign.status !== 'active') {
+      res.status(400).json({ success: false, error: 'Only active campaigns can be paused' });
+      return;
+    }
+    campaign.status = 'paused';
+    campaign.pausedByAdmin = false;
+    await campaign.save();
     res.json({ success: true, data: campaign });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
@@ -186,15 +189,24 @@ router.post('/:id/pause', requireAuth, async (req: AuthRequest, res: Response): 
 // Resume campaign
 router.post('/:id/resume', requireAuth, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const campaign = await Campaign.findOneAndUpdate(
-      { _id: req.params.id, ownerId: req.user!._id, status: 'paused' },
-      { status: 'active' },
-      { new: true }
-    );
+    const campaign = await Campaign.findOne({ _id: req.params.id, ownerId: req.user!._id });
     if (!campaign) {
-      res.status(404).json({ success: false, error: 'Paused campaign not found' });
+      res.status(404).json({ success: false, error: 'Campaign not found' });
       return;
     }
+    if (campaign.pausedByAdmin) {
+      res.status(403).json({
+        success: false,
+        error: 'This campaign was paused by an administrator. Contact to the admin to start the campaign again.',
+      });
+      return;
+    }
+    if (campaign.status !== 'paused') {
+      res.status(400).json({ success: false, error: 'Only paused campaigns can be resumed' });
+      return;
+    }
+    campaign.status = 'active';
+    await campaign.save();
     res.json({ success: true, data: campaign });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });

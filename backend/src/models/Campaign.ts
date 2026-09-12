@@ -11,6 +11,7 @@ export interface ICampaign extends Document {
   totalCost: number;
   viewsDelivered: number;
   status: 'pending_payment' | 'active' | 'paused' | 'completed' | 'cancelled';
+  pausedByAdmin?: boolean;
   thumbnailUrl?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -33,6 +34,7 @@ const CampaignSchema = new Schema<ICampaign>(
       default: 'active',
       index: true,
     },
+    pausedByAdmin: { type: Boolean, default: false },
     thumbnailUrl: { type: String },
   },
   { timestamps: true }

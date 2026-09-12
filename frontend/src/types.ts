@@ -41,6 +41,7 @@ export interface Campaign {
   totalCost: number;
   viewsDelivered: number;
   status: 'active' | 'paused' | 'completed' | 'cancelled';
+  pausedByAdmin?: boolean;
   thumbnailUrl?: string;
   createdAt: string;
 }
@@ -89,13 +90,49 @@ export interface Payout {
   processedAt?: string;
 }
 
+export interface DepositMethod {
+  id: string;
+  name: string;
+  type?: 'mobile_banking' | 'crypto' | 'micropayment' | 'e_wallet' | string;
+  accountType?: string;
+  accountNumber?: string;
+  minDepositUsd?: number;
+  instructions?: string;
+  enabled?: boolean;
+}
+
+export interface WithdrawMethod {
+  id: string;
+  name: string;
+  type?: 'mobile_banking' | 'crypto' | 'micropayment' | 'e_wallet' | string;
+  accountType?: string;
+  minWithdrawUsd: number;
+  instructions?: string;
+  enabled?: boolean;
+}
+
 export interface Transaction {
   _id: string;
+  userId?: {
+    _id?: string;
+    id?: string;
+    name: string;
+    email: string;
+    balance?: number;
+    creatorBalance?: number;
+  } | string;
   type: string;
   amount: number;
   balanceAfter: number;
   status: string;
   gateway?: string;
+  senderAccount?: string;
+  receiverAccount?: string;
+  transactionHash?: string;
+  referenceId?: string;
+  proofImage?: string;
+  adminNotes?: string;
+  processedAt?: string;
   notes?: string;
   createdAt: string;
 }
@@ -107,3 +144,4 @@ export interface LivePayout {
   method: string;
   timeAgo: string;
 }
+

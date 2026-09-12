@@ -20,6 +20,185 @@ export const getSystemExchangeRate = async (): Promise<number> => {
   return 122;
 };
 
+export interface DepositMethodSetting {
+  id: string; // 'bkash' | 'nagad' | 'rocket' | 'crypto' | 'faucetpay' | 'webmoney'
+  name: string;
+  type: 'mobile_banking' | 'crypto' | 'micropayment' | 'e_wallet';
+  accountType: string; // 'Personal' | 'Merchant' | 'BEP-20 (BNB Smart Chain)' | 'Email' | 'WMZ Purse'
+  accountNumber: string;
+  minDepositUsd: number;
+  instructions: string;
+  enabled: boolean;
+}
+
+export const DEFAULT_DEPOSIT_METHODS: DepositMethodSetting[] = [
+  {
+    id: 'bkash',
+    name: 'bKash',
+    type: 'mobile_banking',
+    accountType: 'Personal',
+    accountNumber: '01XXXXXXXXX',
+    minDepositUsd: 5.0,
+    instructions: 'Send Money (Personal) to this bKash number. Copy the TrxID and enter below.',
+    enabled: true,
+  },
+  {
+    id: 'nagad',
+    name: 'Nagad',
+    type: 'mobile_banking',
+    accountType: 'Personal',
+    accountNumber: '01XXXXXXXXX',
+    minDepositUsd: 5.0,
+    instructions: 'Send Money (Personal) to this Nagad number. Copy the TrxID and enter below.',
+    enabled: true,
+  },
+  {
+    id: 'rocket',
+    name: 'Rocket',
+    type: 'mobile_banking',
+    accountType: 'Personal',
+    accountNumber: '01XXXXXXXXX',
+    minDepositUsd: 5.0,
+    instructions: 'Send Money to this Rocket number. Copy the TrxID and enter below.',
+    enabled: true,
+  },
+  {
+    id: 'crypto',
+    name: 'USDT (BEP-20)',
+    type: 'crypto',
+    accountType: 'BEP-20 (BNB Smart Chain)',
+    accountNumber: '0x0000000000000000000000000000000000000000',
+    minDepositUsd: 5.0,
+    instructions: 'Send USDT (BEP-20 network only) to this wallet address. Paste the transaction hash below.',
+    enabled: true,
+  },
+  {
+    id: 'faucetpay',
+    name: 'FaucetPay',
+    type: 'micropayment',
+    accountType: 'Email / Account',
+    accountNumber: 'admin@myyt.com',
+    minDepositUsd: 5.0,
+    instructions: 'Send payment via FaucetPay to this email/address and enter your FaucetPay TrxID.',
+    enabled: true,
+  },
+  {
+    id: 'webmoney',
+    name: 'WebMoney (WMZ)',
+    type: 'e_wallet',
+    accountType: 'WMZ Purse',
+    accountNumber: 'Z000000000000',
+    minDepositUsd: 5.0,
+    instructions: 'Transfer WMZ to this purse and enter the transaction number below.',
+    enabled: true,
+  },
+];
+
+export interface WithdrawMethodSetting {
+  id: string; // 'bkash' | 'nagad' | 'rocket' | 'crypto' | 'faucetpay' | 'webmoney'
+  name: string;
+  type: 'mobile_banking' | 'crypto' | 'micropayment' | 'e_wallet';
+  accountType: string;
+  minWithdrawUsd: number;
+  instructions: string;
+  enabled: boolean;
+}
+
+export const DEFAULT_WITHDRAW_METHODS: WithdrawMethodSetting[] = [
+  {
+    id: 'bkash',
+    name: 'bKash',
+    type: 'mobile_banking',
+    accountType: 'Personal / Agent',
+    minWithdrawUsd: 5.0,
+    instructions: 'Withdrawals will be sent to your linked bKash number.',
+    enabled: true,
+  },
+  {
+    id: 'nagad',
+    name: 'Nagad',
+    type: 'mobile_banking',
+    accountType: 'Personal',
+    minWithdrawUsd: 5.0,
+    instructions: 'Withdrawals will be sent to your linked Nagad number.',
+    enabled: true,
+  },
+  {
+    id: 'rocket',
+    name: 'Rocket',
+    type: 'mobile_banking',
+    accountType: 'Personal',
+    minWithdrawUsd: 5.0,
+    instructions: 'Withdrawals will be sent to your linked Rocket number.',
+    enabled: true,
+  },
+  {
+    id: 'crypto',
+    name: 'USDT (BEP-20)',
+    type: 'crypto',
+    accountType: 'BEP-20 (BNB Smart Chain)',
+    minWithdrawUsd: 5.0,
+    instructions: 'Withdrawals will be disbursed to your linked USDT (BEP-20) address.',
+    enabled: true,
+  },
+  {
+    id: 'faucetpay',
+    name: 'FaucetPay',
+    type: 'micropayment',
+    accountType: 'Email / Account',
+    minWithdrawUsd: 5.0,
+    instructions: 'Withdrawals will be sent to your linked FaucetPay email/address.',
+    enabled: true,
+  },
+  {
+    id: 'webmoney',
+    name: 'WebMoney (WMZ)',
+    type: 'e_wallet',
+    accountType: 'WMZ Purse',
+    minWithdrawUsd: 5.0,
+    instructions: 'Withdrawals will be transferred to your linked WMZ purse.',
+    enabled: true,
+  },
+];
+
+export const getSystemDepositMethods = async (): Promise<DepositMethodSetting[]> => {
+  try {
+    const setting = await Setting.findOne({ key: 'deposit_payment_methods' });
+    if (setting && Array.isArray(setting.value) && setting.value.length > 0) {
+      // Merge with defaults to ensure all fields exist
+      return setting.value.map((m: any) => {
+        const def = DEFAULT_DEPOSIT_METHODS.find((d) => d.id === m.id) || m;
+        return {
+          ...def,
+          ...m,
+        };
+      });
+    }
+  } catch {
+    // fallback
+  }
+  return DEFAULT_DEPOSIT_METHODS;
+};
+
+export const getSystemWithdrawMethods = async (): Promise<WithdrawMethodSetting[]> => {
+  try {
+    const setting = await Setting.findOne({ key: 'withdraw_payment_methods' });
+    if (setting && Array.isArray(setting.value) && setting.value.length > 0) {
+      // Merge with defaults to ensure all fields exist
+      return setting.value.map((m: any) => {
+        const def = DEFAULT_WITHDRAW_METHODS.find((d) => d.id === m.id) || m;
+        return {
+          ...def,
+          ...m,
+        };
+      });
+    }
+  } catch {
+    // fallback
+  }
+  return DEFAULT_WITHDRAW_METHODS;
+};
+
 export const getSystemPricingTiers = async (): Promise<Record<number, { campaignerCost: number; viewerReward: number }>> => {
   try {
     const setting = await Setting.findOne({ key: 'pricing_tiers' });
@@ -120,6 +299,7 @@ router.get('/stats', requireAdmin, async (_req: AuthRequest, res: Response): Pro
     const totalCampaigns = await Campaign.countDocuments();
     const totalTasksCompleted = await Task.countDocuments({ status: 'completed' });
     const pendingPayoutsCount = await Payout.countDocuments({ status: 'pending' });
+    const pendingDepositsCount = await Transaction.countDocuments({ type: 'deposit', status: 'pending' });
 
     // Aggregate delivered views
     const deliveredAgg = await Campaign.aggregate([
@@ -147,6 +327,12 @@ router.get('/stats', requireAdmin, async (_req: AuthRequest, res: Response): Pro
       { $group: { _id: null, total: { $sum: '$amount' } } },
     ]);
     const totalDepositsUsd = Number((depositAgg[0]?.total || 0).toFixed(2));
+
+    const pendingDepositAgg = await Transaction.aggregate([
+      { $match: { type: 'deposit', status: 'pending' } },
+      { $group: { _id: null, total: { $sum: '$amount' } } },
+    ]);
+    const pendingDepositsUsd = Number((pendingDepositAgg[0]?.total || 0).toFixed(2));
 
     const payoutsAgg = await Payout.aggregate([
       { $match: { status: 'approved' } },
@@ -204,6 +390,8 @@ router.get('/stats', requireAdmin, async (_req: AuthRequest, res: Response): Pro
         totalWatchHours,
         totalSpendUsd,
         totalDepositsUsd,
+        pendingDepositsCount,
+        pendingDepositsUsd,
         totalPayoutsUsd,
         pendingPayoutsCount,
         pendingPayoutsUsd,
@@ -272,7 +460,13 @@ router.get('/campaigns', requireAdmin, async (_req: AuthRequest, res: Response):
 router.post('/campaigns/:id/status', requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { status } = req.body;
-    const campaign = await Campaign.findByIdAndUpdate(req.params.id, { status }, { new: true });
+    const updateData: any = { status };
+    if (status === 'paused') {
+      updateData.pausedByAdmin = true;
+    } else if (status === 'active') {
+      updateData.pausedByAdmin = false;
+    }
+    const campaign = await Campaign.findByIdAndUpdate(req.params.id, updateData, { new: true });
     if (!campaign) {
       res.status(404).json({ success: false, error: 'Campaign not found' });
       return;
@@ -576,5 +770,212 @@ router.post('/settings/daily-limit', requireAdmin, async (req: AuthRequest, res:
   }
 });
 
+// GET /api/admin/deposits - List deposit requests
+router.get('/deposits', requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { status } = req.query;
+    const filter: any = { type: 'deposit' };
+    if (status && status !== 'all') {
+      filter.status = status;
+    }
+
+    const deposits = await Transaction.find(filter)
+      .populate('userId', 'name email balance creatorBalance')
+      .sort({ createdAt: -1 })
+      .limit(500);
+
+    res.json({ success: true, data: deposits });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/admin/deposits/:id/approve - Approve deposit and credit user's creator ad budget
+router.post('/deposits/:id/approve', requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { adminNotes } = req.body;
+    const tx = await Transaction.findOne({ _id: req.params.id, type: 'deposit' });
+
+    if (!tx) {
+      res.status(404).json({ success: false, error: 'Deposit transaction not found' });
+      return;
+    }
+
+    if (tx.status !== 'pending') {
+      res.status(400).json({ success: false, error: `Deposit is already marked as ${tx.status}` });
+      return;
+    }
+
+    // Atomic credit to creator ad budget and overall cash balance
+    const updatedUser = await User.findByIdAndUpdate(
+      tx.userId,
+      { $inc: { creatorBalance: tx.amount, balance: tx.amount } },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      res.status(404).json({ success: false, error: 'User not found' });
+      return;
+    }
+
+    tx.status = 'completed';
+    tx.balanceAfter = updatedUser.balance;
+    tx.adminNotes = adminNotes || 'Manually approved and credited by Admin';
+    tx.processedAt = new Date();
+    await tx.save();
+
+    res.json({
+      success: true,
+      data: {
+        transaction: tx,
+        user: {
+          id: updatedUser._id,
+          balance: updatedUser.balance,
+          creatorBalance: updatedUser.creatorBalance,
+        },
+      },
+      message: `Deposit of $${tx.amount.toFixed(2)} USD approved and credited successfully!`,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/admin/deposits/:id/reject - Reject deposit
+router.post('/deposits/:id/reject', requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { adminNotes } = req.body;
+    const tx = await Transaction.findOne({ _id: req.params.id, type: 'deposit' });
+
+    if (!tx) {
+      res.status(404).json({ success: false, error: 'Deposit transaction not found' });
+      return;
+    }
+
+    if (tx.status !== 'pending') {
+      res.status(400).json({ success: false, error: `Deposit is already marked as ${tx.status}` });
+      return;
+    }
+
+    tx.status = 'failed';
+    tx.adminNotes = adminNotes || 'Declined by Admin (Invalid transaction ID or payment not received)';
+    tx.processedAt = new Date();
+    await tx.save();
+
+    res.json({
+      success: true,
+      data: tx,
+      message: `Deposit request marked as rejected.`,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/admin/settings/deposit-methods - Get deposit methods configuration
+router.get('/settings/deposit-methods', requireAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const methods = await getSystemDepositMethods();
+    res.json({ success: true, data: methods });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/admin/settings/deposit-methods - Update deposit payment methods and numbers
+router.post('/settings/deposit-methods', requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { methods } = req.body;
+    if (!methods || !Array.isArray(methods)) {
+      res.status(400).json({ success: false, error: 'An array of payment methods is required' });
+      return;
+    }
+
+    // Sanitize and validate methods
+    const sanitizedMethods: DepositMethodSetting[] = methods.map((m: any) => ({
+      id: String(m.id || '').trim(),
+      name: String(m.name || '').trim(),
+      type: m.type || 'mobile_banking',
+      accountType: String(m.accountType || '').trim(),
+      accountNumber: String(m.accountNumber || '').trim(),
+      minDepositUsd: typeof m.minDepositUsd === 'number' && m.minDepositUsd > 0 ? m.minDepositUsd : 5.0,
+      instructions: String(m.instructions || '').trim(),
+      enabled: Boolean(m.enabled !== false),
+    })).filter((m) => m.id && m.name);
+
+    if (sanitizedMethods.length === 0) {
+      res.status(400).json({ success: false, error: 'At least one valid payment method is required' });
+      return;
+    }
+
+    const updated = await Setting.findOneAndUpdate(
+      { key: 'deposit_payment_methods' },
+      { value: sanitizedMethods, description: 'Deposit payment methods and receiver numbers' },
+      { upsert: true, new: true }
+    );
+
+    res.json({
+      success: true,
+      data: updated.value,
+      message: 'Deposit payment methods and receiver numbers updated successfully!',
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/admin/settings/withdraw-methods - Get current withdrawal methods & min limit config
+router.get('/settings/withdraw-methods', requireAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const methods = await getSystemWithdrawMethods();
+    res.json({ success: true, data: methods });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/admin/settings/withdraw-methods - Update withdrawal payment methods and minimum payout amounts
+router.post('/settings/withdraw-methods', requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { methods } = req.body;
+    if (!methods || !Array.isArray(methods)) {
+      res.status(400).json({ success: false, error: 'An array of withdrawal methods is required' });
+      return;
+    }
+
+    // Sanitize and validate methods
+    const sanitizedMethods: WithdrawMethodSetting[] = methods.map((m: any) => ({
+      id: String(m.id || '').trim(),
+      name: String(m.name || '').trim(),
+      type: m.type || 'mobile_banking',
+      accountType: String(m.accountType || '').trim(),
+      minWithdrawUsd: typeof m.minWithdrawUsd === 'number' && m.minWithdrawUsd > 0 ? m.minWithdrawUsd : 5.0,
+      instructions: String(m.instructions || '').trim(),
+      enabled: Boolean(m.enabled !== false),
+    })).filter((m) => m.id && m.name);
+
+    if (sanitizedMethods.length === 0) {
+      res.status(400).json({ success: false, error: 'At least one valid withdrawal method is required' });
+      return;
+    }
+
+    const updated = await Setting.findOneAndUpdate(
+      { key: 'withdraw_payment_methods' },
+      { value: sanitizedMethods, description: 'Withdrawal payment methods and minimum payout amounts' },
+      { upsert: true, new: true }
+    );
+
+    res.json({
+      success: true,
+      data: updated.value,
+      message: 'Withdrawal payment methods and minimum payout amounts updated successfully!',
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export const adminRouter = router;
+
+
 

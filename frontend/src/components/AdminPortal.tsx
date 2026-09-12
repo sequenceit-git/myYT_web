@@ -1,80 +1,37 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Shield,
-  Users,
-  Video,
-  DollarSign,
-  CheckCircle2,
-  XCircle,
-  Activity,
-  RefreshCw,
-  Clock,
-  TrendingUp,
-  Lock,
-  LogOut,
-  AlertCircle,
-  PlaySquare,
-  ChevronLeft,
-  ChevronRight,
-  BarChart3,
-  ExternalLink,
-  Copy,
-  Check,
-  Search,
-  Eye,
-  Sliders,
-  RotateCcw,
-  Timer,
-  Save,
-  Globe,
-  Smartphone,
-  ShieldAlert,
-} from 'lucide-react';
-import { User, Campaign, Payout } from '../types';
+import { User, Campaign, Payout, Transaction, DepositMethod, WithdrawMethod } from '../types';
 import { apiRequest, setAuthToken, clearAuthToken } from '../api';
 import { useExchangeRate } from '../context/ExchangeRateContext';
 
-export interface PricingTierItem {
-  duration: number;
-  campaignerCost: number;
-  viewerReward: number;
-}
+// Admin Subcomponents
+import { AdminLogin } from './admin/AdminLogin';
+import { AdminHeader } from './admin/AdminHeader';
+import { AdminOverviewTab } from './admin/AdminOverviewTab';
+import { AdminPayoutsTab } from './admin/AdminPayoutsTab';
+import { AdminDepositsTab } from './admin/AdminDepositsTab';
+import { AdminCampaignsTab } from './admin/AdminCampaignsTab';
+import { AdminUsersTab } from './admin/AdminUsersTab';
+import { AdminSettingsTab } from './admin/AdminSettingsTab';
+import { AdminPaymentMethodsTab } from './admin/AdminPaymentMethodsTab';
+import { AdminPayoutModals } from './admin/AdminPayoutModals';
+import { AdminDepositModals } from './admin/AdminDepositModals';
 
-export interface CooldownConfig {
-  enabled: boolean;
-  durationSeconds: number;
-}
+// Types & Defaults
+import {
+  PricingTierItem,
+  CooldownConfig,
+  DailyLimitConfig,
+  AdminTab,
+  DEFAULT_ADMIN_DEPOSIT_METHODS,
+  DEFAULT_ADMIN_WITHDRAW_METHODS,
+} from './admin/adminTypes';
 
-export interface DailyLimitConfig {
-  enableDailyLimit: boolean;
-  maxDailyVideos: number;
-}
+export type { PricingTierItem, CooldownConfig, DailyLimitConfig, AdminTab };
 
 interface AdminPortalProps {
   user: User | null;
   onRefreshUser?: () => Promise<void> | void;
 }
-
-// Map payment methods to official brand logos
-const getPaymentLogo = (method: string): string => {
-  switch (method?.toLowerCase()) {
-    case 'bkash':
-      return '/payment-methods/bkash.svg';
-    case 'nagad':
-      return '/payment-methods/nagad.svg';
-    case 'rocket':
-      return '/payment-methods/rocket.svg';
-    case 'faucetpay':
-      return '/payment-methods/faucetpay.svg';
-    case 'crypto':
-    case 'usdt':
-      return '/payment-methods/crypto.svg';
-    case 'webmoney':
-      return '/payment-methods/webmoney.svg';
-    default:
-      return '/payment-methods/crypto.svg';
-  }
-};
 
 export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser }) => {
   // Authentication & Session
@@ -83,8 +40,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
   const [loginError, setLoginError] = useState<string | null>(null);
 
   // Active Admin Tab
-  const [activeTab, setActiveTab] = useState<'overview' | 'payouts' | 'campaigns' | 'users' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [payoutFilter, setPayoutFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
+  const [depositFilter, setDepositFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
 
   // Pricing & Cooldown Engine States
   const [pricingTiers, setPricingTiers] = useState<PricingTierItem[]>([
@@ -111,11 +69,20 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
   });
   const [dailyLimitSaving, setDailyLimitSaving] = useState(false);
 
+  // Deposit Methods & Receiver Addresses State
+  const [depositMethodsConfig, setDepositMethodsConfig] = useState<DepositMethod[]>(DEFAULT_ADMIN_DEPOSIT_METHODS);
+  const [depositMethodsSaving, setDepositMethodsSaving] = useState(false);
+
+  // Withdrawal Methods & Minimum Limits State
+  const [withdrawMethodsConfig, setWithdrawMethodsConfig] = useState<WithdrawMethod[]>(DEFAULT_ADMIN_WITHDRAW_METHODS);
+  const [withdrawMethodsSaving, setWithdrawMethodsSaving] = useState(false);
+
   // Telemetry & Data lists
   const [stats, setStats] = useState<any>(null);
   const [usersList, setUsersList] = useState<User[]>([]);
   const [campaignsList, setCampaignsList] = useState<Campaign[]>([]);
   const [payoutsList, setPayoutsList] = useState<Payout[]>([]);
+  const [depositsList, setDepositsList] = useState<Transaction[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
   const [actionNotice, setActionNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -125,6 +92,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
 
   // Pagination states
   const [payoutPage, setPayoutPage] = useState(1);
+  const [depositPage, setDepositPage] = useState(1);
   const [campPage, setCampPage] = useState(1);
   const [userPage, setUserPage] = useState(1);
   const PAGE_SIZE = 10;
@@ -138,6 +106,15 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
   const [rejectModalPayout, setRejectModalPayout] = useState<Payout | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [rejectLoading, setRejectLoading] = useState(false);
+
+  // Manual Deposit Modal States
+  const [approveModalDeposit, setApproveModalDeposit] = useState<Transaction | null>(null);
+  const [approveDepositNotes, setApproveDepositNotes] = useState('');
+  const [approveDepositLoading, setApproveDepositLoading] = useState(false);
+
+  const [rejectModalDeposit, setRejectModalDeposit] = useState<Transaction | null>(null);
+  const [rejectDepositReason, setRejectDepositReason] = useState('');
+  const [rejectDepositLoading, setRejectDepositLoading] = useState(false);
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -168,11 +145,14 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
   const fetchAdminData = async () => {
     setDataLoading(true);
     try {
-      const [statsRes, usersRes, campRes, payRes, settingsRes] = await Promise.all([
+      const [statsRes, usersRes, campRes, payRes, depRes, depMethodsRes, withdrawMethodsRes, settingsRes] = await Promise.all([
         apiRequest<any>('/admin/stats'),
         apiRequest<User[]>('/admin/users'),
         apiRequest<Campaign[]>('/admin/campaigns'),
         apiRequest<Payout[]>('/admin/payouts'),
+        apiRequest<Transaction[]>('/admin/deposits'),
+        apiRequest<DepositMethod[]>('/admin/settings/deposit-methods'),
+        apiRequest<WithdrawMethod[]>('/admin/settings/withdraw-methods'),
         apiRequest<{
           usdToBdt: number;
           pricingTiers: any;
@@ -186,6 +166,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
       if (usersRes.success) setUsersList(usersRes.data || []);
       if (campRes.success) setCampaignsList(campRes.data || []);
       if (payRes.success) setPayoutsList(payRes.data || []);
+      if (depRes.success) setDepositsList(depRes.data || []);
+      if (depMethodsRes.success && depMethodsRes.data && Array.isArray(depMethodsRes.data) && depMethodsRes.data.length > 0) {
+        setDepositMethodsConfig(depMethodsRes.data);
+      }
+      if (withdrawMethodsRes.success && withdrawMethodsRes.data && Array.isArray(withdrawMethodsRes.data) && withdrawMethodsRes.data.length > 0) {
+        setWithdrawMethodsConfig(withdrawMethodsRes.data);
+      }
       if (settingsRes.success && settingsRes.data) {
         // 1. Pricing Tiers: handle array or object
         if (settingsRes.data.pricingTiersList && Array.isArray(settingsRes.data.pricingTiersList)) {
@@ -353,17 +340,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
     }
   };
 
-  const formatSecondsHuman = (sec: number) => {
-    if (sec <= 0) return '0 seconds (No cooldown)';
-    if (sec < 60) return `${sec} seconds`;
-    if (sec < 3600) {
-      const m = Math.round(sec / 60);
-      return `${m} minute${m > 1 ? 's' : ''} (${sec}s)`;
-    }
-    const hrs = (sec / 3600).toFixed(sec % 3600 === 0 ? 0 : 1);
-    return `${hrs} hour${Number(hrs) > 1 ? 's' : ''} (${sec}s)`;
-  };
-
   useEffect(() => {
     if (user && user.role === 'admin') {
       fetchAdminData();
@@ -481,6 +457,114 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
     }
   };
 
+  // Submit manual deposit approval (credits user creator balance)
+  const handleConfirmApproveDeposit = async () => {
+    if (!approveModalDeposit) return;
+    setApproveDepositLoading(true);
+
+    try {
+      const res = await apiRequest(`/admin/deposits/${approveModalDeposit._id}/approve`, {
+        method: 'POST',
+        body: JSON.stringify({
+          adminNotes: approveDepositNotes || 'Approved manually by Administrator',
+        }),
+      });
+
+      if (res.success) {
+        setActionNotice({
+          type: 'success',
+          message: `Deposit of $${approveModalDeposit.amount.toFixed(2)} USD approved and credited to creator balance!`,
+        });
+        setApproveModalDeposit(null);
+        setApproveDepositNotes('');
+        fetchAdminData();
+      } else {
+        setActionNotice({ type: 'error', message: res.error || 'Failed to approve deposit' });
+      }
+    } catch (err: any) {
+      setActionNotice({ type: 'error', message: err.message || 'Request failed' });
+    } finally {
+      setApproveDepositLoading(false);
+    }
+  };
+
+  // Submit manual deposit rejection
+  const handleConfirmRejectDeposit = async () => {
+    if (!rejectModalDeposit) return;
+    setRejectDepositLoading(true);
+
+    try {
+      const res = await apiRequest(`/admin/deposits/${rejectModalDeposit._id}/reject`, {
+        method: 'POST',
+        body: JSON.stringify({
+          adminNotes: rejectDepositReason || 'Declined by Administrator (Invalid TrxID or unpaid)',
+        }),
+      });
+
+      if (res.success) {
+        setActionNotice({
+          type: 'success',
+          message: `Deposit of $${rejectModalDeposit.amount.toFixed(2)} USD marked as rejected.`,
+        });
+        setRejectModalDeposit(null);
+        setRejectDepositReason('');
+        fetchAdminData();
+      } else {
+        setActionNotice({ type: 'error', message: res.error || 'Failed to reject deposit' });
+      }
+    } catch (err: any) {
+      setActionNotice({ type: 'error', message: err.message || 'Request failed' });
+    } finally {
+      setRejectDepositLoading(false);
+    }
+  };
+
+  // Save Deposit Payment Methods Settings
+  const handleSaveDepositMethods = async () => {
+    setDepositMethodsSaving(true);
+    try {
+      const res = await apiRequest<{ message?: string; methods: DepositMethod[] }>('/admin/settings/deposit-methods', {
+        method: 'POST',
+        body: JSON.stringify({ methods: depositMethodsConfig }),
+      });
+      if (res.success) {
+        setActionNotice({ type: 'success', message: (res as any).message || res.data?.message || 'Deposit payment methods and account numbers updated!' });
+        if (res.data?.methods && Array.isArray(res.data.methods)) {
+          setDepositMethodsConfig(res.data.methods);
+        }
+      } else {
+        setActionNotice({ type: 'error', message: res.error || 'Failed to save deposit methods' });
+      }
+    } catch (err: any) {
+      setActionNotice({ type: 'error', message: err.message || 'Request failed' });
+    } finally {
+      setDepositMethodsSaving(false);
+    }
+  };
+
+  // Save Withdrawal Payment Methods & Minimum Limits Settings
+  const handleSaveWithdrawMethods = async () => {
+    setWithdrawMethodsSaving(true);
+    try {
+      const res = await apiRequest<{ message?: string; methods: WithdrawMethod[] }>('/admin/settings/withdraw-methods', {
+        method: 'POST',
+        body: JSON.stringify({ methods: withdrawMethodsConfig }),
+      });
+      if (res.success) {
+        setActionNotice({ type: 'success', message: (res as any).message || res.data?.message || 'Withdrawal payment methods & minimum limits updated!' });
+        if (res.data?.methods && Array.isArray(res.data.methods)) {
+          setWithdrawMethodsConfig(res.data.methods);
+        }
+      } else {
+        setActionNotice({ type: 'error', message: res.error || 'Failed to save withdrawal methods' });
+      }
+    } catch (err: any) {
+      setActionNotice({ type: 'error', message: err.message || 'Request failed' });
+    } finally {
+      setWithdrawMethodsSaving(false);
+    }
+  };
+
   // Toggle Campaign status
   const handleToggleCampaign = async (c: Campaign) => {
     const newStatus = c.status === 'active' ? 'paused' : 'active';
@@ -507,2435 +591,189 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
     }
   };
 
-  // Pagination component
-  const renderPagination = (
-    currentPage: number,
-    totalPages: number,
-    totalItems: number,
-    pageSize: number,
-    onPageChange: (page: number) => void,
-    itemLabel: string
-  ) => {
-    if (totalItems <= pageSize) return null;
-    const startIdx = (currentPage - 1) * pageSize + 1;
-    const endIdx = Math.min(currentPage * pageSize, totalItems);
+  // Check role authorization
+  const isAdmin = user && user.role === 'admin';
 
+  // Counts
+  const pendingPayoutsCount = payoutsList.filter((p) => p.status === 'pending').length;
+  const pendingDepositsCount = depositsList.filter((d) => d.status === 'pending').length;
+
+  // 1. Password-only Login Screen Gate
+  if (!isAdmin) {
     return (
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 12,
-          paddingTop: 16,
-          marginTop: 10,
-          borderTop: '1px solid #f1f5f9',
-          fontSize: '0.82rem',
-          color: '#64748b',
-        }}
-      >
-        <div>
-          Showing <strong>{startIdx}</strong> to <strong>{endIdx}</strong> of <strong>{totalItems}</strong> {itemLabel}
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <button
-            type="button"
-            disabled={currentPage <= 1}
-            onClick={() => onPageChange(currentPage - 1)}
-            className="btn btn-ghost"
-            style={{
-              padding: '4px 10px',
-              fontSize: '0.78rem',
-              borderRadius: 8,
-              opacity: currentPage <= 1 ? 0.4 : 1,
-              cursor: currentPage <= 1 ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-            }}
-          >
-            <ChevronLeft size={14} /> Prev
-          </button>
-
-          {Array.from({ length: totalPages }, (_, i) => i + 1)
-            .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
-            .map((pageNum, idx, arr) => {
-              const prev = arr[idx - 1];
-              const showEllipsis = prev && pageNum - prev > 1;
-              return (
-                <React.Fragment key={pageNum}>
-                  {showEllipsis && <span style={{ padding: '0 4px', color: '#94a3b8' }}>...</span>}
-                  <button
-                    type="button"
-                    onClick={() => onPageChange(pageNum)}
-                    className="btn btn-ghost"
-                    style={{
-                      padding: '4px 10px',
-                      fontSize: '0.8rem',
-                      borderRadius: 8,
-                      fontWeight: pageNum === currentPage ? 700 : 500,
-                      background: pageNum === currentPage ? '#e0f2fe' : 'transparent',
-                      color: pageNum === currentPage ? 'var(--primary-neon)' : '#64748b',
-                      border: pageNum === currentPage ? '1px solid rgba(14, 165, 233, 0.4)' : '1px solid transparent',
-                    }}
-                  >
-                    {pageNum}
-                  </button>
-                </React.Fragment>
-              );
-            })}
-
-          <button
-            type="button"
-            disabled={currentPage >= totalPages}
-            onClick={() => onPageChange(currentPage + 1)}
-            className="btn btn-ghost"
-            style={{
-              padding: '4px 10px',
-              fontSize: '0.78rem',
-              borderRadius: 8,
-              opacity: currentPage >= totalPages ? 0.4 : 1,
-              cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-            }}
-          >
-            Next <ChevronRight size={14} />
-          </button>
-        </div>
-      </div>
-    );
-  };
-
-  // SVG Curve for Watch Hours
-  const renderWatchHoursCurve = (data: number[], labels: string[]) => {
-    if (!data || data.length < 2) return null;
-    const width = 520;
-    const height = 160;
-    const paddingX = 40;
-    const paddingY = 25;
-    const highest = Math.max(...data, 0);
-    const maxVal = highest > 0 ? highest * 1.3 : 10;
-    const minVal = 0;
-
-    const points = data.map((val, i) => {
-      const x = paddingX + i * ((width - paddingX * 2) / (data.length - 1));
-      const y = height - paddingY - ((val - minVal) / (maxVal - minVal)) * (height - paddingY * 2);
-      return { x, y, val };
-    });
-
-    let pathD = `M ${points[0].x},${points[0].y}`;
-    for (let i = 0; i < points.length - 1; i++) {
-      const p0 = points[i];
-      const p1 = points[i + 1];
-      const midX = (p0.x + p1.x) / 2;
-      pathD += ` C ${midX},${p0.y} ${midX},${p1.y} ${p1.x},${p1.y}`;
-    }
-
-    const areaD = `${pathD} L ${points[points.length - 1].x},${height - 18} L ${points[0].x},${height - 18} Z`;
-
-    return (
-      <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
-        <defs>
-          <linearGradient id="adminWatchGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--primary-neon)" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="var(--primary-neon)" stopOpacity="0.0" />
-          </linearGradient>
-        </defs>
-
-        <line x1={paddingX} y1={height - 20} x2={width - paddingX} y2={height - 20} stroke="#e2e8f0" strokeWidth="1" />
-        <path d={areaD} fill="url(#adminWatchGrad)" />
-        <path d={pathD} fill="none" stroke="var(--primary-neon)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-
-        {points.map((pt, i) => (
-          <g key={i}>
-            <circle cx={pt.x} cy={pt.y} r={4} fill="#ffffff" stroke="var(--primary-neon)" strokeWidth="2.5" />
-            <text x={pt.x} y={height - 5} textAnchor="middle" fill="#94a3b8" fontSize="10" fontFamily="JetBrains Mono, monospace">
-              {labels[i] || `D${i + 1}`}
-            </text>
-            <text x={pt.x} y={pt.y - 8} textAnchor="middle" fill="#0f172a" fontSize="10" fontWeight="700" fontFamily="JetBrains Mono, monospace">
-              {pt.val}h
-            </text>
-          </g>
-        ))}
-      </svg>
-    );
-  };
-
-  // SVG Bar Chart for Daily Ad Spend
-  const renderSpendBarChart = (data: number[], labels: string[]) => {
-    if (!data || data.length < 2) return null;
-    const width = 520;
-    const height = 160;
-    const paddingX = 40;
-    const paddingY = 25;
-    const highest = Math.max(...data, 0);
-    const maxVal = highest > 0 ? highest * 1.3 : 10;
-    const barWidth = 28;
-
-    return (
-      <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
-        <line x1={paddingX} y1={height - 20} x2={width - paddingX} y2={height - 20} stroke="#e2e8f0" strokeWidth="1" />
-        {data.map((val, i) => {
-          const x = paddingX + i * ((width - paddingX * 2) / (data.length - 1)) - barWidth / 2;
-          const barHeight = ((val) / maxVal) * (height - paddingY * 2);
-          const y = height - 20 - barHeight;
-
-          return (
-            <g key={i}>
-              <rect
-                x={x}
-                y={y}
-                width={barWidth}
-                height={Math.max(barHeight, 4)}
-                rx={6}
-                fill="url(#adminSpendGrad)"
-              />
-              <text x={x + barWidth / 2} y={height - 5} textAnchor="middle" fill="#94a3b8" fontSize="10" fontFamily="JetBrains Mono, monospace">
-                {labels[i] || `D${i + 1}`}
-              </text>
-              <text x={x + barWidth / 2} y={y - 6} textAnchor="middle" fill="#059669" fontSize="10" fontWeight="700" fontFamily="JetBrains Mono, monospace">
-                ${val}
-              </text>
-            </g>
-          );
-        })}
-        <defs>
-          <linearGradient id="adminSpendGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#10b981" />
-            <stop offset="100%" stopColor="#059669" />
-          </linearGradient>
-        </defs>
-      </svg>
-    );
-  };
-
-  // =========================================================================
-  // 1. PASSWORD-ONLY SECURITY GATE (WHEN NOT AUTHENTICATED AS ADMIN)
-  // =========================================================================
-  if (!user || user.role !== 'admin') {
-    return (
-      <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-        <div
-          className="glass-card"
-          style={{
-            maxWidth: 420,
-            width: '100%',
-            padding: '36px 30px',
-            borderRadius: 20,
-            textAlign: 'center',
-            boxShadow: '0 20px 40px rgba(0,0,0,0.06)',
-            border: '1.5px solid rgba(14, 165, 233, 0.25)',
-          }}
-        >
-          <div
-            style={{
-              width: 60,
-              height: 60,
-              borderRadius: 18,
-              background: 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)',
-              color: 'var(--primary-neon)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 18px',
-              border: '1.5px solid rgba(14, 165, 233, 0.35)',
-              boxShadow: '0 8px 20px rgba(14, 165, 233, 0.2)',
-            }}
-          >
-            <Shield size={32} />
-          </div>
-
-          <h2 className="font-display" style={{ fontSize: '1.75rem', color: '#0f172a', margin: 0, letterSpacing: '0.02em' }}>
-            ADMIN ACCESS
-          </h2>
-          <p style={{ color: '#64748b', fontSize: '0.86rem', marginTop: 6, marginBottom: 22 }}>
-            Enter administrator security password to unlock control surface.
-          </p>
-
-          {loginError && (
-            <div
-              style={{
-                background: '#fef2f2',
-                border: '1px solid rgba(239, 68, 68, 0.3)',
-                borderRadius: 10,
-                padding: '10px 14px',
-                marginBottom: 16,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                color: '#b91c1c',
-                fontSize: '0.84rem',
-                textAlign: 'left',
-              }}
-            >
-              <AlertCircle size={16} style={{ flexShrink: 0 }} />
-              <span>{loginError}</span>
-            </div>
-          )}
-
-          <form onSubmit={handleAdminLogin} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div style={{ position: 'relative' }}>
-              <input
-                type="password"
-                placeholder="Enter Admin Password"
-                value={passwordInput}
-                onChange={(e) => setPasswordInput(e.target.value)}
-                className="input-field"
-                style={{
-                  padding: '13px 16px',
-                  fontSize: '0.98rem',
-                  letterSpacing: '0.05em',
-                  borderRadius: 12,
-                  textAlign: 'center',
-                }}
-                required
-                autoFocus
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loginLoading || !passwordInput}
-              className="btn btn-neon glow-neon"
-              style={{
-                padding: '13px',
-                fontSize: '0.96rem',
-                borderRadius: 12,
-                fontWeight: 700,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-              }}
-            >
-              <Lock size={16} />
-              {loginLoading ? 'Authenticating...' : 'Unlock Admin Panel'}
-            </button>
-          </form>
-        </div>
-      </div>
+      <AdminLogin
+        passwordInput={passwordInput}
+        setPasswordInput={setPasswordInput}
+        loginLoading={loginLoading}
+        loginError={loginError}
+        onLogin={handleAdminLogin}
+      />
     );
   }
 
-  // Filter payouts based on sub-filter
-  const filteredPayouts = payoutsList.filter((p) => {
-    if (payoutFilter === 'all') return true;
-    return p.status === payoutFilter;
-  });
-
-  const pendingPayoutsCount = payoutsList.filter((p) => p.status === 'pending').length;
-
-  // Filter campaigns based on search
-  const filteredCampaigns = campaignsList.filter((c) => {
-    if (!campaignSearch) return true;
-    const q = campaignSearch.toLowerCase();
-    return c.title?.toLowerCase().includes(q) || c.videoId?.toLowerCase().includes(q);
-  });
-
-  // Filter users based on search
-  const filteredUsers = usersList.filter((u) => {
-    if (!userSearch) return true;
-    const q = userSearch.toLowerCase();
-    return u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q);
-  });
-
-  // =========================================================================
-  // 2. UNLOCKED ADMIN CONTROL DESK (SIMPLE, MINIMAL, LESS TEXT)
-  // =========================================================================
+  // 2. Full Admin Dashboard
   return (
-    <div style={{ maxWidth: 1350, margin: '24px auto', padding: '0 20px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* Top Admin Header Bar */}
-      <div
-        className="glass-card"
-        style={{
-          padding: '18px 24px',
-          borderRadius: 18,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 14,
-          border: '1.5px solid rgba(14, 165, 233, 0.3)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 12,
-              background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
-              color: '#ffffff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 4px 14px rgba(14, 165, 233, 0.3)',
-            }}
-          >
-            <Shield size={22} />
-          </div>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <h1 className="font-display" style={{ fontSize: '1.6rem', color: '#0f172a', margin: 0 }}>
-                ADMIN CONTROL DESK
-              </h1>
-              <span className="badge-pill badge-cyan" style={{ fontSize: '0.68rem', padding: '2px 8px' }}>
-                MASTER PANEL
-              </span>
-            </div>
-            <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 2 }}>
-              Manual payouts desk, platform watch hours, ad spend, and user control.
-            </div>
-          </div>
-        </div>
+    <div className="container" style={{ padding: '36px 20px', maxWidth: 1260, margin: '0 auto' }}>
+      {/* Header, Stats Bar & Navigation */}
+      <AdminHeader
+        stats={stats}
+        dataLoading={dataLoading}
+        actionNotice={actionNotice}
+        setActionNotice={setActionNotice}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        pendingPayoutsCount={pendingPayoutsCount}
+        pendingDepositsCount={pendingDepositsCount}
+        campaignsCount={campaignsList.length}
+        usersCount={usersList.length}
+        onRefresh={fetchAdminData}
+        onLogout={handleAdminLogout}
+      />
 
-        {/* Header Right Actions */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {/* Simulated Concurrency Pill */}
-          <div
-            style={{
-              background: '#f0fdf4',
-              border: '1px solid rgba(16, 185, 129, 0.3)',
-              padding: '6px 12px',
-              borderRadius: 10,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-            }}
-          >
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }} className="pulse-neon" />
-            <span className="font-mono" style={{ fontSize: '0.76rem', fontWeight: 700, color: '#059669' }}>
-              {stats?.simulatedConcurrency?.toLocaleString() || '4,250'} LIVE
-            </span>
-          </div>
-
-          <button
-            onClick={fetchAdminData}
-            className="btn btn-ghost"
-            style={{ padding: '7px 14px', fontSize: '0.82rem', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            <RefreshCw size={14} className={dataLoading ? 'animate-spin' : ''} /> Refresh
-          </button>
-
-          <button
-            onClick={handleAdminLogout}
-            className="btn btn-ghost"
-            style={{ padding: '7px 14px', fontSize: '0.82rem', borderRadius: 10, color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.25)', display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            <LogOut size={14} /> Exit
-          </button>
-        </div>
-      </div>
-
-      {/* Action Notification Alert */}
-      {actionNotice && (
-        <div
-          style={{
-            position: 'sticky',
-            top: 16,
-            zIndex: 100,
-            padding: '14px 20px',
-            borderRadius: 14,
-            background: actionNotice.type === 'success' ? '#f0fdf4' : '#fef2f2',
-            border: actionNotice.type === 'success' ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(239, 68, 68, 0.4)',
-            color: actionNotice.type === 'success' ? '#059669' : '#b91c1c',
-            fontSize: '0.88rem',
-            fontWeight: 700,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            {actionNotice.type === 'success' ? <CheckCircle2 size={18} color="#059669" /> : <AlertCircle size={18} color="#ef4444" />}
-            <span>{actionNotice.message}</span>
-          </div>
-          <button
-            onClick={() => setActionNotice(null)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', fontWeight: 700, fontSize: '1rem', padding: '0 4px' }}
-          >
-            ✕
-          </button>
-        </div>
-      )}
-
-      {/* Sub-Tabs Selector (Mobile & Tablet touch-scrollable) */}
-      <div
-        style={{
-          display: 'flex',
-          gap: 8,
-          borderBottom: '1.5px solid #e2e8f0',
-          paddingBottom: 10,
-          overflowX: 'auto',
-          WebkitOverflowScrolling: 'touch',
-          scrollbarWidth: 'none',
-        }}
-      >
-        <button
-          onClick={() => setActiveTab('overview')}
-          className="btn"
-          style={{
-            padding: '8px 16px',
-            borderRadius: 10,
-            fontSize: '0.84rem',
-            fontWeight: 700,
-            background: activeTab === 'overview' ? 'var(--primary-neon)' : 'transparent',
-            color: activeTab === 'overview' ? '#ffffff' : '#64748b',
-            border: 'none',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            flexShrink: 0,
-            whiteSpace: 'nowrap',
-          }}
-        >
-          <BarChart3 size={15} /> Overview & Graphs
-        </button>
-
-        <button
-          onClick={() => setActiveTab('payouts')}
-          className="btn"
-          style={{
-            padding: '8px 16px',
-            borderRadius: 10,
-            fontSize: '0.84rem',
-            fontWeight: 700,
-            background: activeTab === 'payouts' ? 'var(--primary-neon)' : 'transparent',
-            color: activeTab === 'payouts' ? '#ffffff' : '#64748b',
-            border: 'none',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            flexShrink: 0,
-            whiteSpace: 'nowrap',
-          }}
-        >
-          <DollarSign size={15} /> Withdrawal Desk
-          {pendingPayoutsCount > 0 && (
-            <span
-              style={{
-                background: activeTab === 'payouts' ? '#ffffff' : '#d97706',
-                color: activeTab === 'payouts' ? '#0284c7' : '#ffffff',
-                padding: '1px 6px',
-                borderRadius: 9999,
-                fontSize: '0.7rem',
-                fontWeight: 800,
-              }}
-            >
-              {pendingPayoutsCount}
-            </span>
-          )}
-        </button>
-
-        <button
-          onClick={() => setActiveTab('campaigns')}
-          className="btn"
-          style={{
-            padding: '8px 16px',
-            borderRadius: 10,
-            fontSize: '0.84rem',
-            fontWeight: 700,
-            background: activeTab === 'campaigns' ? 'var(--primary-neon)' : 'transparent',
-            color: activeTab === 'campaigns' ? '#ffffff' : '#64748b',
-            border: 'none',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            flexShrink: 0,
-            whiteSpace: 'nowrap',
-          }}
-        >
-          <Video size={15} /> Campaigns ({campaignsList.length})
-        </button>
-
-        <button
-          onClick={() => setActiveTab('users')}
-          className="btn"
-          style={{
-            padding: '8px 16px',
-            borderRadius: 10,
-            fontSize: '0.84rem',
-            fontWeight: 700,
-            background: activeTab === 'users' ? 'var(--primary-neon)' : 'transparent',
-            color: activeTab === 'users' ? '#ffffff' : '#64748b',
-            border: 'none',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            flexShrink: 0,
-            whiteSpace: 'nowrap',
-          }}
-        >
-          <Users size={15} /> User Accounts ({usersList.length})
-        </button>
-
-        <button
-          onClick={() => {
-            setActiveTab('settings');
-            fetchAdminData();
-          }}
-          className="btn"
-          style={{
-            padding: '8px 16px',
-            borderRadius: 10,
-            fontSize: '0.84rem',
-            fontWeight: 700,
-            background: activeTab === 'settings' ? 'var(--primary-neon)' : 'transparent',
-            color: activeTab === 'settings' ? '#ffffff' : '#64748b',
-            border: 'none',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            flexShrink: 0,
-            whiteSpace: 'nowrap',
-          }}
-        >
-          <Sliders size={15} /> Pricing & Cooldown Rules
-        </button>
-      </div>
-
-      {/* =========================================================================
-          TAB 1: OVERVIEW & REAL SVG GRAPHS (WATCH HOURS & CREATOR SPEND)
-          ========================================================================= */}
+      {/* TAB 1: SYSTEM OVERVIEW & TELEMETRY */}
       {activeTab === 'overview' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-          {/* 8 Primary KPI Metric Cards (Responsive Grid) */}
-          <div className="responsive-kpi-grid">
-            {/* 1. Watch Hours */}
-            <div className="glass-card responsive-kpi-card" style={{ padding: '18px', borderRadius: 16, border: '1.5px solid rgba(14, 165, 233, 0.3)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="font-mono" style={{ fontSize: '0.78rem', color: 'var(--primary-neon)', textTransform: 'uppercase', fontWeight: 700 }}>
-                  Total Watch Time
-                </span>
-                <Clock size={16} color="var(--primary-neon)" />
-              </div>
-              <div className="font-mono responsive-kpi-val" style={{ fontSize: '1.9rem', fontWeight: 800, color: 'var(--primary-neon)', marginTop: 6, lineHeight: 1 }}>
-                {stats?.totalWatchHours || 0} <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>hrs</span>
-              </div>
-              <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: 4 }}>
-                Real viewer engagement
-              </div>
-            </div>
-
-            {/* 2. Total Views */}
-            <div className="glass-card responsive-kpi-card" style={{ padding: '18px', borderRadius: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="font-mono" style={{ fontSize: '0.78rem', color: '#059669', textTransform: 'uppercase', fontWeight: 700 }}>
-                  Views Delivered
-                </span>
-                <Eye size={16} color="#059669" />
-              </div>
-              <div className="font-mono responsive-kpi-val" style={{ fontSize: '1.9rem', fontWeight: 800, color: '#059669', marginTop: 6, lineHeight: 1 }}>
-                {(stats?.totalViewsDelivered || 0).toLocaleString()}
-              </div>
-              <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: 4 }}>
-                Official embedded player views
-              </div>
-            </div>
-
-            {/* 3. Total Spend */}
-            <div className="glass-card responsive-kpi-card" style={{ padding: '18px', borderRadius: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="font-mono" style={{ fontSize: '0.78rem', color: '#7c3aed', textTransform: 'uppercase', fontWeight: 700 }}>
-                  Creator Spend
-                </span>
-                <DollarSign size={16} color="#7c3aed" />
-              </div>
-              <div className="font-mono responsive-kpi-val" style={{ fontSize: '1.9rem', fontWeight: 800, color: '#7c3aed', marginTop: 6, lineHeight: 1 }}>
-                ${(stats?.totalSpentUsd || 0).toFixed(2)}
-              </div>
-              <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: 4 }}>
-                Campaign budget consumed
-              </div>
-            </div>
-
-            {/* 4. Total Deposits */}
-            <div className="glass-card responsive-kpi-card" style={{ padding: '18px', borderRadius: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="font-mono" style={{ fontSize: '0.78rem', color: '#0284c7', textTransform: 'uppercase', fontWeight: 700 }}>
-                  Total Deposits
-                </span>
-                <TrendingUp size={16} color="#0284c7" />
-              </div>
-              <div className="font-mono responsive-kpi-val" style={{ fontSize: '1.9rem', fontWeight: 800, color: '#0284c7', marginTop: 6, lineHeight: 1 }}>
-                ${(stats?.totalDepositsUsd || 0).toFixed(2)}
-              </div>
-              <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: 4 }}>
-                Deposited via MFS & Crypto
-              </div>
-            </div>
-
-            {/* 5. Total Paid Out */}
-            <div className="glass-card responsive-kpi-card" style={{ padding: '18px', borderRadius: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="font-mono" style={{ fontSize: '0.78rem', color: '#7c3aed', textTransform: 'uppercase', fontWeight: 700 }}>
-                  Total Paid Out
-                </span>
-                <CheckCircle2 size={16} color="#7c3aed" />
-              </div>
-              <div className="font-mono responsive-kpi-val" style={{ fontSize: '1.9rem', fontWeight: 800, color: '#7c3aed', marginTop: 6, lineHeight: 1 }}>
-                ${(stats?.totalPayoutsUsd || 0).toFixed(2)}
-              </div>
-              <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: 4 }}>
-                Disbursed to viewers
-              </div>
-            </div>
-
-            {/* 6. Pending Withdrawals */}
-            <div
-              className="glass-card responsive-kpi-card"
-              style={{
-                padding: '18px',
-                borderRadius: 16,
-                border: pendingPayoutsCount > 0 ? '1.5px solid #d97706' : '1px solid #e2e8f0',
-                background: pendingPayoutsCount > 0 ? '#fffbeb' : '#ffffff',
-                cursor: 'pointer',
-              }}
-              onClick={() => {
-                setActiveTab('payouts');
-                setPayoutFilter('pending');
-              }}
-              title="Click to view pending requests"
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="font-mono" style={{ fontSize: '0.78rem', color: '#d97706', textTransform: 'uppercase', fontWeight: 700 }}>
-                  Pending Payouts
-                </span>
-                <AlertCircle size={16} color="#d97706" />
-              </div>
-              <div className="font-mono responsive-kpi-val" style={{ fontSize: '1.9rem', fontWeight: 800, color: '#d97706', marginTop: 6, lineHeight: 1 }}>
-                ${(stats?.pendingPayoutsUsd || 0).toFixed(2)}
-              </div>
-              <div style={{ fontSize: '0.76rem', color: '#b45309', marginTop: 4, fontWeight: 600 }}>
-                {stats?.pendingPayoutsCount || 0} queued requests →
-              </div>
-            </div>
-
-            {/* 7. Active Campaigns */}
-            <div className="glass-card responsive-kpi-card" style={{ padding: '18px', borderRadius: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="font-mono" style={{ fontSize: '0.78rem', color: '#0f172a', textTransform: 'uppercase', fontWeight: 700 }}>
-                  Active Campaigns
-                </span>
-                <Video size={16} color="var(--primary-neon)" />
-              </div>
-              <div className="font-mono responsive-kpi-val" style={{ fontSize: '1.9rem', fontWeight: 800, color: '#0f172a', marginTop: 6, lineHeight: 1 }}>
-                {stats?.activeCampaigns || 0}
-              </div>
-              <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: 4 }}>
-                Of {stats?.totalCampaigns || 0} total campaigns
-              </div>
-            </div>
-
-            {/* 8. Total Registered Users */}
-            <div className="glass-card responsive-kpi-card" style={{ padding: '18px', borderRadius: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="font-mono" style={{ fontSize: '0.78rem', color: '#0f172a', textTransform: 'uppercase', fontWeight: 700 }}>
-                  Total Users
-                </span>
-                <Users size={16} color="var(--primary-neon)" />
-              </div>
-              <div className="font-mono responsive-kpi-val" style={{ fontSize: '1.9rem', fontWeight: 800, color: '#0f172a', marginTop: 6, lineHeight: 1 }}>
-                {stats?.totalUsers || 0}
-              </div>
-              <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: 4 }}>
-                Watchers & Digital Creators
-              </div>
-            </div>
-          </div>
-
-          {/* 2 Visual Graphs Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 420px), 1fr))', gap: 16 }}>
-            {/* Graph 1: Daily Watch Hours (Last 7 Days) */}
-            <div className="glass-card" style={{ padding: '20px', borderRadius: 18 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Clock size={18} color="var(--primary-neon)" />
-                  <h3 className="font-display" style={{ fontSize: '1.15rem', color: '#0f172a', margin: 0 }}>
-                    Daily Watch Hours Trend
-                  </h3>
-                </div>
-                <span className="badge-pill badge-cyan" style={{ fontSize: '0.7rem' }}>Last 7 Days</span>
-              </div>
-              {stats?.dailyWatchHours ? (
-                renderWatchHoursCurve(
-                  stats.dailyWatchHours || [0, 0, 0, 0, 0, 0, 0],
-                  stats.dayLabels || ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-                )
-              ) : (
-                <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>Loading graph...</div>
-              )}
-            </div>
-
-            {/* Graph 2: Daily Creator Spend ($ USD) */}
-            <div className="glass-card" style={{ padding: '20px', borderRadius: 18 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <TrendingUp size={18} color="#059669" />
-                  <h3 className="font-display" style={{ fontSize: '1.15rem', color: '#0f172a', margin: 0 }}>
-                    Daily Creator Ad Spend ($ USD)
-                  </h3>
-                </div>
-                <span className="badge-pill" style={{ background: '#ecfdf5', color: '#059669', fontSize: '0.7rem' }}>Last 7 Days</span>
-              </div>
-              {stats?.dailySpend ? (
-                renderSpendBarChart(
-                  stats.dailySpend || [0, 0, 0, 0, 0, 0, 0],
-                  stats.dayLabels || ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-                )
-              ) : (
-                <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>Loading graph...</div>
-              )}
-            </div>
-          </div>
-        </div>
+        <AdminOverviewTab
+          stats={stats}
+          pendingPayoutsCount={pendingPayoutsCount}
+          pendingDepositsCount={pendingDepositsCount}
+          setActiveTab={setActiveTab}
+          setPayoutFilter={setPayoutFilter}
+          setDepositFilter={setDepositFilter}
+        />
       )}
 
-      {/* =========================================================================
-          TAB 2: MANUAL WITHDRAWAL DESK (PAY & APPROVE / REJECT)
-          ========================================================================= */}
+      {/* TAB 2: MANUAL PAYOUTS & WITHDRAWAL DESK */}
       {activeTab === 'payouts' && (
-        <div className="glass-card" style={{ padding: '22px', borderRadius: 18 }}>
-          {/* Header with Sub-filter Pills */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-            <div>
-              <h2 className="font-display" style={{ fontSize: '1.35rem', color: '#0f172a', margin: 0 }}>
-                WITHDRAWAL DESK (MANUAL PAYOUTS)
-              </h2>
-              <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 2 }}>
-                Review requested cashouts, disburse payment manually via MFS/Crypto, and confirm reference.
-              </div>
-            </div>
-
-            {/* Sub-Filter Tabs (Touch-Scrollable on Mobile) */}
-            <div
-              className="mobile-scroll-x"
-              style={{
-                display: 'flex',
-                gap: 6,
-                background: '#f1f5f9',
-                padding: 4,
-                borderRadius: 12,
-                maxWidth: '100%',
-                overflowX: 'auto',
-              }}
-            >
-              {(['pending', 'approved', 'rejected', 'all'] as const).map((filter) => {
-                const isSelected = payoutFilter === filter;
-                const count = payoutsList.filter((p) => filter === 'all' || p.status === filter).length;
-                return (
-                  <button
-                    key={filter}
-                    onClick={() => {
-                      setPayoutFilter(filter);
-                      setPayoutPage(1);
-                    }}
-                    style={{
-                      padding: '6px 14px',
-                      fontSize: '0.8rem',
-                      fontWeight: 700,
-                      borderRadius: 8,
-                      border: 'none',
-                      cursor: 'pointer',
-                      background: isSelected ? '#ffffff' : 'transparent',
-                      color: isSelected ? 'var(--primary-neon)' : '#64748b',
-                      boxShadow: isSelected ? '0 1px 4px rgba(0,0,0,0.06)' : 'none',
-                      textTransform: 'uppercase',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 5,
-                      flexShrink: 0,
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    <span>{filter}</span>
-                    <span style={{ fontSize: '0.72rem', opacity: 0.75 }}>({count})</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {!filteredPayouts.length ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#64748b', fontSize: '0.92rem' }}>
-              No {payoutFilter !== 'all' ? payoutFilter : ''} withdrawal records found.
-            </div>
-          ) : (
-            <>
-              <div className="responsive-table-wrapper">
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1.5px solid #e2e8f0', color: '#64748b', textAlign: 'left' }}>
-                      <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.76rem', fontWeight: 700 }}>Method</th>
-                      <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.76rem', fontWeight: 700 }}>User</th>
-                      <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.76rem', fontWeight: 700 }}>Amount</th>
-                      <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.76rem', fontWeight: 700 }}>Recipient Account</th>
-                      <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.76rem', fontWeight: 700 }}>IP & Device Info</th>
-                      <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.76rem', fontWeight: 700 }}>Status</th>
-                      <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.76rem', fontWeight: 700 }}>Date</th>
-                      <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.76rem', fontWeight: 700, textAlign: 'right' }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredPayouts
-                      .slice((payoutPage - 1) * PAGE_SIZE, payoutPage * PAGE_SIZE)
-                      .map((p) => {
-                        const isBDT = p.method === 'bkash' || p.method === 'nagad' || p.method === 'rocket';
-                        const logo = getPaymentLogo(p.method);
-
-                        return (
-                          <tr key={p._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                            {/* Method with Official Brand Logo */}
-                            <td style={{ padding: '10px 12px' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <div
-                                  style={{
-                                    width: 28,
-                                    height: 28,
-                                    borderRadius: 6,
-                                    background: '#ffffff',
-                                    border: '1px solid #e2e8f0',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    padding: 4,
-                                    flexShrink: 0,
-                                  }}
-                                >
-                                  <img src={logo} alt={p.method} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-                                </div>
-                                <span style={{ fontWeight: 700, color: '#0f172a', textTransform: 'capitalize' }}>
-                                  {p.method}
-                                </span>
-                              </div>
-                            </td>
-
-                            {/* User details */}
-                            <td style={{ padding: '10px 12px' }}>
-                              <div style={{ fontWeight: 600, color: '#0f172a' }}>
-                                {p.viewerId?.name || 'Viewer User'}
-                              </div>
-                              <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                                {p.viewerId?.email}
-                              </div>
-                            </td>
-
-                            {/* Amount */}
-                            <td className="font-mono" style={{ padding: '10px 12px' }}>
-                              <div style={{ fontWeight: 700, color: '#ef4444', fontSize: '0.94rem' }}>
-                                -${p.amount.toFixed(2)}
-                              </div>
-                              {isBDT && (
-                                <div style={{ fontSize: '0.74rem', color: '#059669', fontWeight: 600 }}>
-                                  ≈ ৳{(p.amount * usdToBdt).toLocaleString()} BDT
-                                </div>
-                              )}
-                            </td>
-
-                            {/* Recipient Account Details (Copyable) */}
-                            <td style={{ padding: '10px 12px' }}>
-                              <div
-                                onClick={() => handleCopy(p.accountDetails, p._id)}
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: 6,
-                                  background: '#f8fafc',
-                                  padding: '4px 10px',
-                                  borderRadius: 8,
-                                  border: '1px solid #e2e8f0',
-                                  cursor: 'pointer',
-                                }}
-                                title="Click to copy recipient account"
-                              >
-                                <span className="font-mono" style={{ fontSize: '0.82rem', fontWeight: 600, color: '#0f172a' }}>
-                                  {p.accountDetails}
-                                </span>
-                                {copiedId === p._id ? <Check size={12} color="#059669" /> : <Copy size={12} color="#64748b" />}
-                              </div>
-                            </td>
-
-                            {/* IP & Device Telemetry */}
-                            <td style={{ padding: '10px 12px' }}>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                <div
-                                  onClick={() => p.ipAddress && handleCopy(p.ipAddress, `ip-${p._id}`)}
-                                  style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: 5,
-                                    background: '#f1f5f9',
-                                    padding: '2px 8px',
-                                    borderRadius: 6,
-                                    fontSize: '0.74rem',
-                                    fontWeight: 700,
-                                    color: '#334155',
-                                    cursor: p.ipAddress ? 'pointer' : 'default',
-                                    width: 'fit-content',
-                                  }}
-                                  title="User IP Address (Click to copy)"
-                                >
-                                  <Globe size={11} color="var(--primary-neon)" />
-                                  <span className="font-mono">{p.ipAddress || 'IP: Unknown'}</span>
-                                  {p.ipAddress && (copiedId === `ip-${p._id}` ? <Check size={10} color="#059669" /> : <Copy size={10} color="#94a3b8" />)}
-                                </div>
-                                <div style={{ fontSize: '0.72rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                  <Smartphone size={11} />
-                                  <span>{p.deviceInfo || p.clientPlatform || 'Web / Mobile'}</span>
-                                </div>
-                              </div>
-                            </td>
-
-                            {/* Status */}
-                            <td style={{ padding: '10px 12px' }}>
-                              <span
-                                className="badge-pill"
-                                style={{
-                                  padding: '2px 8px',
-                                  fontSize: '0.72rem',
-                                  textTransform: 'uppercase',
-                                  background:
-                                    p.status === 'approved'
-                                      ? '#ecfdf5'
-                                      : p.status === 'pending'
-                                      ? '#fffbeb'
-                                      : '#fef2f2',
-                                  color:
-                                    p.status === 'approved'
-                                      ? '#059669'
-                                      : p.status === 'pending'
-                                      ? '#d97706'
-                                      : '#ef4444',
-                                  border:
-                                    p.status === 'approved'
-                                      ? '1px solid rgba(16,185,129,0.3)'
-                                      : p.status === 'pending'
-                                      ? '1px solid rgba(217,119,6,0.3)'
-                                      : '1px solid rgba(239,68,68,0.3)',
-                                }}
-                              >
-                                {p.status}
-                              </span>
-                            </td>
-
-                            {/* Date */}
-                            <td style={{ padding: '10px 12px', color: '#64748b' }}>
-                              {new Date(p.createdAt || p.requestedAt || Date.now()).toLocaleDateString()}
-                            </td>
-
-                            {/* Actions (Pay & Approve / Reject) */}
-                            <td style={{ padding: '10px 12px', textAlign: 'right' }}>
-                              {p.status === 'pending' ? (
-                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
-                                  <button
-                                    onClick={() => {
-                                      setApproveModalPayout(p);
-                                      setApproveTxnRef('');
-                                      setApproveNotes('');
-                                    }}
-                                    className="btn btn-neon glow-neon"
-                                    style={{ padding: '5px 12px', fontSize: '0.76rem', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 4 }}
-                                  >
-                                    <CheckCircle2 size={13} /> Pay & Approve
-                                  </button>
-
-                                  <button
-                                    onClick={() => {
-                                      setRejectModalPayout(p);
-                                      setRejectReason('');
-                                    }}
-                                    className="btn btn-ghost"
-                                    style={{
-                                      padding: '5px 10px',
-                                      fontSize: '0.76rem',
-                                      borderRadius: 8,
-                                      color: '#ef4444',
-                                      borderColor: 'rgba(239, 68, 68, 0.3)',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      gap: 4,
-                                    }}
-                                  >
-                                    <XCircle size={13} /> Reject
-                                  </button>
-                                </div>
-                              ) : (
-                                <span className="font-mono" style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                                  {p.transactionRef ? `Ref: ${p.transactionRef}` : p.adminNotes || 'Settled'}
-                                </span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                  </tbody>
-                </table>
-              </div>
-
-              {renderPagination(
-                payoutPage,
-                Math.ceil(filteredPayouts.length / PAGE_SIZE) || 1,
-                filteredPayouts.length,
-                PAGE_SIZE,
-                setPayoutPage,
-                'payout requests'
-              )}
-            </>
-          )}
-        </div>
+        <AdminPayoutsTab
+          payoutsList={payoutsList}
+          payoutFilter={payoutFilter}
+          setPayoutFilter={setPayoutFilter}
+          payoutPage={payoutPage}
+          setPayoutPage={setPayoutPage}
+          pageSize={PAGE_SIZE}
+          usdToBdt={usdToBdt}
+          copiedId={copiedId}
+          handleCopy={handleCopy}
+          onOpenApproveModal={(p) => setApproveModalPayout(p)}
+          onOpenRejectModal={(p) => setRejectModalPayout(p)}
+        />
       )}
 
-      {/* =========================================================================
-          TAB 3: CAMPAIGNS MODERATION
-          ========================================================================= */}
+      {/* TAB 3: MANUAL DEPOSITS & AD BUDGET DESK */}
+      {activeTab === 'deposits' && (
+        <AdminDepositsTab
+          depositsList={depositsList}
+          depositFilter={depositFilter}
+          setDepositFilter={setDepositFilter}
+          depositPage={depositPage}
+          setDepositPage={setDepositPage}
+          pageSize={PAGE_SIZE}
+          usdToBdt={usdToBdt}
+          copiedId={copiedId}
+          setCopiedId={setCopiedId}
+          onOpenApproveModal={(d) => setApproveModalDeposit(d)}
+          onOpenRejectModal={(d) => setRejectModalDeposit(d)}
+        />
+      )}
+
+      {/* TAB 4: ADVERTISER CAMPAIGNS MODERATION */}
       {activeTab === 'campaigns' && (
-        <div className="glass-card" style={{ padding: '22px', borderRadius: 18 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-            <div>
-              <h2 className="font-display" style={{ fontSize: '1.35rem', color: '#0f172a', margin: 0 }}>
-                ALL VIDEO CAMPAIGNS ({campaignsList.length})
-              </h2>
-              <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 2 }}>
-                Monitor active promotions, video watch retention, and pause problematic links.
-              </div>
-            </div>
-
-            {/* Search Input */}
-            <div style={{ position: 'relative', width: 240 }}>
-              <input
-                type="text"
-                placeholder="Search campaigns..."
-                value={campaignSearch}
-                onChange={(e) => { setCampaignSearch(e.target.value); setCampPage(1); }}
-                className="input-field"
-                style={{ padding: '7px 12px 7px 32px', fontSize: '0.82rem', borderRadius: 8 }}
-              />
-              <Search size={14} style={{ position: 'absolute', left: 10, top: 10, color: '#94a3b8' }} />
-            </div>
-          </div>
-
-          {!filteredCampaigns.length ? (
-            <div style={{ textAlign: 'center', padding: '36px', color: '#64748b' }}>No campaigns found.</div>
-          ) : (
-            <>
-              <div className="responsive-table-wrapper">
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1.5px solid #e2e8f0', color: '#64748b', textAlign: 'left' }}>
-                      <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.76rem', fontWeight: 700 }}>Video</th>
-                      <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.76rem', fontWeight: 700 }}>Duration</th>
-                      <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.76rem', fontWeight: 700 }}>Progress</th>
-                      <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.76rem', fontWeight: 700 }}>Cost</th>
-                      <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.76rem', fontWeight: 700 }}>Status</th>
-                      <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.76rem', fontWeight: 700, textAlign: 'right' }}>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredCampaigns
-                      .slice((campPage - 1) * PAGE_SIZE, campPage * PAGE_SIZE)
-                      .map((c) => (
-                        <tr key={c._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                          <td style={{ padding: '10px 12px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                              <img
-                                src={c.thumbnailUrl || `https://img.youtube.com/vi/${c.videoId}/default.jpg`}
-                                alt="thumb"
-                                style={{ width: 50, height: 34, borderRadius: 6, objectFit: 'cover', background: '#000' }}
-                              />
-                              <div>
-                                <div style={{ fontWeight: 600, color: '#0f172a', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  {c.title || `Video ${c.videoId}`}
-                                </div>
-                                <a
-                                  href={`https://youtube.com/watch?v=${c.videoId}`}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  style={{ fontSize: '0.74rem', color: 'var(--primary-neon)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 3 }}
-                                >
-                                  Watch on YouTube <ExternalLink size={10} />
-                                </a>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="font-mono" style={{ padding: '10px 12px', color: '#0f172a' }}>{c.watchDurationSec}s</td>
-                          <td className="font-mono" style={{ padding: '10px 12px', color: 'var(--primary-neon)', fontWeight: 700 }}>
-                            {c.viewsDelivered?.toLocaleString() || 0} / {c.targetViews?.toLocaleString() || 0}
-                          </td>
-                          <td className="font-mono" style={{ padding: '10px 12px', color: '#0f172a' }}>${c.totalCost.toFixed(2)}</td>
-                          <td style={{ padding: '10px 12px' }}>
-                            <span
-                              className="badge-pill"
-                              style={{
-                                padding: '2px 8px',
-                                fontSize: '0.72rem',
-                                textTransform: 'uppercase',
-                                background: c.status === 'active' ? '#ecfdf5' : '#f1f5f9',
-                                color: c.status === 'active' ? '#059669' : '#64748b',
-                              }}
-                            >
-                              {c.status}
-                            </span>
-                          </td>
-                          <td style={{ padding: '10px 12px', textAlign: 'right' }}>
-                            <button
-                              onClick={() => handleToggleCampaign(c)}
-                              className="btn btn-ghost"
-                              style={{ padding: '4px 10px', fontSize: '0.76rem', borderRadius: 6 }}
-                            >
-                              {c.status === 'active' ? 'Force Pause' : 'Resume'}
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {renderPagination(
-                campPage,
-                Math.ceil(filteredCampaigns.length / PAGE_SIZE) || 1,
-                filteredCampaigns.length,
-                PAGE_SIZE,
-                setCampPage,
-                'campaigns'
-              )}
-            </>
-          )}
-        </div>
+        <AdminCampaignsTab
+          campaignsList={campaignsList}
+          campaignSearch={campaignSearch}
+          setCampaignSearch={setCampaignSearch}
+          campPage={campPage}
+          setCampPage={setCampPage}
+          pageSize={PAGE_SIZE}
+          onToggleCampaign={handleToggleCampaign}
+        />
       )}
 
-      {/* =========================================================================
-          TAB 4: USER ACCOUNTS
-          ========================================================================= */}
+      {/* TAB 5: USER DIRECTORY & WALLET BALANCES */}
       {activeTab === 'users' && (
-        <div className="glass-card" style={{ padding: '22px', borderRadius: 18 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-            <div>
-              <h2 className="font-display" style={{ fontSize: '1.35rem', color: '#0f172a', margin: 0 }}>
-                USER DIRECTORY ({usersList.length})
-              </h2>
-              <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 2 }}>
-                Manage registered viewers, campaigners, and balance standing.
-              </div>
-            </div>
-
-            {/* Search Input */}
-            <div style={{ position: 'relative', width: 240 }}>
-              <input
-                type="text"
-                placeholder="Search by name or email..."
-                value={userSearch}
-                onChange={(e) => { setUserSearch(e.target.value); setUserPage(1); }}
-                className="input-field"
-                style={{ padding: '7px 12px 7px 32px', fontSize: '0.82rem', borderRadius: 8 }}
-              />
-              <Search size={14} style={{ position: 'absolute', left: 10, top: 10, color: '#94a3b8' }} />
-            </div>
-          </div>
-
-          {!filteredUsers.length ? (
-            <div style={{ textAlign: 'center', padding: '36px', color: '#64748b' }}>No users found.</div>
-          ) : (
-            <>
-              <div className="responsive-table-wrapper">
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1.5px solid #e2e8f0', color: '#64748b', textAlign: 'left' }}>
-                      <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.76rem', fontWeight: 700 }}>User</th>
-                      <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.76rem', fontWeight: 700 }}>Role</th>
-                      <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.76rem', fontWeight: 700 }}>Balance</th>
-                      <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.76rem', fontWeight: 700 }}>Total Earned</th>
-                      <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.76rem', fontWeight: 700 }}>Status</th>
-                      <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.76rem', fontWeight: 700, textAlign: 'right' }}>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredUsers
-                      .slice((userPage - 1) * PAGE_SIZE, userPage * PAGE_SIZE)
-                      .map((u) => (
-                        <tr key={u.id || (u as any)._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                          <td style={{ padding: '10px 12px' }}>
-                            <div style={{ fontWeight: 600, color: '#0f172a' }}>{u.name}</div>
-                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{u.email}</div>
-                          </td>
-                          <td style={{ padding: '10px 12px' }}>
-                            <span className="badge-pill badge-cyan" style={{ padding: '2px 8px', fontSize: '0.72rem', textTransform: 'uppercase' }}>
-                              {u.role}
-                            </span>
-                          </td>
-                          <td className="font-mono" style={{ padding: '10px 12px', fontWeight: 700, color: 'var(--primary-neon)' }}>
-                            ${(u.balance || 0).toFixed(4)}
-                          </td>
-                          <td className="font-mono" style={{ padding: '10px 12px', color: '#059669', fontWeight: 600 }}>
-                            ${(u.totalEarned || 0).toFixed(4)}
-                          </td>
-                          <td style={{ padding: '10px 12px' }}>
-                            <span
-                              style={{
-                                color: u.status === 'banned' ? '#ef4444' : '#059669',
-                                fontWeight: 700,
-                                fontSize: '0.8rem',
-                                textTransform: 'uppercase',
-                              }}
-                            >
-                              {u.status || 'active'}
-                            </span>
-                          </td>
-                          <td style={{ padding: '10px 12px', textAlign: 'right' }}>
-                            <button
-                              onClick={() => handleToggleUserBan(u)}
-                              className="btn btn-ghost"
-                              style={{
-                                padding: '4px 10px',
-                                fontSize: '0.76rem',
-                                borderRadius: 6,
-                                color: u.status === 'banned' ? 'var(--primary-neon)' : '#ef4444',
-                              }}
-                            >
-                              {u.status === 'banned' ? 'Unban' : 'Ban'}
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {renderPagination(
-                userPage,
-                Math.ceil(filteredUsers.length / PAGE_SIZE) || 1,
-                filteredUsers.length,
-                PAGE_SIZE,
-                setUserPage,
-                'users'
-              )}
-            </>
-          )}
-        </div>
+        <AdminUsersTab
+          usersList={usersList}
+          userSearch={userSearch}
+          setUserSearch={setUserSearch}
+          userPage={userPage}
+          setUserPage={setUserPage}
+          pageSize={PAGE_SIZE}
+          onToggleUserBan={handleToggleUserBan}
+        />
       )}
 
-      {/* =========================================================================
-          TAB 5: PRICING PER VIEW & ANTI-SPAM COOLDOWN RULES
-          ========================================================================= */}
-      {activeTab === 'settings' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-          {/* Card 1: Per-View Pricing Matrix */}
-          <div
-            className="glass-card"
-            style={{
-              padding: '24px 28px',
-              borderRadius: 20,
-              background: '#ffffff',
-              border: '1px solid #e2e8f0',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.03)',
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start',
-                flexWrap: 'wrap',
-                gap: 16,
-                marginBottom: 20,
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 12,
-                    background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
-                    color: '#ffffff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 4px 12px rgba(14, 165, 233, 0.3)',
-                  }}
-                >
-                  <Sliders size={22} />
-                </div>
-                <div>
-                  <h2 className="font-display" style={{ fontSize: '1.25rem', color: '#0f172a', margin: 0 }}>
-                    Watch Duration Pricing Matrix
-                  </h2>
-                  <p style={{ color: '#64748b', fontSize: '0.84rem', margin: '3px 0 0' }}>
-                    Control advertiser pricing ($/view) and viewer rewards ($/view) across all watch duration tiers.
-                  </p>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <button
-                  type="button"
-                  onClick={handleResetPricing}
-                  className="btn btn-ghost"
-                  style={{
-                    padding: '8px 14px',
-                    fontSize: '0.82rem',
-                    borderRadius: 10,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                  }}
-                >
-                  <RotateCcw size={14} /> Reset Defaults
-                </button>
-                <button
-                  type="button"
-                  disabled={pricingSaving}
-                  onClick={handleSavePricing}
-                  className="btn btn-neon glow-neon"
-                  style={{
-                    padding: '9px 18px',
-                    fontSize: '0.86rem',
-                    fontWeight: 700,
-                    borderRadius: 10,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 7,
-                  }}
-                >
-                  <Save size={15} />
-                  {pricingSaving ? 'Saving...' : 'Save Pricing Rules'}
-                </button>
-              </div>
-            </div>
-
-            {/* Pricing Table */}
-            <div style={{ overflowX: 'auto', borderRadius: 14, border: '1px solid #e2e8f0' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: 700 }}>
-                <thead>
-                  <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontSize: '0.76rem', color: '#475569' }}>
-                    <th style={{ padding: '12px 16px' }}>WATCH DURATION</th>
-                    <th style={{ padding: '12px 16px' }}>CAMPAIGNER COST ($ / VIEW)</th>
-                    <th style={{ padding: '12px 16px' }}>VIEWER REWARD ($ / VIEW)</th>
-                    <th style={{ padding: '12px 16px' }}>SYSTEM MARGIN (%)</th>
-                    <th style={{ padding: '12px 16px' }}>1,000 VIEWS REVENUE</th>
-                    <th style={{ padding: '12px 16px' }}>1,000 VIEWS PAYOUT</th>
-                  </tr>
-                </thead>
-                <tbody style={{ fontSize: '0.86rem' }}>
-                  {pricingTiers.map((tier, idx) => {
-                    const margin = tier.campaignerCost > 0
-                      ? (((tier.campaignerCost - tier.viewerReward) / tier.campaignerCost) * 100)
-                      : 0;
-                    const marginColor = margin >= 30 ? '#059669' : margin >= 15 ? '#0284c7' : margin >= 0 ? '#d97706' : '#ef4444';
-                    const marginBg = margin >= 30 ? '#f0fdf4' : margin >= 15 ? '#f0f9ff' : margin >= 0 ? '#fffbeb' : '#fef2f2';
-
-                    return (
-                      <tr key={tier.duration} style={{ borderBottom: idx < pricingTiers.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
-                        {/* Duration */}
-                        <td style={{ padding: '12px 16px' }}>
-                          <span
-                            className="badge-pill"
-                            style={{
-                              background: '#f1f5f9',
-                              color: '#0f172a',
-                              fontWeight: 800,
-                              fontSize: '0.82rem',
-                              padding: '4px 10px',
-                            }}
-                          >
-                            {tier.duration} Seconds
-                          </span>
-                        </td>
-
-                        {/* Campaigner Cost Input */}
-                        <td style={{ padding: '12px 16px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ color: '#94a3b8', fontWeight: 600 }}>$</span>
-                            <input
-                              type="number"
-                              step="0.0001"
-                              min="0"
-                              value={tier.campaignerCost}
-                              onChange={(e) => handleUpdateTier(idx, 'campaignerCost', parseFloat(e.target.value) || 0)}
-                              className="input-field"
-                              style={{
-                                width: 110,
-                                padding: '6px 10px',
-                                fontSize: '0.86rem',
-                                fontWeight: 700,
-                                borderRadius: 8,
-                                color: '#0f172a',
-                              }}
-                            />
-                          </div>
-                        </td>
-
-                        {/* Viewer Reward Input */}
-                        <td style={{ padding: '12px 16px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ color: '#94a3b8', fontWeight: 600 }}>$</span>
-                            <input
-                              type="number"
-                              step="0.0001"
-                              min="0"
-                              value={tier.viewerReward}
-                              onChange={(e) => handleUpdateTier(idx, 'viewerReward', parseFloat(e.target.value) || 0)}
-                              className="input-field"
-                              style={{
-                                width: 110,
-                                padding: '6px 10px',
-                                fontSize: '0.86rem',
-                                fontWeight: 700,
-                                borderRadius: 8,
-                                color: '#059669',
-                              }}
-                            />
-                          </div>
-                        </td>
-
-                        {/* System Margin % */}
-                        <td style={{ padding: '12px 16px' }}>
-                          <span
-                            className="badge-pill"
-                            style={{
-                              background: marginBg,
-                              color: marginColor,
-                              fontWeight: 800,
-                              fontSize: '0.78rem',
-                              padding: '4px 10px',
-                              border: `1px solid ${marginColor}33`,
-                            }}
-                          >
-                            {margin.toFixed(1)}%
-                          </span>
-                        </td>
-
-                        {/* 1,000 Views Campaign Revenue */}
-                        <td style={{ padding: '12px 16px' }}>
-                          <strong className="font-mono" style={{ color: '#0f172a' }}>
-                            ${(tier.campaignerCost * 1000).toFixed(2)}
-                          </strong>
-                        </td>
-
-                        {/* 1,000 Views Viewer Payout */}
-                        <td style={{ padding: '12px 16px' }}>
-                          <strong className="font-mono" style={{ color: '#059669' }}>
-                            ${(tier.viewerReward * 1000).toFixed(2)}
-                          </strong>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            <div
-              style={{
-                marginTop: 16,
-                padding: '12px 16px',
-                borderRadius: 12,
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: 10,
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.82rem', color: '#64748b' }}>
-                <CheckCircle2 size={16} color="#059669" />
-                <span>Changes update order calculations on Buy Views and completion rewards for Viewers in real time.</span>
-              </div>
-              <button
-                type="button"
-                disabled={pricingSaving}
-                onClick={handleSavePricing}
-                className="btn btn-neon glow-neon"
-                style={{
-                  padding: '7px 16px',
-                  fontSize: '0.82rem',
-                  fontWeight: 700,
-                  borderRadius: 8,
-                }}
-              >
-                {pricingSaving ? 'Saving...' : 'Save Pricing'}
-              </button>
-            </div>
-          </div>
-
-          {/* Card 2: Anti-Spam Video Cooldown Control */}
-          <div
-            className="glass-card"
-            style={{
-              padding: '24px 28px',
-              borderRadius: 20,
-              background: '#ffffff',
-              border: '1px solid #e2e8f0',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.03)',
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start',
-                flexWrap: 'wrap',
-                gap: 16,
-                marginBottom: 20,
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 12,
-                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                    color: '#ffffff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
-                  }}
-                >
-                  <Timer size={22} />
-                </div>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <h2 className="font-display" style={{ fontSize: '1.25rem', color: '#0f172a', margin: 0 }}>
-                      Anti-Spam Video Cooldown Controller
-                    </h2>
-                    <span
-                      className="badge-pill"
-                      style={{
-                        background: cooldownConfig.enabled ? '#f0fdf4' : '#fef2f2',
-                        color: cooldownConfig.enabled ? '#059669' : '#ef4444',
-                        border: `1px solid ${cooldownConfig.enabled ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
-                        fontSize: '0.72rem',
-                        padding: '2px 8px',
-                        fontWeight: 800,
-                      }}
-                    >
-                      {cooldownConfig.enabled ? 'PROTECTION ACTIVE' : 'DISABLED'}
-                    </span>
-                  </div>
-                  <p style={{ color: '#64748b', fontSize: '0.84rem', margin: '3px 0 0' }}>
-                    Set how long viewers must wait before re-watching the same video campaign. Prevents repetitive view abuse.
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                disabled={cooldownSaving}
-                onClick={handleSaveCooldown}
-                className="btn btn-neon glow-neon"
-                style={{
-                  padding: '9px 18px',
-                  fontSize: '0.86rem',
-                  fontWeight: 700,
-                  borderRadius: 10,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 7,
-                }}
-              >
-                <Save size={15} />
-                {cooldownSaving ? 'Saving...' : 'Save Cooldown Rules'}
-              </button>
-            </div>
-
-            {/* Toggle & Cooldown Form */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-              {/* Status Switcher */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '16px 20px',
-                  background: '#f8fafc',
-                  borderRadius: 14,
-                  border: '1px solid #e2e8f0',
-                  flexWrap: 'wrap',
-                  gap: 12,
-                }}
-              >
-                <div>
-                  <strong style={{ color: '#0f172a', fontSize: '0.94rem', display: 'block' }}>
-                    Anti-Spam Re-Watch Enforcement
-                  </strong>
-                  <span style={{ color: '#64748b', fontSize: '0.82rem' }}>
-                    When enabled, identical video tasks are placed on cooldown per viewer for the configured duration.
-                  </span>
-                </div>
-
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    type="button"
-                    onClick={() => setCooldownConfig((prev) => ({ ...prev, enabled: true }))}
-                    className="btn"
-                    style={{
-                      padding: '8px 16px',
-                      borderRadius: 10,
-                      fontSize: '0.82rem',
-                      fontWeight: 700,
-                      background: cooldownConfig.enabled ? '#059669' : '#ffffff',
-                      color: cooldownConfig.enabled ? '#ffffff' : '#64748b',
-                      border: cooldownConfig.enabled ? 'none' : '1px solid #cbd5e1',
-                    }}
-                  >
-                    Enabled
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCooldownConfig((prev) => ({ ...prev, enabled: false }))}
-                    className="btn"
-                    style={{
-                      padding: '8px 16px',
-                      borderRadius: 10,
-                      fontSize: '0.82rem',
-                      fontWeight: 700,
-                      background: !cooldownConfig.enabled ? '#ef4444' : '#ffffff',
-                      color: !cooldownConfig.enabled ? '#ffffff' : '#64748b',
-                      border: !cooldownConfig.enabled ? 'none' : '1px solid #cbd5e1',
-                    }}
-                  >
-                    Disabled
-                  </button>
-                </div>
-              </div>
-
-              {/* Cooldown Duration Input & Presets */}
-              <div
-                style={{
-                  padding: '20px',
-                  background: '#ffffff',
-                  borderRadius: 14,
-                  border: '1px solid #e2e8f0',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 14,
-                }}
-              >
-                <div>
-                  <label className="font-mono" style={{ fontSize: '0.82rem', color: '#334155', fontWeight: 700, display: 'block', marginBottom: 6 }}>
-                    COOLDOWN DURATION (SECONDS):
-                  </label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                    <input
-                      type="number"
-                      min="0"
-                      max="604800"
-                      value={cooldownConfig.durationSeconds}
-                      onChange={(e) =>
-                        setCooldownConfig((prev) => ({
-                          ...prev,
-                          durationSeconds: Math.max(0, parseInt(e.target.value, 10) || 0),
-                        }))
-                      }
-                      className="input-field"
-                      style={{
-                        width: 160,
-                        padding: '10px 14px',
-                        fontSize: '0.94rem',
-                        fontWeight: 700,
-                        borderRadius: 10,
-                        color: '#0f172a',
-                      }}
-                    />
-                    <div
-                      style={{
-                        padding: '8px 14px',
-                        borderRadius: 10,
-                        background: '#f0f9ff',
-                        border: '1px solid rgba(14, 165, 233, 0.3)',
-                        color: 'var(--primary-neon)',
-                        fontSize: '0.84rem',
-                        fontWeight: 700,
-                      }}
-                    >
-                      Active Rule: {formatSecondsHuman(cooldownConfig.durationSeconds)}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Quick Presets */}
-                <div>
-                  <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600, marginBottom: 8 }}>
-                    QUICK PRESETS:
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {[
-                      { label: '0s (No Delay)', sec: 0 },
-                      { label: '5 Min (300s)', sec: 300 },
-                      { label: '15 Min (900s)', sec: 900 },
-                      { label: '30 Min (1,800s)', sec: 1800 },
-                      { label: '1 Hour (3,600s)', sec: 3600 },
-                      { label: '2 Hours (7,200s)', sec: 7200 },
-                      { label: '24 Hours (86,400s)', sec: 86400 },
-                    ].map((preset) => {
-                      const isSelected = cooldownConfig.durationSeconds === preset.sec;
-                      return (
-                        <button
-                          key={preset.sec}
-                          type="button"
-                          onClick={() =>
-                            setCooldownConfig((prev) => ({
-                              ...prev,
-                              durationSeconds: preset.sec,
-                              enabled: preset.sec > 0 ? true : prev.enabled,
-                            }))
-                          }
-                          className="btn"
-                          style={{
-                            padding: '6px 12px',
-                            borderRadius: 8,
-                            fontSize: '0.78rem',
-                            fontWeight: isSelected ? 700 : 500,
-                            background: isSelected ? 'var(--primary-neon)' : '#f8fafc',
-                            color: isSelected ? '#ffffff' : '#475569',
-                            border: isSelected ? 'none' : '1px solid #e2e8f0',
-                            transition: 'all 0.15s ease',
-                          }}
-                        >
-                          {preset.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Card 3: Currency Exchange Rate Controller */}
-          <div
-            className="glass-card"
-            style={{
-              padding: '24px 28px',
-              borderRadius: 20,
-              background: '#ffffff',
-              border: '1px solid #e2e8f0',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.03)',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-              <div
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 12,
-                  background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                  color: '#ffffff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 4px 12px rgba(245, 158, 11, 0.3)',
-                }}
-              >
-                <DollarSign size={22} />
-              </div>
-              <div>
-                <h2 className="font-display" style={{ fontSize: '1.25rem', color: '#0f172a', margin: 0 }}>
-                  USD to BDT Currency Rate Engine
-                </h2>
-                <p style={{ color: '#64748b', fontSize: '0.84rem', margin: '3px 0 0' }}>
-                  Current rate: 1 USD = ৳{usdToBdt} BDT. Used across bKash, Nagad, and local wallet conversions.
-                </p>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span className="font-mono" style={{ fontSize: '0.88rem', color: '#475569', fontWeight: 700 }}>1 USD = ৳</span>
-                <input
-                  type="number"
-                  step="0.5"
-                  min="50"
-                  max="300"
-                  value={dollarRateInput}
-                  onChange={(e) => setDollarRateInput(e.target.value)}
-                  className="input-field"
-                  style={{ width: 110, padding: '8px 12px', fontSize: '0.94rem', fontWeight: 700, borderRadius: 10 }}
-                />
-                <span className="font-mono" style={{ fontSize: '0.88rem', color: '#475569', fontWeight: 700 }}>BDT</span>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>Presets:</span>
-                {[110, 115, 120, 122, 125].map((preset) => (
-                  <button
-                    key={preset}
-                    type="button"
-                    onClick={() => {
-                      setDollarRateInput(String(preset));
-                      handleSaveDollarRate(preset);
-                    }}
-                    disabled={rateUpdating}
-                    className="btn btn-ghost"
-                    style={{
-                      padding: '5px 10px',
-                      fontSize: '0.76rem',
-                      borderRadius: 8,
-                      background: usdToBdt === preset ? '#e0f2fe' : '#ffffff',
-                      borderColor: usdToBdt === preset ? 'var(--primary-neon)' : '#cbd5e1',
-                      color: usdToBdt === preset ? 'var(--primary-neon)' : '#475569',
-                      fontWeight: usdToBdt === preset ? 700 : 500,
-                    }}
-                  >
-                    ৳{preset}
-                  </button>
-                ))}
-              </div>
-
-              <button
-                type="button"
-                disabled={rateUpdating || !dollarRateInput}
-                onClick={() => handleSaveDollarRate()}
-                className="btn btn-neon glow-neon"
-                style={{ padding: '8px 18px', fontSize: '0.84rem', fontWeight: 700, borderRadius: 10 }}
-              >
-                {rateUpdating ? 'Updating...' : 'Update Exchange Rate'}
-              </button>
-            </div>
-          </div>
-
-          {/* Card 4: Daily Video Watch Limit per Viewer Controller */}
-          <div
-            className="glass-card"
-            style={{
-              padding: '24px 28px',
-              borderRadius: 20,
-              background: '#ffffff',
-              border: '1px solid #e2e8f0',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.03)',
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start',
-                flexWrap: 'wrap',
-                gap: 16,
-                marginBottom: 20,
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 12,
-                    background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
-                    color: '#ffffff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
-                  }}
-                >
-                  <Eye size={22} />
-                </div>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <h2 className="font-display" style={{ fontSize: '1.25rem', color: '#0f172a', margin: 0 }}>
-                      Daily Video Watch Limit per Viewer
-                    </h2>
-                    <span
-                      className="badge-pill"
-                      style={{
-                        background: dailyLimitConfig.enableDailyLimit ? '#f0fdf4' : '#f8fafc',
-                        color: dailyLimitConfig.enableDailyLimit ? '#059669' : '#64748b',
-                        border: `1px solid ${dailyLimitConfig.enableDailyLimit ? 'rgba(16, 185, 129, 0.3)' : '#cbd5e1'}`,
-                        fontSize: '0.72rem',
-                        padding: '2px 8px',
-                        fontWeight: 800,
-                      }}
-                    >
-                      {dailyLimitConfig.enableDailyLimit
-                        ? `ACTIVE (${dailyLimitConfig.maxDailyVideos} VIDEOS/DAY)`
-                        : 'DISABLED (UNLIMITED)'}
-                    </span>
-                  </div>
-                  <p style={{ color: '#64748b', fontSize: '0.84rem', margin: '3px 0 0' }}>
-                    Configure the maximum number of videos a viewer can watch per calendar day (resets at midnight).
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                disabled={dailyLimitSaving}
-                onClick={handleSaveDailyLimit}
-                className="btn btn-neon glow-neon"
-                style={{
-                  padding: '9px 18px',
-                  fontSize: '0.86rem',
-                  fontWeight: 700,
-                  borderRadius: 10,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 7,
-                }}
-              >
-                <Save size={15} />
-                {dailyLimitSaving ? 'Saving...' : 'Save Daily Limit Rule'}
-              </button>
-            </div>
-
-            {/* Toggle & Limit Form */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-              {/* Status Switcher */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '14px 18px',
-                  background: '#f8fafc',
-                  borderRadius: 14,
-                  border: '1px solid #e2e8f0',
-                  flexWrap: 'wrap',
-                  gap: 12,
-                }}
-              >
-                <div>
-                  <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.92rem' }}>
-                    Daily Cap Protection Status
-                  </div>
-                  <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                    When enabled, viewers cannot watch more than the configured videos per day.
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <button
-                    type="button"
-                    onClick={() => setDailyLimitConfig((prev) => ({ ...prev, enableDailyLimit: true }))}
-                    className="btn"
-                    style={{
-                      padding: '7px 16px',
-                      fontSize: '0.82rem',
-                      borderRadius: 8,
-                      fontWeight: 700,
-                      background: dailyLimitConfig.enableDailyLimit ? '#059669' : '#ffffff',
-                      color: dailyLimitConfig.enableDailyLimit ? '#ffffff' : '#64748b',
-                      border: dailyLimitConfig.enableDailyLimit ? 'none' : '1px solid #cbd5e1',
-                    }}
-                  >
-                    Enable Daily Limit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDailyLimitConfig((prev) => ({ ...prev, enableDailyLimit: false }))}
-                    className="btn"
-                    style={{
-                      padding: '7px 16px',
-                      fontSize: '0.82rem',
-                      borderRadius: 8,
-                      fontWeight: 700,
-                      background: !dailyLimitConfig.enableDailyLimit ? '#64748b' : '#ffffff',
-                      color: !dailyLimitConfig.enableDailyLimit ? '#ffffff' : '#64748b',
-                      border: !dailyLimitConfig.enableDailyLimit ? 'none' : '1px solid #cbd5e1',
-                    }}
-                  >
-                    Unlimited (Disabled)
-                  </button>
-                </div>
-              </div>
-
-              {/* Limit Input & Presets */}
-              <div
-                style={{
-                  padding: '16px 18px',
-                  background: '#ffffff',
-                  borderRadius: 14,
-                  border: '1px solid #e2e8f0',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 12,
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span className="font-mono" style={{ fontSize: '0.82rem', fontWeight: 700, color: '#334155' }}>
-                      MAX VIDEOS PER DAY (PER VIEWER):
-                    </span>
-                    <input
-                      type="number"
-                      min="1"
-                      max="10000"
-                      value={dailyLimitConfig.maxDailyVideos}
-                      onChange={(e) =>
-                        setDailyLimitConfig((prev) => ({
-                          ...prev,
-                          maxDailyVideos: Math.max(1, parseInt(e.target.value, 10) || 1),
-                        }))
-                      }
-                      className="input-field"
-                      style={{
-                        width: 100,
-                        padding: '8px 12px',
-                        fontSize: '0.94rem',
-                        fontWeight: 700,
-                        borderRadius: 10,
-                      }}
-                    />
-                    <span className="font-mono" style={{ fontSize: '0.82rem', color: '#64748b' }}>
-                      videos / day
-                    </span>
-                  </div>
-
-                  <span
-                    className="badge-pill"
-                    style={{
-                      background: '#eff6ff',
-                      color: '#1d4ed8',
-                      fontSize: '0.74rem',
-                      padding: '3px 10px',
-                      fontWeight: 700,
-                    }}
-                  >
-                    {dailyLimitConfig.enableDailyLimit
-                      ? `Cap: ${dailyLimitConfig.maxDailyVideos} videos every 24 hours`
-                      : 'Unlimited viewing allowed'}
-                  </span>
-                </div>
-
-                {/* Quick Presets */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: '0.76rem', color: '#64748b', fontWeight: 600 }}>Quick Presets:</span>
-                  {[10, 25, 50, 100, 200, 500].map((preset) => {
-                    const isSelected = dailyLimitConfig.maxDailyVideos === preset;
-                    return (
-                      <button
-                        key={preset}
-                        type="button"
-                        onClick={() =>
-                          setDailyLimitConfig((prev) => ({
-                            ...prev,
-                            maxDailyVideos: preset,
-                          }))
-                        }
-                        className="btn"
-                        style={{
-                          padding: '5px 12px',
-                          borderRadius: 8,
-                          fontSize: '0.78rem',
-                          fontWeight: isSelected ? 700 : 500,
-                          background: isSelected ? 'var(--primary-neon)' : '#f8fafc',
-                          color: isSelected ? '#ffffff' : '#475569',
-                          border: isSelected ? 'none' : '1px solid #e2e8f0',
-                          transition: 'all 0.15s ease',
-                        }}
-                      >
-                        {preset} videos
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* TAB 6: PRICING MATRIX, ANTI-SPAM COOLDOWN, CURRENCY RATE & DAILY WATCH LIMIT */}
+      {(activeTab === 'pricing' || activeTab === 'settings') && (
+        <AdminSettingsTab
+          pricingTiers={pricingTiers}
+          pricingSaving={pricingSaving}
+          handleResetPricing={handleResetPricing}
+          handleSavePricing={handleSavePricing}
+          handleUpdateTier={handleUpdateTier}
+          cooldownConfig={cooldownConfig}
+          setCooldownConfig={setCooldownConfig}
+          cooldownSaving={cooldownSaving}
+          handleSaveCooldown={handleSaveCooldown}
+          dollarRateInput={dollarRateInput}
+          setDollarRateInput={setDollarRateInput}
+          rateUpdating={rateUpdating}
+          handleSaveDollarRate={handleSaveDollarRate}
+          usdToBdt={usdToBdt}
+          dailyLimitConfig={dailyLimitConfig}
+          setDailyLimitConfig={setDailyLimitConfig}
+          dailyLimitSaving={dailyLimitSaving}
+          handleSaveDailyLimit={handleSaveDailyLimit}
+        />
       )}
 
-      {/* =========================================================================
-          MODAL 1: PAY & APPROVE WITHDRAWAL
-          ========================================================================= */}
-      {approveModalPayout && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(15, 23, 42, 0.65)',
-            backdropFilter: 'blur(4px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 999,
-            padding: 20,
-          }}
-        >
-          <div
-            className="glass-card modal-card"
-            style={{
-              maxWidth: 480,
-              width: '100%',
-              padding: 28,
-              borderRadius: 20,
-              boxShadow: '0 25px 50px rgba(0,0,0,0.2)',
-              background: '#ffffff',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 10,
-                    background: '#ecfdf5',
-                    color: '#059669',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <CheckCircle2 size={20} />
-                </div>
-                <h3 className="font-display" style={{ fontSize: '1.25rem', color: '#0f172a', margin: 0 }}>
-                  Confirm & Disburse Payout
-                </h3>
-              </div>
-              <button
-                onClick={() => setApproveModalPayout(null)}
-                style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#94a3b8' }}
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Payout Details Summary */}
-            <div
-              style={{
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                borderRadius: 12,
-                padding: '14px 16px',
-                marginBottom: 16,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 8,
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 6, fontSize: '0.86rem' }}>
-                <span style={{ color: '#64748b' }}>Recipient User:</span>
-                <strong style={{ color: '#0f172a', wordBreak: 'break-all', textAlign: 'right' }}>{approveModalPayout.viewerId?.name} ({approveModalPayout.viewerId?.email})</strong>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6, fontSize: '0.86rem' }}>
-                <span style={{ color: '#64748b' }}>Payment Method:</span>
-                <strong style={{ color: '#0f172a', textTransform: 'uppercase' }}>{approveModalPayout.method}</strong>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6, fontSize: '0.86rem' }}>
-                <span style={{ color: '#64748b' }}>Account Details:</span>
-                <strong className="font-mono" style={{ color: 'var(--primary-neon)', wordBreak: 'break-all' }}>{approveModalPayout.accountDetails}</strong>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6, fontSize: '0.84rem' }}>
-                <span style={{ color: '#64748b' }}>Request IP & Device:</span>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <span className="font-mono" style={{ background: '#e2e8f0', color: '#0f172a', padding: '2px 6px', borderRadius: 4, fontSize: '0.8rem', fontWeight: 600 }}>
-                    {approveModalPayout.ipAddress || 'Not recorded'}
-                  </span>
-                  <span style={{ color: '#64748b', fontSize: '0.8rem' }}>
-                    • {approveModalPayout.deviceInfo || approveModalPayout.clientPlatform || 'Web Browser'}
-                  </span>
-                </span>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6, paddingTop: 6, borderTop: '1px solid #e2e8f0' }}>
-                <span style={{ color: '#64748b', fontSize: '0.86rem' }}>Payout Amount:</span>
-                <strong className="font-mono" style={{ fontSize: '1.3rem', color: '#059669' }}>
-                  ${approveModalPayout.amount.toFixed(2)} USD
-                  {(approveModalPayout.method === 'bkash' || approveModalPayout.method === 'nagad') && (
-                    <span style={{ fontSize: '0.86rem', color: '#64748b', marginLeft: 6 }}>
-                      (৳{(approveModalPayout.amount * usdToBdt).toLocaleString()} BDT)
-                    </span>
-                  )}
-                </strong>
-              </div>
-            </div>
-
-            {/* Transaction Ref Input */}
-            <div style={{ marginBottom: 14 }}>
-              <label className="font-mono" style={{ fontSize: '0.8rem', color: '#475569', display: 'block', marginBottom: 6, fontWeight: 700 }}>
-                Transaction ID / TrxID / Hash:
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. 9K2L8M or 0xabc... or FaucetPay batch ID"
-                value={approveTxnRef}
-                onChange={(e) => setApproveTxnRef(e.target.value)}
-                className="input-field"
-                style={{ padding: '10px 14px', fontSize: '0.9rem', borderRadius: 10 }}
-                autoFocus
-              />
-            </div>
-
-            {/* Optional Admin Note */}
-            <div style={{ marginBottom: 18 }}>
-              <label className="font-mono" style={{ fontSize: '0.8rem', color: '#475569', display: 'block', marginBottom: 6, fontWeight: 700 }}>
-                Disbursement Note (Optional):
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. Sent via bKash personal send money"
-                value={approveNotes}
-                onChange={(e) => setApproveNotes(e.target.value)}
-                className="input-field"
-                style={{ padding: '10px 14px', fontSize: '0.9rem', borderRadius: 10 }}
-              />
-            </div>
-
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={() => setApproveModalPayout(null)}
-                className="btn btn-ghost"
-                style={{ padding: '10px 18px', borderRadius: 10 }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={approveLoading}
-                onClick={handleConfirmApprove}
-                className="btn btn-neon glow-neon"
-                style={{ padding: '10px 20px', borderRadius: 10, fontWeight: 700 }}
-              >
-                {approveLoading ? 'Processing...' : 'Confirm Paid & Approve'}
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* TAB 7: PAYMENT GATEWAYS, MANUAL DEPOSIT NUMBERS & MINIMUM WITHDRAWAL LIMITS */}
+      {activeTab === 'gateways' && (
+        <AdminPaymentMethodsTab
+          depositMethodsConfig={depositMethodsConfig}
+          setDepositMethodsConfig={setDepositMethodsConfig}
+          depositMethodsSaving={depositMethodsSaving}
+          handleSaveDepositMethods={handleSaveDepositMethods}
+          withdrawMethodsConfig={withdrawMethodsConfig}
+          setWithdrawMethodsConfig={setWithdrawMethodsConfig}
+          withdrawMethodsSaving={withdrawMethodsSaving}
+          handleSaveWithdrawMethods={handleSaveWithdrawMethods}
+        />
       )}
 
-      {/* =========================================================================
-          MODAL 2: REJECT & REFUND WITHDRAWAL
-          ========================================================================= */}
-      {rejectModalPayout && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(15, 23, 42, 0.65)',
-            backdropFilter: 'blur(4px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 999,
-            padding: 20,
-          }}
-        >
-          <div
-            className="glass-card modal-card"
-            style={{
-              maxWidth: 480,
-              width: '100%',
-              padding: 28,
-              borderRadius: 20,
-              boxShadow: '0 25px 50px rgba(0,0,0,0.2)',
-              background: '#ffffff',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 10,
-                    background: '#fef2f2',
-                    color: '#ef4444',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <XCircle size={20} />
-                </div>
-                <h3 className="font-display" style={{ fontSize: '1.25rem', color: '#0f172a', margin: 0 }}>
-                  Reject & Refund Withdrawal
-                </h3>
-              </div>
-              <button
-                onClick={() => setRejectModalPayout(null)}
-                style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#94a3b8' }}
-              >
-                ✕
-              </button>
-            </div>
+      {/* MODAL 1 & 2: WITHDRAWAL APPROVE & REJECT MODALS */}
+      <AdminPayoutModals
+        approveModalPayout={approveModalPayout}
+        setApproveModalPayout={setApproveModalPayout}
+        approveTxnRef={approveTxnRef}
+        setApproveTxnRef={setApproveTxnRef}
+        approveNotes={approveNotes}
+        setApproveNotes={setApproveNotes}
+        approveLoading={approveLoading}
+        handleConfirmApprove={handleConfirmApprove}
+        usdToBdt={usdToBdt}
+        rejectModalPayout={rejectModalPayout}
+        setRejectModalPayout={setRejectModalPayout}
+        rejectReason={rejectReason}
+        setRejectReason={setRejectReason}
+        rejectLoading={rejectLoading}
+        handleConfirmReject={handleConfirmReject}
+      />
 
-            {/* Reject summary info */}
-            <div
-              style={{
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                borderRadius: 12,
-                padding: '12px 14px',
-                marginBottom: 14,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 6,
-                fontSize: '0.84rem',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#64748b' }}>User:</span>
-                <strong style={{ color: '#0f172a' }}>{rejectModalPayout.viewerId?.name} ({rejectModalPayout.viewerId?.email})</strong>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#64748b' }}>Method & Account:</span>
-                <span className="font-mono" style={{ color: '#0f172a' }}><strong style={{ textTransform: 'uppercase' }}>{rejectModalPayout.method}</strong> • {rejectModalPayout.accountDetails}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#64748b' }}>Request IP & Device:</span>
-                <span className="font-mono" style={{ color: '#475569', fontSize: '0.8rem' }}>{rejectModalPayout.ipAddress || 'Not recorded'} ({rejectModalPayout.deviceInfo || rejectModalPayout.clientPlatform || 'Web'})</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 4, borderTop: '1px solid #e2e8f0' }}>
-                <span style={{ color: '#64748b' }}>Refund Amount:</span>
-                <strong style={{ color: '#ef4444' }}>${rejectModalPayout.amount.toFixed(2)} USD</strong>
-              </div>
-            </div>
-
-            <p style={{ fontSize: '0.84rem', color: '#64748b', marginBottom: 14 }}>
-              The payout amount of <strong>${rejectModalPayout.amount.toFixed(2)} USD</strong> will be automatically credited back to the user's wallet balance.
-            </p>
-
-            <div style={{ marginBottom: 18 }}>
-              <label className="font-mono" style={{ fontSize: '0.8rem', color: '#475569', display: 'block', marginBottom: 6, fontWeight: 700 }}>
-                Rejection Reason:
-              </label>
-              <textarea
-                placeholder="e.g. Invalid account number, duplicate account detected, or account not receiving funds."
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-                className="input-field"
-                style={{ padding: '10px 14px', fontSize: '0.88rem', borderRadius: 10, width: '100%', minHeight: 80, resize: 'vertical' }}
-                required
-                autoFocus
-              />
-            </div>
-
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={() => setRejectModalPayout(null)}
-                className="btn btn-ghost"
-                style={{ padding: '10px 18px', borderRadius: 10 }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={rejectLoading}
-                onClick={handleConfirmReject}
-                className="btn btn-ghost"
-                style={{ padding: '10px 20px', borderRadius: 10, background: '#ef4444', color: '#ffffff', border: 'none', fontWeight: 700 }}
-              >
-                {rejectLoading ? 'Processing...' : 'Confirm Reject & Refund'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* MODAL 3 & 4: DEPOSIT APPROVE & REJECT MODALS */}
+      <AdminDepositModals
+        approveModalDeposit={approveModalDeposit}
+        setApproveModalDeposit={setApproveModalDeposit}
+        approveDepositNotes={approveDepositNotes}
+        setApproveDepositNotes={setApproveDepositNotes}
+        approveDepositLoading={approveDepositLoading}
+        handleConfirmApproveDeposit={handleConfirmApproveDeposit}
+        rejectModalDeposit={rejectModalDeposit}
+        setRejectModalDeposit={setRejectModalDeposit}
+        rejectDepositReason={rejectDepositReason}
+        setRejectDepositReason={setRejectDepositReason}
+        rejectDepositLoading={rejectDepositLoading}
+        handleConfirmRejectDeposit={handleConfirmRejectDeposit}
+      />
     </div>
   );
 };
