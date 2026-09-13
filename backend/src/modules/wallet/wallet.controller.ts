@@ -12,14 +12,14 @@ const router = Router();
 
 const withdrawSchema = z.object({
   amount: z.number().positive('Withdrawal amount must be greater than 0'),
-  method: z.enum(['bkash', 'nagad', 'rocket', 'crypto', 'faucetpay', 'webmoney']),
+  method: z.enum(['bkash', 'nagad', 'rocket', 'crypto', 'faucetpay', 'webmoney', 'payeer']),
   accountDetails: z.string().min(3, 'Valid account details / number required'),
   deviceInfo: z.string().optional(),
 });
 
 const depositSchema = z.object({
   amount: z.number().min(1, 'Minimum deposit is $1.00 USD'),
-  gateway: z.enum(['faucetpay', 'crypto', 'bkash', 'nagad', 'rocket', 'webmoney']),
+  gateway: z.enum(['faucetpay', 'crypto', 'bkash', 'nagad', 'rocket', 'webmoney', 'payeer']),
   senderAccount: z.string().min(2, 'Sender account / phone / wallet address is required'),
   transactionHash: z.string().min(2, 'Transaction ID / Trx Hash is required'),
   notes: z.string().optional(),

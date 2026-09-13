@@ -17,7 +17,7 @@ app.use(express.json());
 const healthHandler = (_req: express.Request, res: express.Response) => {
   res.json({
     status: 'ok',
-    service: 'myYT API Backend',
+    service: 'ytCash API Backend',
     timestamp: new Date().toISOString(),
     pricingTiers: config.pricingTiers,
   });

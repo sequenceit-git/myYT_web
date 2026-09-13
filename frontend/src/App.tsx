@@ -47,7 +47,7 @@ export function App() {
         const state = params.get('state');
         const hasToken = fullQuery.indexOf('access_token=') !== -1;
         if (state === 'mobile_auth' || (hasToken && (state === 'mobile_auth' || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)))) {
-          const deepLink = `myyt://oauth#${fullQuery}`;
+          const deepLink = `ytcash://oauth#${fullQuery}`;
           setMobileAuthUrl(deepLink);
           window.location.replace(deepLink);
           return;
@@ -136,7 +136,7 @@ export function App() {
         <div style={{ width: 72, height: 72, borderRadius: 20, background: 'rgba(2, 132, 199, 0.15)', border: '1px solid rgba(2, 132, 199, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
           <div style={{ width: 28, height: 28, border: '3px solid #38bdf8', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
         </div>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 8, fontFamily: 'Outfit, sans-serif' }}>Returning to myYT Mobile App...</h1>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 8, fontFamily: 'Outfit, sans-serif' }}>Returning to ytCash Mobile App...</h1>
         <p style={{ color: '#94a3b8', fontSize: '0.9rem', maxWidth: 360, marginBottom: 24, lineHeight: 1.5 }}>
           Google sign-in completed! Returning back to your mobile app to finish logging you in.
         </p>
@@ -156,7 +156,7 @@ export function App() {
             fontSize: '1rem',
           }}
         >
-          Open myYT Mobile App
+          Open ytCash Mobile App
         </a>
       </div>
     );
@@ -304,6 +304,7 @@ export function App() {
                 {[
                   { name: 'bKash', src: '/payment-methods/bkash.svg' },
                   { name: 'Nagad', src: '/payment-methods/nagad.svg' },
+                  { name: 'Payeer', src: '/payment-methods/payeer.png' },
                   { name: 'FaucetPay', src: '/payment-methods/faucetpay.svg' },
                   { name: 'Crypto (USDT)', src: '/payment-methods/crypto.svg' },
                   { name: 'WebMoney', src: '/payment-methods/webmoney.svg' },
@@ -328,7 +329,7 @@ export function App() {
                   </div>
                 ))}
               </div>
-              <span style={{ color: 'var(--on-surface-variant)', fontSize: '0.76rem' }}>bKash, Nagad, FaucetPay, USDT, WebMoney</span>
+              <span style={{ color: 'var(--on-surface-variant)', fontSize: '0.76rem' }}>bKash, Nagad, Payeer, FaucetPay, USDT, WebMoney</span>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -341,7 +342,7 @@ export function App() {
 
           <div style={{ maxWidth: 1240, margin: '0 auto', borderTop: '1px solid var(--glass-stroke)', paddingTop: 18, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
             <span className="font-mono" style={{ fontSize: '0.68rem', color: 'var(--on-surface-variant)' }}>
-              © 2026 MYYT. ALL RIGHTS RESERVED.
+              © 2026 YTCASH. ALL RIGHTS RESERVED.
             </span>
             <span className="font-mono" style={{ fontSize: '0.68rem', color: 'var(--primary-neon)', fontWeight: 700 }}>
               BUILT FOR HIGH CONCURRENCY & ZERO BANDWIDTH WASTE.

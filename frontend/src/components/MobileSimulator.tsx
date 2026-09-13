@@ -32,8 +32,11 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({ user }) => {
   const [overlaySec, setOverlaySec] = useState<number>(3);
   const [demoBalance, setDemoBalance] = useState<number>(user?.balance || 1.0);
 
-  // App download URL
-  const downloadUrl = 'https://myyt.com/download/myyt-app-v1.2.0.apk';
+  // App download URL (points to static downloadable APK)
+  const downloadUrl =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/downloads/ytcash.apk`
+      : 'https://ytcash.sequenceit.software/downloads/ytcash.apk';
 
   // Watch timer countdown
   useEffect(() => {
@@ -127,7 +130,7 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({ user }) => {
                 <div style={{ width: 22, height: 22, borderRadius: 6, background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Play size={10} fill="#ffffff" color="#ffffff" />
                 </div>
-                <span className="font-display" style={{ fontSize: '1rem', color: '#0f172a' }}>myYT Watch</span>
+                <span className="font-display" style={{ fontSize: '1rem', color: '#0f172a' }}>ytCash Watch</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.65rem', color: 'var(--primary-neon)', fontWeight: 700 }}>
                 <ShieldCheck size={12} /> Demo Mode
@@ -314,7 +317,7 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({ user }) => {
             </div>
 
             <h3 className="font-display" style={{ fontSize: '1.25rem', color: '#0f172a', letterSpacing: '0.01em' }}>
-              INSTALL <span style={{ color: 'var(--primary-neon)' }}>myYT APP</span> ON YOUR PHONE
+              INSTALL <span style={{ color: 'var(--primary-neon)' }}>ytCash APP</span> ON YOUR PHONE
             </h3>
             
             <p className="font-body" style={{ color: 'var(--on-surface-variant)', fontSize: '0.82rem', marginTop: 6, lineHeight: 1.5 }}>
@@ -347,6 +350,7 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({ user }) => {
 
             <a
               href={downloadUrl}
+              download="ytcash.apk"
               target="_blank"
               rel="noreferrer"
               className="btn btn-neon glow-neon btn-mobile-full"

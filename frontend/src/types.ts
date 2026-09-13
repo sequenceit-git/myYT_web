@@ -76,7 +76,7 @@ export interface Payout {
     createdAt?: string;
   };
   amount: number;
-  method: 'bkash' | 'nagad' | 'rocket' | 'crypto' | 'faucetpay' | 'webmoney';
+  method: 'bkash' | 'nagad' | 'rocket' | 'crypto' | 'faucetpay' | 'webmoney' | 'payeer';
   accountDetails: string;
   status: 'pending' | 'processing' | 'approved' | 'rejected';
   transactionRef?: string;

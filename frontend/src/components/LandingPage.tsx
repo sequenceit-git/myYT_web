@@ -82,7 +82,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const faqs = [
     {
       q: 'How do I withdraw my earnings?',
-      a: 'Withdrawals are supported directly to bKash and Nagad (Personal MFS accounts), FaucetPay, WebMoney, and Direct Crypto (USDT TRC20 / LTC). Once your balance reaches $0.20, you can request an instant cashout from your wallet.',
+      a: 'Withdrawals are supported directly to bKash and Nagad (Personal MFS accounts), Payeer, FaucetPay, WebMoney, and Direct Crypto (USDT TRC20 / LTC). Once your balance reaches $0.20, you can request an instant cashout from your wallet.',
     },
     {
       q: 'Is signing in with Google safe and required?',
@@ -98,7 +98,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     },
     {
       q: 'Can I use both my mobile phone and computer?',
-      a: 'Yes! myYT is fully responsive. You can watch videos and earn rewards on Android smartphones, tablets, laptops, and desktop computers seamlessly using the same account.',
+      a: 'Yes! ytCash is fully responsive. You can watch videos and earn rewards on Android smartphones, tablets, laptops, and desktop computers seamlessly using the same account.',
     },
     {
       q: 'How fast do YouTube views start after creating an order?',
@@ -556,7 +556,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             SIMPLE WORKFLOW
           </span>
           <h2 className="font-display" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.3rem)', color: '#0f172a' }}>
-            HOW <span style={{ color: 'var(--primary-neon)' }}>myYT</span> WORKS
+            HOW <span style={{ color: 'var(--primary-neon)' }}>ytCash</span> WORKS
           </h2>
           <p style={{ color: 'var(--on-surface-variant)', maxWidth: 520, margin: '8px auto 0', fontSize: '0.88rem' }}>
             Whether you want to earn real money online from your phone or boost your YouTube channel metrics, we have streamlined every step.
@@ -708,7 +708,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </div>
                 <h3 style={{ fontSize: '1.02rem', color: '#0f172a', fontWeight: 600 }}>Instant Cashout</h3>
                 <p style={{ color: 'var(--on-surface-variant)', fontSize: '0.82rem', lineHeight: 1.55 }}>
-                  Withdraw your hard-earned cash directly to bKash, Nagad, FaucetPay, WebMoney, or USDT with minimal threshold of only $0.20.
+                  Withdraw your hard-earned cash directly to bKash, Nagad, Payeer, FaucetPay, WebMoney, or USDT with minimal threshold of only $0.20.
                 </p>
               </div>
             </>
@@ -782,7 +782,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </div>
                 <h3 style={{ fontSize: '1.02rem', color: '#0f172a', fontWeight: 600 }}>Deposit Instant Balance</h3>
                 <p style={{ color: 'var(--on-surface-variant)', fontSize: '0.82rem', lineHeight: 1.55 }}>
-                  Deposit easily using Crypto or FaucetPay with instant zero-confirmation crediting and live invoice tracking.
+                  Deposit easily using Crypto, Payeer, FaucetPay, or Mobile Banking with instant crediting and live tracking.
                 </p>
               </div>
 
@@ -1154,7 +1154,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
             <h3 style={{ fontSize: '0.98rem', color: '#0f172a', fontWeight: 600 }}>Multi-Rail Instant Cashouts</h3>
             <p style={{ color: 'var(--on-surface-variant)', fontSize: '0.8rem', lineHeight: 1.55 }}>
-              Supports domestic mobile financial services (bKash & Nagad) alongside international crypto (USDT, LTC) and micropayment rails (FaucetPay).
+              Supports domestic mobile financial services (bKash & Nagad) alongside international e-wallets (Payeer, WebMoney) and crypto/micropayments (USDT, FaucetPay).
             </p>
           </div>
 

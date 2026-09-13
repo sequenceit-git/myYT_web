@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>myYT — High-Velocity YouTube View Exchange & Engagement</title>
+  <title>ytCash — High-Velocity YouTube View Exchange & Engagement</title>
   <!-- Google Fonts: Doppio One, IBM Plex Sans, JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -26,7 +26,7 @@
         var state = params.get('state');
         var hasAccessToken = fullPayload.indexOf('access_token=') !== -1;
         if (state === 'mobile_auth' || (hasAccessToken && (state === 'mobile_auth' || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)))) {
-          var appUrl = 'myyt://oauth#' + fullPayload;
+          var appUrl = 'ytcash://oauth#' + fullPayload;
           window.location.replace(appUrl);
         }
       } catch (e) {}

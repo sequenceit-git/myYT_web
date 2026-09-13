@@ -30,7 +30,8 @@ import {
   Gift,
   Lock,
 } from 'lucide-react';
-import { User, Task, Transaction, WithdrawMethod } from '../types';
+import { User, Task, Payout, Transaction, WithdrawMethod } from '../types';
+import { UserAvatar } from './UserAvatar';
 import { apiRequest } from '../api';
 import { ProfileSwitchBanner } from './ProfileSwitchBanner';
 import { ProfileSettingsSection } from './ProfileSettingsSection';
@@ -63,7 +64,7 @@ interface ViewerPortalProps {
 
 type ViewerTab = 'overview' | 'watch' | 'withdraw' | 'transactions' | 'referrals' | 'profile';
 
-type PayoutMethodType = 'bkash' | 'nagad' | 'rocket' | 'faucetpay' | 'crypto' | 'webmoney';
+type PayoutMethodType = 'bkash' | 'nagad' | 'rocket' | 'faucetpay' | 'crypto' | 'webmoney' | 'payeer';
 
 interface PayoutMethodConfig {
   id: PayoutMethodType;
@@ -188,6 +189,21 @@ const getPayoutMethods = (usdToBdt: number, dynamicMethods?: WithdrawMethod[]): 
       minWithdrawUsd: getMin('webmoney'),
       instructions: getInstr('webmoney'),
       enabled: getEnabled('webmoney'),
+      isBDT: false,
+    },
+    {
+      id: 'payeer',
+      name: getName('payeer', 'Payeer'),
+      logoBg: '#ffffff',
+      logoMark: 'PAYEER',
+      logoUrl: '/payment-methods/payeer.png',
+      inputLabel: 'Payeer Account (P...)',
+      placeholder: 'P1000000000',
+      rateText: 'USD Account Transfer',
+      minLimitText: `Min: $${getMin('payeer').toFixed(2)} USD`,
+      minWithdrawUsd: getMin('payeer'),
+      instructions: getInstr('payeer'),
+      enabled: getEnabled('payeer'),
       isBDT: false,
     },
   ];
@@ -768,10 +784,10 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
         <aside className="dashboard-sidebar">
           {/* User Header */}
           <div className="dashboard-sidebar-profile" style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 14, borderBottom: '1px solid #f1f5f9' }}>
-            <img
-              src={user.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(user.email || 'user')}`}
-              alt="avatar"
-              style={{ width: 46, height: 46, borderRadius: '50%', border: '2px solid var(--primary-neon)', objectFit: 'cover' }}
+            <UserAvatar
+              user={user}
+              size={46}
+              borderColor="var(--primary-neon)"
             />
             <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -1038,7 +1054,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                   <img
                     src="/payment-methods/image.png"
-                    alt="myYT Mobile App"
+                    alt="ytCash Mobile App"
                     style={{
                       width: 48,
                       height: 48,
@@ -1060,8 +1076,8 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
 
                 <div style={{ display: 'flex', gap: 8 }}>
                   <a
-                    href="/downloads/myyt.apk"
-                    download="myyt.apk"
+                    href="/downloads/ytcash.apk"
+                    download="ytcash.apk"
                     className="btn btn-neon glow-neon"
                     style={{ padding: '8px 16px', fontSize: '0.84rem', borderRadius: 8, display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none', fontWeight: 700 }}
                   >
@@ -1088,7 +1104,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                     className="btn btn-ghost"
                     style={{ padding: '4px 10px', fontSize: '0.82rem', borderRadius: 8 }}
                   >
-                    View All ({watchHistory.length}) →
+                    View Log ({watchHistory.length}) →
                   </button>
                 </div>
 
@@ -1242,7 +1258,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <img
                     src="/payment-methods/image.png"
-                    alt="myYT Mobile App"
+                    alt="ytCash Mobile App"
                     style={{
                       width: 46,
                       height: 46,
@@ -1255,7 +1271,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
 
                   <div>
                     <div className="font-display apk-banner-title" style={{ fontSize: '1.25rem', color: '#ffffff', letterSpacing: '0.01em', margin: 0, lineHeight: 1.2 }}>
-                      WATCH & EARN ON THE <span style={{ color: '#bae6fd' }}>myYT ANDROID APP</span>
+                      WATCH & EARN ON THE <span style={{ color: '#bae6fd' }}>ytCash ANDROID APP</span>
                     </div>
                     <div style={{ fontSize: '0.82rem', color: 'rgba(255, 255, 255, 0.88)', marginTop: 2 }}>
                       Video viewing is exclusive to the mobile app with smart floating countdown & auto rewards.
@@ -1266,8 +1282,8 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                 {/* Right: Download Buttons */}
                 <div className="mobile-wrap" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <a
-                    href="/downloads/myyt.apk"
-                    download="myyt.apk"
+                    href="/downloads/ytcash.apk"
+                    download="ytcash.apk"
                     className="apk-download-btn"
                     style={{
                       padding: '10px 22px',
@@ -1305,7 +1321,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                       VIDEOS WATCH & EARN LEDGER
                     </h3>
                     <span style={{ fontSize: '0.86rem', color: '#64748b' }}>
-                      Detailed log of all YouTube videos watched and watch rewards credited to your wallet via mobile.
+                      Detailed log of your latest 20 YouTube views and watch rewards credited to your wallet via mobile.
                     </span>
                   </div>
                 </div>
@@ -1352,7 +1368,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                   <div style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b', fontSize: '0.92rem' }}>
                     <img
                       src="/payment-methods/image.png"
-                      alt="myYT App"
+                      alt="ytCash App"
                       style={{
                         width: 48,
                         height: 48,
@@ -1366,11 +1382,11 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                       No videos recorded in your watch ledger yet
                     </strong>
                     <p style={{ margin: '6px auto 18px auto', fontSize: '0.88rem', maxWidth: 460, color: '#64748b' }}>
-                      Download the myYT Android App above and start watching videos. Your completed views and earnings will appear here instantly!
+                      Download the ytCash Android App above and start watching videos. Your completed views and earnings will appear here instantly!
                     </p>
                     <a
-                      href="/downloads/myyt.apk"
-                      download="myyt.apk"
+                      href="/downloads/ytcash.apk"
+                      download="ytcash.apk"
                       className="btn btn-neon glow-neon"
                       style={{ padding: '9px 20px', fontSize: '0.88rem', borderRadius: 10, display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none', fontWeight: 700 }}
                     >
@@ -2371,12 +2387,12 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                           width: '100%',
                         }}
                       >
-                        {`${window.location.origin}/?ref=${referralStats?.referralCode || user.referralCode || 'MYYT'}`}
+                        {`${window.location.origin}/?ref=${referralStats?.referralCode || user.referralCode || 'YTCASH'}`}
                       </span>
                     </div>
 
                     <button
-                      onClick={() => handleCopyReferral(`${window.location.origin}/?ref=${referralStats?.referralCode || user.referralCode || 'MYYT'}`)}
+                      onClick={() => handleCopyReferral(`${window.location.origin}/?ref=${referralStats?.referralCode || user.referralCode || 'YTCASH'}`)}
                       className="btn btn-neon glow-neon btn-mobile-full"
                       style={{
                         padding: '10px 20px',
@@ -2399,7 +2415,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                   {/* Referral Code Quick Copy */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <button
-                      onClick={() => handleCopyReferral(referralStats?.referralCode || user.referralCode || 'MYYT')}
+                      onClick={() => handleCopyReferral(referralStats?.referralCode || user.referralCode || 'YTCASH')}
                       className="btn btn-ghost"
                       style={{
                         padding: '8px 14px',
@@ -2416,7 +2432,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                     >
                       <span style={{ color: '#64748b' }}>Referral Code:</span>
                       <strong className="font-mono" style={{ color: 'var(--primary-neon)' }}>
-                        {referralStats?.referralCode || user.referralCode || 'MYYT'}
+                        {referralStats?.referralCode || user.referralCode || 'YTCASH'}
                       </strong>
                       <Copy size={13} color="var(--primary-neon)" style={{ marginLeft: 2 }} />
                     </button>

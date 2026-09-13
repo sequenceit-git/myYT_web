@@ -53,16 +53,6 @@ export const DEFAULT_DEPOSIT_METHODS: DepositMethodSetting[] = [
     enabled: true,
   },
   {
-    id: 'rocket',
-    name: 'Rocket',
-    type: 'mobile_banking',
-    accountType: 'Personal',
-    accountNumber: '01XXXXXXXXX',
-    minDepositUsd: 5.0,
-    instructions: 'Send Money to this Rocket number. Copy the TrxID and enter below.',
-    enabled: true,
-  },
-  {
     id: 'crypto',
     name: 'USDT (BEP-20)',
     type: 'crypto',
@@ -92,10 +82,20 @@ export const DEFAULT_DEPOSIT_METHODS: DepositMethodSetting[] = [
     instructions: 'Transfer WMZ to this purse and enter the transaction number below.',
     enabled: true,
   },
+  {
+    id: 'payeer',
+    name: 'Payeer',
+    type: 'e_wallet',
+    accountType: 'USD Account',
+    accountNumber: 'P1000000000',
+    minDepositUsd: 5.0,
+    instructions: 'Transfer USD to this Payeer account (e.g. P1000000000) and enter your Payeer Transaction / Batch ID.',
+    enabled: true,
+  },
 ];
 
 export interface WithdrawMethodSetting {
-  id: string; // 'bkash' | 'nagad' | 'rocket' | 'crypto' | 'faucetpay' | 'webmoney'
+  id: string; // 'bkash' | 'nagad' | 'rocket' | 'crypto' | 'faucetpay' | 'webmoney' | 'payeer'
   name: string;
   type: 'mobile_banking' | 'crypto' | 'micropayment' | 'e_wallet';
   accountType: string;
@@ -159,20 +159,35 @@ export const DEFAULT_WITHDRAW_METHODS: WithdrawMethodSetting[] = [
     instructions: 'Withdrawals will be transferred to your linked WMZ purse.',
     enabled: true,
   },
+  {
+    id: 'payeer',
+    name: 'Payeer',
+    type: 'e_wallet',
+    accountType: 'USD Account',
+    minWithdrawUsd: 5.0,
+    instructions: 'Withdrawals will be transferred to your linked Payeer account (P...).',
+    enabled: true,
+  },
 ];
 
 export const getSystemDepositMethods = async (): Promise<DepositMethodSetting[]> => {
   try {
     const setting = await Setting.findOne({ key: 'deposit_payment_methods' });
     if (setting && Array.isArray(setting.value) && setting.value.length > 0) {
-      // Merge with defaults to ensure all fields exist
-      return setting.value.map((m: any) => {
+      const existingIds = new Set(setting.value.map((m: any) => m.id));
+      const merged = setting.value.map((m: any) => {
         const def = DEFAULT_DEPOSIT_METHODS.find((d) => d.id === m.id) || m;
         return {
           ...def,
           ...m,
         };
       });
+      for (const def of DEFAULT_DEPOSIT_METHODS) {
+        if (!existingIds.has(def.id)) {
+          merged.push(def);
+        }
+      }
+      return merged;
     }
   } catch {
     // fallback
@@ -184,14 +199,20 @@ export const getSystemWithdrawMethods = async (): Promise<WithdrawMethodSetting[
   try {
     const setting = await Setting.findOne({ key: 'withdraw_payment_methods' });
     if (setting && Array.isArray(setting.value) && setting.value.length > 0) {
-      // Merge with defaults to ensure all fields exist
-      return setting.value.map((m: any) => {
+      const existingIds = new Set(setting.value.map((m: any) => m.id));
+      const merged = setting.value.map((m: any) => {
         const def = DEFAULT_WITHDRAW_METHODS.find((d) => d.id === m.id) || m;
         return {
           ...def,
           ...m,
         };
       });
+      for (const def of DEFAULT_WITHDRAW_METHODS) {
+        if (!existingIds.has(def.id)) {
+          merged.push(def);
+        }
+      }
+      return merged;
     }
   } catch {
     // fallback

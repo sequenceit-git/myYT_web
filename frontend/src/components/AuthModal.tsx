@@ -304,7 +304,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <img
               src="/favicon.svg"
-              alt="myYT"
+              alt="ytCash"
               style={{
                 width: 42,
                 height: 42,
@@ -315,7 +315,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             />
             <div>
               <div className="font-display" style={{ fontSize: '1.5rem', color: '#0f172a', letterSpacing: '0.04em', lineHeight: 1.1 }}>
-                MY<span style={{ color: 'var(--primary-neon)' }}>YT</span> ACCESS
+                YT<span style={{ color: 'var(--primary-neon)' }}>CASH</span> ACCESS
               </div>
               <div className="font-mono" style={{ fontSize: '0.76rem', color: 'var(--on-surface-variant)', marginTop: 2 }}>
                 {mode === 'forgot'

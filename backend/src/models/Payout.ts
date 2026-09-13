@@ -3,8 +3,8 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface IPayout extends Document {
   viewerId: mongoose.Types.ObjectId;
   amount: number;
-  method: 'bkash' | 'nagad' | 'rocket' | 'crypto' | 'faucetpay' | 'webmoney';
-  accountDetails: string; // phone number, crypto address, faucetpay email, etc.
+  method: 'bkash' | 'nagad' | 'rocket' | 'crypto' | 'faucetpay' | 'webmoney' | 'payeer';
+  accountDetails: string; // phone number, crypto address, faucetpay email, payeer account, etc.
   status: 'pending' | 'processing' | 'approved' | 'rejected';
   adminNotes?: string;
   transactionRef?: string;
@@ -24,7 +24,7 @@ const PayoutSchema = new Schema<IPayout>(
     amount: { type: Number, required: true, min: 1 }, // e.g. min $1
     method: {
       type: String,
-      enum: ['bkash', 'nagad', 'rocket', 'crypto', 'faucetpay', 'webmoney'],
+      enum: ['bkash', 'nagad', 'rocket', 'crypto', 'faucetpay', 'webmoney', 'payeer'],
       required: true,
       index: true,
     },

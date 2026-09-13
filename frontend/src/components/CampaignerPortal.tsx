@@ -32,6 +32,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { Campaign, User, Transaction, DepositMethod } from '../types';
+import { UserAvatar } from './UserAvatar';
 import { apiRequest } from '../api';
 import { ProfileSwitchBanner } from './ProfileSwitchBanner';
 import { ProfileSettingsSection } from './ProfileSettingsSection';
@@ -84,16 +85,6 @@ const DEFAULT_METHODS_META: Record<string, { logoBg: string; logoMark: string; l
     defaultInstructions: 'Send Money (Personal) to this Nagad number. Copy the TrxID and enter below.',
     defaultAccount: '01XXXXXXXXX',
   },
-  rocket: {
-    logoBg: '#ffffff',
-    logoMark: 'Rocket',
-    logoUrl: '/payment-methods/rocket.svg',
-    isBDT: true,
-    defaultRateText: 'Send Money (Personal MFS)',
-    defaultAccountType: 'Personal',
-    defaultInstructions: 'Send Money to this Rocket number. Copy the TrxID and enter below.',
-    defaultAccount: '01XXXXXXXXX',
-  },
   crypto: {
     logoBg: '#ffffff',
     logoMark: '₮',
@@ -120,6 +111,15 @@ const DEFAULT_METHODS_META: Record<string, { logoBg: string; logoMark: string; l
     defaultAccountType: 'WMZ Purse',
     defaultInstructions: 'Transfer WMZ to this purse and enter the transaction number below.',
     defaultAccount: 'Z000000000000',
+  },
+  payeer: {
+    logoBg: '#ffffff',
+    logoMark: 'PAYEER',
+    logoUrl: '/payment-methods/payeer.png',
+    defaultRateText: 'USD Account (Manual Transfer)',
+    defaultAccountType: 'USD Account',
+    defaultInstructions: 'Transfer USD to this Payeer account (e.g. P1000000000) and enter your Payeer Transaction / Batch ID.',
+    defaultAccount: 'P1000000000',
   },
 };
 
@@ -220,20 +220,6 @@ const buildDepositMethods = (methodsList: DepositMethod[], usdToBdt: number): De
       isBDT: true,
     },
     {
-      id: 'rocket',
-      name: 'Rocket',
-      accountType: 'Personal',
-      accountNumber: '01XXXXXXXXX',
-      instructions: 'Send Money to this Rocket number. Copy the TrxID and enter below.',
-      logoBg: '#ffffff',
-      logoMark: 'Rocket',
-      logoUrl: '/payment-methods/rocket.svg',
-      rateText: `1 USD = ${usdToBdt} BDT (Personal MFS)`,
-      minLimitText: 'Min: $5.00 USD',
-      minDepositUsd: 5.0,
-      isBDT: true,
-    },
-    {
       id: 'webmoney',
       name: 'WebMoney',
       accountType: 'WMZ Purse',
@@ -243,6 +229,19 @@ const buildDepositMethods = (methodsList: DepositMethod[], usdToBdt: number): De
       logoMark: 'WM',
       logoUrl: '/payment-methods/webmoney.svg',
       rateText: 'USD Purse (WMZ) • Manual Deposit',
+      minLimitText: 'Min: $5.00 USD',
+      minDepositUsd: 5.0,
+    },
+    {
+      id: 'payeer',
+      name: 'Payeer',
+      accountType: 'USD Account',
+      accountNumber: 'P1000000000',
+      instructions: 'Transfer USD to this Payeer account (e.g. P1000000000) and enter your Payeer Transaction / Batch ID.',
+      logoBg: '#ffffff',
+      logoMark: 'PAYEER',
+      logoUrl: '/payment-methods/payeer.png',
+      rateText: 'USD Account • Manual Deposit',
       minLimitText: 'Min: $5.00 USD',
       minDepositUsd: 5.0,
     },
@@ -730,10 +729,10 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
         <aside className="dashboard-sidebar">
           {/* User Header */}
           <div className="dashboard-sidebar-profile" style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 14, borderBottom: '1px solid #f1f5f9' }}>
-            <img
-              src={user?.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(user?.email || 'creator')}`}
-              alt="avatar"
-              style={{ width: 46, height: 46, borderRadius: '50%', border: '2px solid var(--primary-neon)', objectFit: 'cover' }}
+            <UserAvatar
+              user={user}
+              size={46}
+              borderColor="var(--primary-neon)"
             />
             <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

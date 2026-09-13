@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ISavedPaymentMethod {
-  method: string; // 'bkash' | 'nagad' | 'rocket' | 'crypto' | 'faucetpay' | 'webmoney'
+  method: string; // 'bkash' | 'nagad' | 'rocket' | 'crypto' | 'faucetpay' | 'webmoney' | 'payeer'
   accountNumber: string;
   accountName?: string;
   updatedAt?: Date;

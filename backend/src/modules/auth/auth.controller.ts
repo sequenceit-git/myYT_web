@@ -64,7 +64,7 @@ export function formatUserResponse(u: any, dailySpend: number = 0, dailyEarnings
     dailyEarnings,
     status: u.status || 'active',
     savedPaymentMethods: u.savedPaymentMethods || [],
-    avatar: (u.avatar ? u.avatar.replace('/svg', '/png') : `https://api.dicebear.com/7.x/adventurer/png?seed=${encodeURIComponent(u.email)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`),
+    avatar: (u.avatar && !u.avatar.includes('7.x/adventurer/png') ? u.avatar : `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(u.email || u.name || 'user')}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`),
   };
 }
 
@@ -130,7 +130,7 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
       code = generateReferralCode();
     }
 
-    const randomAvatar = `https://api.dicebear.com/7.x/adventurer/png?seed=${encodeURIComponent(email)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`;
+    const randomAvatar = `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(email)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`;
     const user = await User.create({
       email,
       name,
@@ -267,9 +267,7 @@ router.post('/google', async (req: Request, res: Response): Promise<void> => {
 
     email = email.toLowerCase().trim();
     name = name ? name.trim() : email.split('@')[0];
-    const generatedAvatar = avatar
-      ? avatar.replace('/svg', '/png')
-      : `https://api.dicebear.com/7.x/adventurer/png?seed=${encodeURIComponent(email)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`;
+    const generatedAvatar = avatar || `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(email)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`;
 
     let user = await User.findOne({ email });
 
@@ -516,7 +514,7 @@ router.put('/profile', requireAuth, async (req: AuthRequest, res: Response): Pro
 });
 
 const savePaymentMethodSchema = z.object({
-  method: z.enum(['bkash', 'nagad', 'rocket', 'crypto', 'faucetpay', 'webmoney']),
+  method: z.enum(['bkash', 'nagad', 'rocket', 'crypto', 'faucetpay', 'webmoney', 'payeer']),
   accountNumber: z.string().min(3, 'Account number / address is required'),
   accountName: z.string().optional(),
 });

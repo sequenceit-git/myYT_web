@@ -265,6 +265,19 @@ router.post('/:id/complete', requireAuth, async (req: AuthRequest, res: Response
       );
     }
 
+    // Prune old tasks for this viewer to retain only latest 20 view records
+    try {
+      const excessTasks = await Task.find({ viewerId: req.user!._id })
+        .sort({ createdAt: -1 })
+        .skip(20)
+        .select('_id');
+      if (excessTasks.length > 0) {
+        await Task.deleteMany({ _id: { $in: excessTasks.map((t) => t._id) } });
+      }
+    } catch (cleanupErr) {
+      console.warn('[TaskCleanup] Error pruning old tasks:', cleanupErr);
+    }
+
     res.json({
       success: true,
       data: {
@@ -282,13 +295,26 @@ router.post('/:id/complete', requireAuth, async (req: AuthRequest, res: Response
   }
 });
 
-// GET /api/tasks/history - Viewer's completed tasks
+// GET /api/tasks/history - Viewer's completed tasks (latest 20 view history records)
 router.get('/history', requireAuth, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const tasks = await Task.find({ viewerId: req.user!._id })
       .populate('campaignId', 'title videoId thumbnailUrl')
       .sort({ createdAt: -1 })
-      .limit(500);
+      .limit(20);
+
+    // Asynchronously ensure database only keeps latest 20 tasks
+    Task.find({ viewerId: req.user!._id })
+      .sort({ createdAt: -1 })
+      .skip(20)
+      .select('_id')
+      .then((oldRecords) => {
+        if (oldRecords && oldRecords.length > 0) {
+          Task.deleteMany({ _id: { $in: oldRecords.map((t) => t._id) } }).catch(() => {});
+        }
+      })
+      .catch(() => {});
+
     res.json({ success: true, data: tasks });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });

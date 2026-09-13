@@ -47,7 +47,7 @@ async function bootstrap() {
     await connectDatabase();
 
     app.listen(config.port, () => {
-      console.log(`[Server] myYT API Server running on port ${config.port} (env: ${config.nodeEnv})`);
+      console.log(`[Server] ytCash API Server running on port ${config.port} (env: ${config.nodeEnv})`);
       console.log(`[Server] Health check: http://localhost:${config.port}/api/health`);
     });
   } catch (error) {

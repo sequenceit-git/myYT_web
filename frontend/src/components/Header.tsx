@@ -19,6 +19,7 @@ import {
   Gift,
 } from 'lucide-react';
 import { User } from '../types';
+import { UserAvatar } from './UserAvatar';
 
 interface HeaderProps {
   user: User | null;
@@ -104,7 +105,7 @@ export const Header: React.FC<HeaderProps> = ({
         >
           <img
             src="/favicon.svg"
-            alt="myYT"
+            alt="ytCash"
             style={{
               width: 34,
               height: 34,
@@ -116,7 +117,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               <span className="font-display" style={{ fontSize: '1.4rem', letterSpacing: '0.02em', color: '#0f172a' }}>
-                MY<span style={{ color: 'var(--primary-neon)' }}>YT</span>
+                YT<span style={{ color: 'var(--primary-neon)' }}>CASH</span>
               </span>
               <span className="badge-pill badge-cyan" style={{ fontSize: '0.52rem', padding: '1px 5px' }}>
                 PRO
@@ -216,25 +217,11 @@ export const Header: React.FC<HeaderProps> = ({
                     <Shield size={14} /> Admin Desk
                   </button>
 
-                  <div
+                  <UserAvatar
+                    user={user}
+                    size={32}
                     onClick={() => navigate('/admin')}
-                    style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: '50%',
-                      overflow: 'hidden',
-                      border: `1.5px solid var(--primary-neon)`,
-                      background: '#f0f9ff',
-                      cursor: 'pointer',
-                    }}
-                    title="System Administrator"
-                  >
-                    <img
-                      src={user.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=myyt-admin&backgroundColor=b6e3f4`}
-                      alt="admin avatar"
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
-                  </div>
+                  />
 
                   <button
                     onClick={onLogout}
@@ -326,25 +313,11 @@ export const Header: React.FC<HeaderProps> = ({
                   </div>
 
                   {/* Avatar */}
-                  <div
+                  <UserAvatar
+                    user={user}
+                    size={32}
                     onClick={() => navigate(isCreatorMode ? '/creator?tab=profile' : '/viewer?tab=profile')}
-                    style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: '50%',
-                      overflow: 'hidden',
-                      border: `1.5px solid var(--primary-neon)`,
-                      background: '#f0f9ff',
-                      cursor: 'pointer',
-                    }}
-                    title="View Account Profile"
-                  >
-                    <img
-                      src={user.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(user.email || user.name || 'user')}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`}
-                      alt="avatar"
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
-                  </div>
+                  />
 
                   {/* Logout */}
                   <button
@@ -491,18 +464,10 @@ export const Header: React.FC<HeaderProps> = ({
                   border: '1px solid rgba(14, 165, 233, 0.25)',
                 }}
               >
-                <img
-                  src={user.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(user.email || user.name || 'user')}`}
-                  alt="avatar"
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: '50%',
-                    border: '2px solid var(--primary-neon)',
-                    objectFit: 'cover',
-                    background: '#ffffff',
-                    flexShrink: 0,
-                  }}
+                <UserAvatar
+                  user={user}
+                  size={40}
+                  borderColor="var(--primary-neon)"
                 />
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div

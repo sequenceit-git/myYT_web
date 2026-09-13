@@ -1,7 +1,7 @@
 {
   "name": "myyt-backend",
   "version": "1.0.0",
-  "description": "myYT API Server & Task Queue",
+  "description": "ytCash API Server & Task Queue",
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",

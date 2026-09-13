@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { User, SavedPaymentMethod } from '../types';
 import { apiRequest } from '../api';
+import { UserAvatar } from './UserAvatar';
 
 interface ProfileSettingsSectionProps {
   user: User | null;
@@ -84,6 +85,15 @@ const PAYMENT_OPTIONS = [
     placeholder: 'Z123456789012',
     formatHelper: 'WebMoney WMZ purse ID (starts with Z)',
     badgeColor: '#0369a1',
+  },
+  {
+    id: 'payeer',
+    name: 'Payeer',
+    logo: '/payment-methods/payeer.png',
+    category: 'Global USD Account',
+    placeholder: 'P1000000000',
+    formatHelper: 'Payeer USD account number (starts with P followed by digits)',
+    badgeColor: '#0284c7',
   },
 ];
 
@@ -324,22 +334,10 @@ export const ProfileSettingsSection: React.FC<ProfileSettingsSectionProps> = ({
           {/* Avatar and Basic User Meta */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: '1 1 260px', minWidth: 0 }}>
             <div style={{ position: 'relative', flexShrink: 0 }}>
-              <img
-                src={
-                  user.avatar ||
-                  `https://api.dicebear.com/7.x/adventurer/png?seed=${encodeURIComponent(
-                    user.email || user.name || 'user'
-                  )}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`
-                }
-                alt={user.name}
-                style={{
-                  width: 58,
-                  height: 58,
-                  borderRadius: '50%',
-                  objectFit: 'cover',
-                  border: '2.5px solid var(--primary-neon)',
-                  boxShadow: '0 4px 14px rgba(14, 165, 233, 0.25)',
-                }}
+              <UserAvatar
+                user={user}
+                size={58}
+                borderColor="var(--primary-neon)"
               />
               <div
                 style={{
@@ -1229,7 +1227,7 @@ export const ProfileSettingsSection: React.FC<ProfileSettingsSectionProps> = ({
           </span>
         </div>
         <div className="font-mono" style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 600 }}>
-          Protected by myYT Security Core
+          Protected by ytCash Security Core
         </div>
       </div>
     </div>

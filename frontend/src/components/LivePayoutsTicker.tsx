@@ -15,8 +15,9 @@ const INITIAL_PAYOUTS: TickerPayout[] = [
   { id: '3', user: 'crypto_earner', amount: 25.50, method: 'USDT', timestamp: '2m ago' },
   { id: '4', user: 'sarah_creator', amount: 2.20, method: 'FaucetPay', timestamp: '3m ago' },
   { id: '5', user: 'hasan_views', amount: 8.75, method: 'bKash', timestamp: '4m ago' },
-  { id: '6', user: 'shakil_bd', amount: 15.00, method: 'Nagad', timestamp: '5m ago' },
-  { id: '7', user: 'webmoney_user', amount: 6.40, method: 'WebMoney', timestamp: '6m ago' },
+  { id: '6', user: 'payeer_trader', amount: 18.20, method: 'Payeer', timestamp: '4m ago' },
+  { id: '7', user: 'shakil_bd', amount: 15.00, method: 'Nagad', timestamp: '5m ago' },
+  { id: '8', user: 'webmoney_user', amount: 6.40, method: 'WebMoney', timestamp: '6m ago' },
 ];
 
 export const LivePayoutsTicker: React.FC = () => {
@@ -25,7 +26,7 @@ export const LivePayoutsTicker: React.FC = () => {
   // Periodically insert random simulated real-time payouts
   useEffect(() => {
     const userNames = ['rafiq_99', 'nahid_pro', 'alif_media', 'sumon_yt', 'kamrul_cash', 'mehedi_tube', 'akash_earn'];
-    const methods = ['bKash', 'Nagad', 'USDT', 'FaucetPay', 'bKash'];
+    const methods = ['bKash', 'Nagad', 'USDT', 'FaucetPay', 'Payeer', 'bKash'];
 
     const interval = setInterval(() => {
       const randomUser = userNames[Math.floor(Math.random() * userNames.length)];
@@ -59,6 +60,8 @@ export const LivePayoutsTicker: React.FC = () => {
         return { background: '#e0f2fe', color: '#0284c7', border: '1px solid rgba(14, 165, 233, 0.35)' };
       case 'webmoney':
         return { background: '#e0f2fe', color: '#0369a1', border: '1px solid rgba(2, 132, 199, 0.3)' };
+      case 'payeer':
+        return { background: '#e0f2fe', color: '#0284c7', border: '1px solid rgba(14, 165, 233, 0.35)' };
       default:
         return { background: '#f0f9ff', color: '#0284c7', border: '1px solid var(--glass-stroke)' };
     }
@@ -77,6 +80,8 @@ export const LivePayoutsTicker: React.FC = () => {
         return '/payment-methods/faucetpay.svg';
       case 'webmoney':
         return '/payment-methods/webmoney.svg';
+      case 'payeer':
+        return '/payment-methods/payeer.png';
       default:
         return null;
     }

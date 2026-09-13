@@ -7,7 +7,7 @@ export interface ITransaction extends Document {
   balanceAfter: number;
   status: 'completed' | 'pending' | 'failed';
   referenceId?: string; // campaignId, taskId, payoutId, or TrxID
-  gateway?: 'faucetpay' | 'crypto' | 'bkash' | 'nagad' | 'rocket' | 'webmoney' | 'internal';
+  gateway?: 'faucetpay' | 'crypto' | 'bkash' | 'nagad' | 'rocket' | 'webmoney' | 'payeer' | 'internal';
   senderAccount?: string;
   receiverAccount?: string;
   proofImage?: string;
@@ -43,7 +43,7 @@ const TransactionSchema = new Schema<ITransaction>(
     referenceId: { type: String },
     gateway: {
       type: String,
-      enum: ['faucetpay', 'crypto', 'bkash', 'nagad', 'rocket', 'webmoney', 'internal'],
+      enum: ['faucetpay', 'crypto', 'bkash', 'nagad', 'rocket', 'webmoney', 'payeer', 'internal'],
       default: 'internal',
     },
     senderAccount: { type: String },

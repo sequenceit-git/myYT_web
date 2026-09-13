@@ -60,16 +60,6 @@ export const DEFAULT_ADMIN_DEPOSIT_METHODS: DepositMethod[] = [
     enabled: true,
   },
   {
-    id: 'rocket',
-    name: 'Rocket',
-    type: 'rocket',
-    accountType: 'Personal',
-    accountNumber: '01XXXXXXXXX',
-    minDepositUsd: 5.0,
-    instructions: 'Send Money to this Rocket number. Copy the TrxID and enter below.',
-    enabled: true,
-  },
-  {
     id: 'webmoney',
     name: 'WebMoney',
     type: 'webmoney',
@@ -77,6 +67,16 @@ export const DEFAULT_ADMIN_DEPOSIT_METHODS: DepositMethod[] = [
     accountNumber: 'Z000000000000',
     minDepositUsd: 5.0,
     instructions: 'Transfer WMZ to this purse and enter the transaction number below.',
+    enabled: true,
+  },
+  {
+    id: 'payeer',
+    name: 'Payeer',
+    type: 'payeer',
+    accountType: 'USD Account',
+    accountNumber: 'P1000000000',
+    minDepositUsd: 5.0,
+    instructions: 'Transfer USD to this Payeer account (e.g. P1000000000) and enter your Payeer Transaction / Batch ID.',
     enabled: true,
   },
 ];
@@ -136,6 +136,15 @@ export const DEFAULT_ADMIN_WITHDRAW_METHODS: WithdrawMethod[] = [
     instructions: 'Withdrawals will be transferred to your linked WebMoney WMZ purse.',
     enabled: true,
   },
+  {
+    id: 'payeer',
+    name: 'Payeer',
+    type: 'payeer',
+    accountType: 'USD Account',
+    minWithdrawUsd: 5.0,
+    instructions: 'Withdrawals will be transferred to your linked Payeer account (P...).',
+    enabled: true,
+  },
 ];
 
 // Map payment methods to official brand logos
@@ -154,6 +163,8 @@ export const getPaymentLogo = (method: string): string => {
       return '/payment-methods/crypto.svg';
     case 'webmoney':
       return '/payment-methods/webmoney.svg';
+    case 'payeer':
+      return '/payment-methods/payeer.png';
     default:
       return '/payment-methods/crypto.svg';
   }
