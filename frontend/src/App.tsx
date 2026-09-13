@@ -9,6 +9,7 @@ import { ViewerPortal } from './components/ViewerPortal';
 import { MobileSimulator } from './components/MobileSimulator';
 import { AdminPortal } from './components/AdminPortal';
 import { NotFoundPage } from './components/NotFoundPage';
+import { DownloadPage } from './components/DownloadPage';
 import { AuthModal } from './components/AuthModal';
 import { User } from './types';
 import { apiRequest, clearAuthToken, setAuthToken } from './api';
@@ -263,6 +264,12 @@ export function App() {
             path="/admin"
             element={<AdminPortal user={user} onRefreshUser={fetchMe} />}
           />
+
+          {/* Dedicated Direct Download & Landing Routes */}
+          <Route path="/download" element={<DownloadPage />} />
+          <Route path="/downloads" element={<DownloadPage />} />
+          <Route path="/download/*" element={<DownloadPage />} />
+          <Route path="/downloads/*" element={<DownloadPage />} />
 
           {/* Catch-all 404 Not Found fallback */}
           <Route path="*" element={<NotFoundPage user={user} />} />
