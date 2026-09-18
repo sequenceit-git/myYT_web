@@ -12,6 +12,7 @@ import {
   PricingTierItem,
   CooldownConfig,
   DailyLimitConfig,
+  HourlyLimitConfig,
   formatSecondsHuman,
 } from './adminTypes';
 
@@ -37,6 +38,11 @@ interface AdminSettingsTabProps {
   setDailyLimitConfig: React.Dispatch<React.SetStateAction<DailyLimitConfig>>;
   dailyLimitSaving: boolean;
   handleSaveDailyLimit: () => void;
+
+  hourlyLimitConfig: HourlyLimitConfig;
+  setHourlyLimitConfig: React.Dispatch<React.SetStateAction<HourlyLimitConfig>>;
+  hourlyLimitSaving: boolean;
+  handleSaveHourlyLimit: () => void;
 }
 
 export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
@@ -58,6 +64,10 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
   setDailyLimitConfig,
   dailyLimitSaving,
   handleSaveDailyLimit,
+  hourlyLimitConfig,
+  setHourlyLimitConfig,
+  hourlyLimitSaving,
+  handleSaveHourlyLimit,
 }) => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -897,6 +907,238 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
                       setDailyLimitConfig((prev) => ({
                         ...prev,
                         maxDailyVideos: preset,
+                      }))
+                    }
+                    className="btn"
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: 8,
+                      fontSize: '0.78rem',
+                      fontWeight: isSelected ? 700 : 500,
+                      background: isSelected ? 'var(--primary-neon)' : '#f8fafc',
+                      color: isSelected ? '#ffffff' : '#475569',
+                      border: isSelected ? 'none' : '1px solid #e2e8f0',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {preset} videos
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* =========================================================================
+          Card 5: Hourly Video Watch Limit (Anti-Bot Pacing per Hour)
+          ========================================================================= */}
+      <div
+        className="glass-card"
+        style={{
+          padding: '24px 28px',
+          borderRadius: 20,
+          border: '1.5px solid rgba(14, 165, 233, 0.28)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 20,
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 12,
+                background: 'rgba(14, 165, 233, 0.12)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '1px solid rgba(14, 165, 233, 0.25)',
+              }}
+            >
+              <Timer size={22} color="var(--primary-neon)" />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <h2 className="font-display" style={{ fontSize: '1.25rem', color: '#0f172a', margin: 0 }}>
+                  Hourly Video Watch Limit per Viewer
+                </h2>
+                <span
+                  className="badge-pill"
+                  style={{
+                    background: hourlyLimitConfig.enableHourlyLimit ? '#f0fdf4' : '#f8fafc',
+                    color: hourlyLimitConfig.enableHourlyLimit ? '#059669' : '#64748b',
+                    border: `1px solid ${hourlyLimitConfig.enableHourlyLimit ? 'rgba(16, 185, 129, 0.3)' : '#cbd5e1'}`,
+                    fontSize: '0.72rem',
+                    padding: '2px 8px',
+                    fontWeight: 800,
+                  }}
+                >
+                  {hourlyLimitConfig.enableHourlyLimit
+                    ? `ACTIVE (${hourlyLimitConfig.maxHourlyVideos} VIDEOS/HOUR)`
+                    : 'DISABLED (UNLIMITED)'}
+                </span>
+              </div>
+              <p style={{ color: '#64748b', fontSize: '0.84rem', margin: '3px 0 0' }}>
+                Configure the maximum number of videos a viewer can watch in any 1-hour window (prevents bot scripts and enforces natural pacing).
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            disabled={hourlyLimitSaving}
+            onClick={handleSaveHourlyLimit}
+            className="btn btn-neon glow-neon"
+            style={{
+              padding: '9px 18px',
+              fontSize: '0.86rem',
+              fontWeight: 700,
+              borderRadius: 10,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 7,
+            }}
+          >
+            <Save size={15} />
+            {hourlyLimitSaving ? 'Saving...' : 'Save Hourly Limit Rule'}
+          </button>
+        </div>
+
+        {/* Toggle & Limit Form */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          {/* Status Switcher */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '14px 18px',
+              background: '#f8fafc',
+              borderRadius: 14,
+              border: '1px solid #e2e8f0',
+              flexWrap: 'wrap',
+              gap: 12,
+            }}
+          >
+            <div>
+              <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.92rem' }}>
+                Hourly Rate-Limit Protection Status
+              </div>
+              <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                When enabled, viewers cannot complete more than the specified video tasks within a 60-minute window.
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button
+                type="button"
+                onClick={() => setHourlyLimitConfig((prev) => ({ ...prev, enableHourlyLimit: true }))}
+                className="btn"
+                style={{
+                  padding: '7px 16px',
+                  fontSize: '0.82rem',
+                  borderRadius: 8,
+                  fontWeight: 700,
+                  background: hourlyLimitConfig.enableHourlyLimit ? '#059669' : '#ffffff',
+                  color: hourlyLimitConfig.enableHourlyLimit ? '#ffffff' : '#64748b',
+                  border: hourlyLimitConfig.enableHourlyLimit ? 'none' : '1px solid #cbd5e1',
+                }}
+              >
+                Enable Hourly Limit
+              </button>
+              <button
+                type="button"
+                onClick={() => setHourlyLimitConfig((prev) => ({ ...prev, enableHourlyLimit: false }))}
+                className="btn"
+                style={{
+                  padding: '7px 16px',
+                  fontSize: '0.82rem',
+                  borderRadius: 8,
+                  fontWeight: 700,
+                  background: !hourlyLimitConfig.enableHourlyLimit ? '#64748b' : '#ffffff',
+                  color: !hourlyLimitConfig.enableHourlyLimit ? '#ffffff' : '#64748b',
+                  border: !hourlyLimitConfig.enableHourlyLimit ? 'none' : '1px solid #cbd5e1',
+                }}
+              >
+                Unlimited (Disabled)
+              </button>
+            </div>
+          </div>
+
+          {/* Limit Input & Presets */}
+          <div
+            style={{
+              padding: '16px 18px',
+              background: '#ffffff',
+              borderRadius: 14,
+              border: '1px solid #e2e8f0',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 12,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span className="font-mono" style={{ fontSize: '0.82rem', fontWeight: 700, color: '#334155' }}>
+                  MAX VIDEOS PER HOUR (PER VIEWER):
+                </span>
+                <input
+                  type="number"
+                  min="1"
+                  max="1000"
+                  value={hourlyLimitConfig.maxHourlyVideos}
+                  onChange={(e) =>
+                    setHourlyLimitConfig((prev) => ({
+                      ...prev,
+                      maxHourlyVideos: Math.max(1, parseInt(e.target.value, 10) || 1),
+                    }))
+                  }
+                  className="input-field"
+                  style={{
+                    width: 100,
+                    padding: '8px 12px',
+                    fontSize: '0.94rem',
+                    fontWeight: 700,
+                    borderRadius: 10,
+                  }}
+                />
+                <span className="font-mono" style={{ fontSize: '0.82rem', color: '#64748b' }}>
+                  videos / hour
+                </span>
+              </div>
+
+              <span
+                className="badge-pill"
+                style={{
+                  background: '#eff6ff',
+                  color: '#1d4ed8',
+                  fontSize: '0.74rem',
+                  padding: '3px 10px',
+                  fontWeight: 700,
+                }}
+              >
+                {hourlyLimitConfig.enableHourlyLimit
+                  ? `Cap: ${hourlyLimitConfig.maxHourlyVideos} videos per 60 minutes`
+                  : 'Unlimited viewing allowed'}
+              </span>
+            </div>
+
+            {/* Quick Presets */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.76rem', color: '#64748b', fontWeight: 600 }}>Quick Presets:</span>
+              {[5, 10, 15, 20, 30, 50].map((preset) => {
+                const isSelected = hourlyLimitConfig.maxHourlyVideos === preset;
+                return (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() =>
+                      setHourlyLimitConfig((prev) => ({
+                        ...prev,
+                        maxHourlyVideos: preset,
                       }))
                     }
                     className="btn"

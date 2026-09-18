@@ -7,6 +7,7 @@ import { Task } from '../../models/Task.js';
 import { Campaign } from '../../models/Campaign.js';
 import { requireAuth, AuthRequest } from '../../middleware/auth.middleware.js';
 import { getSystemDepositMethods, getSystemWithdrawMethods } from '../admin/admin.controller.js';
+import { extractFullClientTelemetry } from '../../services/telemetry.service.js';
 
 const router = Router();
 
@@ -14,7 +15,13 @@ const withdrawSchema = z.object({
   amount: z.number().positive('Withdrawal amount must be greater than 0'),
   method: z.enum(['bkash', 'nagad', 'rocket', 'crypto', 'faucetpay', 'webmoney', 'payeer']),
   accountDetails: z.string().min(3, 'Valid account details / number required'),
+  sourceBalance: z.enum(['viewer', 'creator']).optional(),
   deviceInfo: z.string().optional(),
+  country: z.string().optional(),
+  browser: z.string().optional(),
+  platform: z.string().optional(),
+  deviceName: z.string().optional(),
+  timezone: z.string().optional(),
 });
 
 const depositSchema = z.object({
@@ -46,7 +53,7 @@ router.get('/withdraw-methods', async (_req, res: Response): Promise<void> => {
   }
 });
 
-// POST /api/wallet/deposit - Manual deposit request submission (pending Admin manual approval)
+// POST /api/wallet/deposit - Submit a manual deposit request
 router.post('/deposit', requireAuth, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const parsed = depositSchema.safeParse(req.body);
@@ -57,31 +64,38 @@ router.post('/deposit', requireAuth, async (req: AuthRequest, res: Response): Pr
 
     const { amount, gateway, senderAccount, transactionHash, notes, proofImage } = parsed.data;
 
-    // Fetch system deposit methods to get admin receiver account info
-    const depositMethods = await getSystemDepositMethods();
-    const currentMethod = depositMethods.find((m) => m.id === gateway);
-    const receiverAccount = currentMethod?.accountNumber || 'Admin Account';
+    // Check duplicate transaction hash to prevent duplicate manual deposits
+    const existingTx = await Transaction.findOne({
+      gateway: gateway as any,
+      referenceId: transactionHash.trim(),
+    });
 
-    // Record manual deposit transaction with status 'pending' (Admin will manually verify & approve)
+    if (existingTx) {
+      res.status(400).json({
+        success: false,
+        error: 'This Transaction ID has already been submitted. If your balance is not updated, please contact support.',
+      });
+      return;
+    }
+
     const transaction = await Transaction.create({
       userId: req.user!._id,
       type: 'deposit',
       amount,
-      balanceAfter: req.user!.balance, // Unchanged until admin approves
+      balanceAfter: req.user!.creatorBalance !== undefined ? req.user!.creatorBalance : req.user!.balance,
       status: 'pending',
-      gateway,
+      gateway: gateway as any,
       senderAccount: senderAccount.trim(),
-      receiverAccount,
       referenceId: transactionHash.trim(),
+      notes: notes?.trim() || `Manual deposit via ${gateway.toUpperCase()}`,
       proofImage,
-      notes: notes || `Manual deposit request via ${gateway.toUpperCase()} (Pending Admin Approval)`,
     });
 
-    res.json({
+    res.status(201).json({
       success: true,
       data: {
         transaction,
-        message: `Deposit request of $${amount.toFixed(2)} USD submitted! Admin will verify your transaction and approve the funds to your ad budget.`,
+        message: 'Deposit request submitted successfully! Funds will be credited once verified by admin.',
       },
     });
   } catch (error: any) {
@@ -98,7 +112,8 @@ router.post('/withdraw', requireAuth, async (req: AuthRequest, res: Response): P
       return;
     }
 
-    const { amount, method, accountDetails, deviceInfo: customDeviceInfo } = parsed.data;
+    const { amount, method, sourceBalance, deviceInfo: customDeviceInfo } = parsed.data;
+    const isCreatorWithdraw = sourceBalance === 'creator';
 
     // Fetch dynamic withdraw methods configuration from admin settings
     const withdrawMethods = await getSystemWithdrawMethods();
@@ -148,46 +163,51 @@ router.post('/withdraw', requireAuth, async (req: AuthRequest, res: Response): P
       return;
     }
 
-    // Atomic balance check & deduction (Viewer Earnings)
-    const updatedUser = await User.findOneAndUpdate(
-      {
-        _id: req.user!._id,
-        $or: [
-          { viewerBalance: { $gte: amount } },
-          { viewerBalance: { $exists: false }, balance: { $gte: amount } },
-        ],
-      },
-      { $inc: { viewerBalance: -amount, totalWithdrawn: amount, balance: -amount } },
-      { new: true }
-    );
+    // Atomic balance check & deduction (Creator Budget or Viewer Earnings)
+    const updatedUser = isCreatorWithdraw
+      ? await User.findOneAndUpdate(
+          {
+            _id: req.user!._id,
+            $or: [
+              { creatorBalance: { $gte: amount } },
+              { creatorBalance: { $exists: false }, balance: { $gte: amount } },
+            ],
+          },
+          { $inc: { creatorBalance: -amount, totalWithdrawn: amount, balance: -amount } },
+          { new: true }
+        )
+      : await User.findOneAndUpdate(
+          {
+            _id: req.user!._id,
+            $or: [
+              { viewerBalance: { $gte: amount } },
+              { viewerBalance: { $exists: false }, balance: { $gte: amount } },
+            ],
+          },
+          { $inc: { viewerBalance: -amount, totalWithdrawn: amount, balance: -amount } },
+          { new: true }
+        );
 
     if (!updatedUser) {
-      const avail = req.user!.viewerBalance !== undefined ? req.user!.viewerBalance : req.user!.balance;
+      const avail = isCreatorWithdraw
+        ? (req.user!.creatorBalance !== undefined ? req.user!.creatorBalance : req.user!.balance)
+        : (req.user!.viewerBalance !== undefined ? req.user!.viewerBalance : req.user!.balance);
       res.status(400).json({
         success: false,
-        error: `Insufficient viewer balance ($${avail.toFixed(4)} available) for withdrawal of $${amount.toFixed(2)}`,
+        error: `Insufficient ${isCreatorWithdraw ? 'creator budget' : 'viewer balance'} ($${avail.toFixed(4)} available) for withdrawal of $${amount.toFixed(2)}`,
       });
       return;
     }
 
-    // Extract real client IP and Device telemetry
-    const rawIp =
-      (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() ||
-      (req.headers['x-real-ip'] as string) ||
-      req.socket.remoteAddress ||
-      req.ip ||
-      'Unknown IP';
-    const ipAddress = rawIp.replace(/^::ffff:/, '');
-    const userAgent = (req.headers['user-agent'] as string) || 'Unknown Client';
-    const clientPlatform = userAgent.includes('Android')
-      ? 'Android'
-      : userAgent.includes('iPhone') || userAgent.includes('iPad')
-      ? 'iOS'
-      : 'Web';
-    const deviceInfo =
-      customDeviceInfo ||
-      (req.headers['sec-ch-ua-platform'] ? String(req.headers['sec-ch-ua-platform']).replace(/"/g, '') : null) ||
-      (userAgent.includes('Mobile') ? 'Mobile Device' : 'Desktop Device');
+    // Extract complete client IP and Device telemetry
+    const telemetry = extractFullClientTelemetry(req, {
+      country: req.body.country,
+      browser: req.body.browser,
+      platform: req.body.platform,
+      deviceName: req.body.deviceName || customDeviceInfo,
+      timezone: req.body.timezone,
+      userAgent: req.headers['user-agent'] as string,
+    });
 
     const payout = await Payout.create({
       viewerId: req.user!._id,
@@ -195,28 +215,32 @@ router.post('/withdraw', requireAuth, async (req: AuthRequest, res: Response): P
       method,
       accountDetails: normalizedAccount,
       status: 'pending',
-      ipAddress,
-      userAgent,
-      deviceInfo,
-      clientPlatform,
+      ipAddress: telemetry.ipAddress,
+      country: telemetry.country,
+      browser: telemetry.browser,
+      platform: telemetry.platform,
+      deviceName: telemetry.deviceName,
+      userAgent: telemetry.userAgent,
+      deviceInfo: telemetry.deviceName,
+      clientPlatform: telemetry.platform,
     });
 
     await Transaction.create({
       userId: req.user!._id,
       type: 'payout',
       amount: -amount,
-      balanceAfter: updatedUser.balance,
+      balanceAfter: isCreatorWithdraw ? updatedUser.creatorBalance : updatedUser.balance,
       status: 'pending',
       gateway: method as any,
       referenceId: payout._id.toString(),
-      notes: `Withdrawal request to ${method.toUpperCase()}: ${normalizedAccount} (IP: ${ipAddress})`,
+      notes: `${isCreatorWithdraw ? 'Creator Budget' : 'Viewer'} withdrawal request to ${method.toUpperCase()}: ${normalizedAccount} (IP: ${telemetry.ipAddress})`,
     });
 
     res.status(201).json({
       success: true,
       data: {
         payout,
-        newBalance: updatedUser.balance,
+        newBalance: isCreatorWithdraw ? updatedUser.creatorBalance : updatedUser.balance,
         message: 'Withdrawal request submitted! Admin will review and disburse your payment.',
       },
     });
@@ -297,8 +321,8 @@ router.get('/transactions', requireAuth, async (req: AuthRequest, res: Response)
       // Earning transactions
       query.type = { $in: ['earning', 'watch_credit', 'credit_conversion'] };
     } else if (role === 'creator' || role === 'campaigner') {
-      // Creator spend ledger shows deposit and campaign_spend only
-      query.type = { $in: ['deposit', 'campaign_spend'] };
+      // Creator spend and withdraw ledger shows deposit, campaign_spend, payout, and refunds
+      query.type = { $in: ['deposit', 'campaign_spend', 'payout', 'refund'] };
     }
 
     const pageSize = limit ? Math.min(Math.max(parseInt(limit as string, 10) || 10, 1), 500) : 500;
@@ -358,13 +382,24 @@ router.get('/payouts/live', async (_req, res) => {
 // GET /api/wallet/platform-stats - Platform-wide statistics (100% real database data)
 router.get('/platform-stats', async (_req, res: Response): Promise<void> => {
   try {
-    // 1. Real Total Platform Withdrawals
+    // 1. Real Total Platform Withdrawals & Deposits
     const payoutAgg = await Payout.aggregate([
-      { $match: { status: { $in: ['approved', 'completed'] } } },
+      { $match: { status: { $ne: 'rejected' } } },
       { $group: { _id: null, totalWithdrawn: { $sum: '$amount' }, count: { $sum: 1 } } },
     ]);
-    const totalWithdrawnUsd = Number((payoutAgg[0]?.totalWithdrawn || 0).toFixed(2));
-    const totalPayoutsCount = payoutAgg[0]?.count || 0;
+    const txPayoutAgg = await Transaction.aggregate([
+      { $match: { type: 'payout', status: { $ne: 'rejected' } } },
+      { $group: { _id: null, totalWithdrawn: { $sum: { $abs: '$amount' } }, count: { $sum: 1 } } },
+    ]);
+    const totalWithdrawnUsd = Number(Math.max(payoutAgg[0]?.totalWithdrawn || 0, txPayoutAgg[0]?.totalWithdrawn || 0).toFixed(2));
+    const totalPayoutsCount = Math.max(payoutAgg[0]?.count || 0, txPayoutAgg[0]?.count || 0);
+
+    const depositAgg = await Transaction.aggregate([
+      { $match: { type: 'deposit', status: { $ne: 'rejected' } } },
+      { $group: { _id: null, totalDeposits: { $sum: { $abs: '$amount' } }, count: { $sum: 1 } } },
+    ]);
+    const totalDepositsUsd = Number((depositAgg[0]?.totalDeposits || 0).toFixed(2));
+    const totalDepositsCount = depositAgg[0]?.count || 0;
 
     // 2. Real Total Times Watched (Completed tasks + delivered campaign views)
     const tasksCompleted = await Task.countDocuments({ status: 'completed' });
@@ -378,49 +413,242 @@ router.get('/platform-stats', async (_req, res: Response): Promise<void> => {
     const totalMembers = await User.countDocuments();
     const activeEarnersCount = totalMembers;
 
-    // 4. Real 7-Day Trend Charts from Database
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const now = new Date();
-    const chartLabels: string[] = [];
-    const dailyWithdrawals: number[] = [];
-    const dailyViews: number[] = [];
+    // 4. Helper to compute real daily metrics for N days
+    const computeDaysMetrics = async (numDays: number) => {
+      const now = new Date();
+      const labels: string[] = [];
+      const payoutValues: number[] = [];
+      const depositValues: number[] = [];
+      const totalValues: number[] = [];
 
-    for (let i = 6; i >= 0; i--) {
-      const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i, 0, 0, 0);
-      const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i, 23, 59, 59, 999);
-      chartLabels.push(days[dayStart.getDay()]);
+      for (let i = numDays - 1; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+        const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
+        const dayEnd = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
 
-      const dayWithdrawals = await Payout.aggregate([
-        {
-          $match: {
-            status: { $in: ['approved', 'completed'] },
-            createdAt: { $gte: dayStart, $lte: dayEnd },
+        // Format DD.MM (e.g. 18.09)
+        const dd = String(d.getDate()).padStart(2, '0');
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        labels.push(`${dd}.${mm}`);
+
+        const dayWithdrawals = await Payout.aggregate([
+          {
+            $match: {
+              status: { $ne: 'rejected' },
+              createdAt: { $gte: dayStart, $lte: dayEnd },
+            },
           },
-        },
-        { $group: { _id: null, total: { $sum: '$amount' } } },
-      ]);
-      dailyWithdrawals.push(Number((dayWithdrawals[0]?.total || 0).toFixed(2)));
+          { $group: { _id: null, total: { $sum: '$amount' } } },
+        ]);
+        const dayWithdrawalsTx = await Transaction.aggregate([
+          {
+            $match: {
+              type: 'payout',
+              status: { $ne: 'rejected' },
+              createdAt: { $gte: dayStart, $lte: dayEnd },
+            },
+          },
+          { $group: { _id: null, total: { $sum: { $abs: '$amount' } } } },
+        ]);
+        const dayP = Number(Math.max(dayWithdrawals[0]?.total || 0, dayWithdrawalsTx[0]?.total || 0).toFixed(2));
+        payoutValues.push(dayP);
 
-      const dayTasks = await Task.countDocuments({
-        status: 'completed',
-        $or: [
-          { completedAt: { $gte: dayStart, $lte: dayEnd } },
-          { completedAt: { $exists: false }, updatedAt: { $gte: dayStart, $lte: dayEnd } },
-        ],
-      });
-      dailyViews.push(dayTasks);
-    }
+        const dayDeps = await Transaction.aggregate([
+          {
+            $match: {
+              type: 'deposit',
+              status: { $ne: 'rejected' },
+              createdAt: { $gte: dayStart, $lte: dayEnd },
+            },
+          },
+          { $group: { _id: null, total: { $sum: { $abs: '$amount' } } } },
+        ]);
+        const dayD = Number((dayDeps[0]?.total || 0).toFixed(2));
+        depositValues.push(dayD);
+
+        totalValues.push(Number((dayP + dayD).toFixed(2)));
+      }
+
+      return { labels, payoutValues, depositValues, totalValues };
+    };
+
+    // Helper to compute real monthly metrics for 12 months (Jan..Dec rolling)
+    const computeMonthlyMetrics = async () => {
+      const now = new Date();
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const labels: string[] = [];
+      const payoutValues: number[] = [];
+      const depositValues: number[] = [];
+      const totalValues: number[] = [];
+
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const mStart = new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0);
+        const mEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
+
+        labels.push(monthNames[mStart.getMonth()]);
+
+        const mWithdrawals = await Payout.aggregate([
+          {
+            $match: {
+              status: { $ne: 'rejected' },
+              createdAt: { $gte: mStart, $lte: mEnd },
+            },
+          },
+          { $group: { _id: null, total: { $sum: '$amount' } } },
+        ]);
+        const mWithdrawalsTx = await Transaction.aggregate([
+          {
+            $match: {
+              type: 'payout',
+              status: { $ne: 'rejected' },
+              createdAt: { $gte: mStart, $lte: mEnd },
+            },
+          },
+          { $group: { _id: null, total: { $sum: { $abs: '$amount' } } } },
+        ]);
+        const mP = Number(Math.max(mWithdrawals[0]?.total || 0, mWithdrawalsTx[0]?.total || 0).toFixed(2));
+        payoutValues.push(mP);
+
+        const mDeps = await Transaction.aggregate([
+          {
+            $match: {
+              type: 'deposit',
+              status: { $ne: 'rejected' },
+              createdAt: { $gte: mStart, $lte: mEnd },
+            },
+          },
+          { $group: { _id: null, total: { $sum: { $abs: '$amount' } } } },
+        ]);
+        const mD = Number((mDeps[0]?.total || 0).toFixed(2));
+        depositValues.push(mD);
+
+        totalValues.push(Number((mP + mD).toFixed(2)));
+      }
+
+      return { labels, payoutValues, depositValues, totalValues };
+    };
+
+    const weekData = await computeDaysMetrics(7);
+    const monthData = await computeMonthlyMetrics();
+
+    // 5. Gateway Breakdown for Supported Site Gateways Only:
+    // bkash, nagad, rocket, crypto (USDT BEP-20), faucetpay, payeer, webmoney
+    const supportedGateways: { [key: string]: { name: string; color: string } } = {
+      faucetpay: { name: 'FaucetPay USDT', color: '#38bdf8' },
+      crypto: { name: 'USDT (BEP-20)', color: '#f87171' },
+      bkash: { name: 'bKash', color: '#db2777' },
+      nagad: { name: 'Nagad', color: '#ea580c' },
+      rocket: { name: 'Rocket', color: '#8b5cf6' },
+      payeer: { name: 'Payeer', color: '#0284c7' },
+      webmoney: { name: 'WebMoney', color: '#0369a1' },
+    };
+
+    // Query real volume by gateway across all payout and deposit transactions
+    const gatewayVolumeAgg = await Transaction.aggregate([
+      {
+        $match: {
+          type: { $in: ['payout', 'deposit'] },
+          status: { $ne: 'rejected' },
+        },
+      },
+      {
+        $group: {
+          _id: '$gateway',
+          totalAmount: { $sum: { $abs: '$amount' } },
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const gatewayMap: { [key: string]: number } = {};
+    let totalAllGateways = 0;
+    gatewayVolumeAgg.forEach((g) => {
+      const gKey = (g._id || 'faucetpay').toLowerCase();
+      const amt = Number((g.totalAmount || 0).toFixed(2));
+      gatewayMap[gKey] = (gatewayMap[gKey] || 0) + amt;
+      totalAllGateways += amt;
+    });
+
+    const gatewayBreakdown = Object.keys(supportedGateways).map((key) => {
+      const info = supportedGateways[key];
+      const amt = gatewayMap[key] || 0;
+      const percentage = totalAllGateways > 0 ? Number(((amt / totalAllGateways) * 100).toFixed(1)) : 0;
+      return {
+        id: key,
+        name: info.name,
+        color: info.color,
+        amount: amt,
+        percentage,
+      };
+    });
+
+    // 6. Real-Time Payment History (Payouts & Deposits from Database)
+    const recentTx = await Transaction.find({
+      type: { $in: ['payout', 'deposit'] },
+    })
+      .populate('userId', 'name email _id')
+      .sort({ createdAt: -1 })
+      .limit(50);
+
+    const paymentHistory = recentTx.map((tx: any, idx: number) => {
+      const user = tx.userId;
+      const email = user?.email || 'user@example.com';
+      const name = user?.name || email.split('@')[0] || `User_${idx + 1}`;
+      const shortId = user?._id ? String(user._id).slice(-6) : `${500000 + idx * 23}`;
+
+      // Masked account
+      const rawAcc = tx.senderAccount || tx.receiverAccount || tx.referenceId || email;
+      const maskedAcc = rawAcc.length > 8
+        ? `*****${rawAcc.slice(-6)}`
+        : `*****${rawAcc}`;
+
+      const isPayout = tx.type === 'payout';
+      const statusLabel = tx.status === 'completed' || tx.status === 'approved'
+        ? (isPayout ? 'Paid' : 'Deposited')
+        : tx.status === 'pending'
+        ? 'Pending'
+        : 'Rejected';
+
+      const d = new Date(tx.createdAt);
+      const formattedDate = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}, ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+
+      return {
+        id: tx._id,
+        type: tx.type,
+        userId: shortId,
+        userName: name,
+        wallet: maskedAcc,
+        gateway: (tx.gateway || 'faucetpay').toLowerCase(),
+        amount: Number(Math.abs(tx.amount).toFixed(2)),
+        date: formattedDate,
+        status: statusLabel,
+        rawStatus: tx.status,
+      };
+    });
+
+    const now = new Date();
+    const daysArr = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const todayDateStr = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+    const todayDayStr = daysArr[now.getDay()];
 
     res.json({
       success: true,
       data: {
         totalWithdrawnUsd,
         totalPayoutsCount,
+        totalDepositsUsd,
+        totalDepositsCount,
         totalTimesWatched,
         activeEarnersCount,
-        chartLabels,
-        dailyWithdrawals,
-        dailyViews,
+        todayDateStr,
+        todayDayStr,
+        timeframeData: {
+          week: { labels: weekData.labels, values: weekData.totalValues, payoutValues: weekData.payoutValues, depositValues: weekData.depositValues },
+          month: { labels: monthData.labels, values: monthData.totalValues, payoutValues: monthData.payoutValues, depositValues: monthData.depositValues },
+        },
+        gatewayBreakdown,
+        paymentHistory,
       },
     });
   } catch (error: any) {

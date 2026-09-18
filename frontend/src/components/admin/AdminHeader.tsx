@@ -165,24 +165,6 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
 
         {/* Header Right Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {/* Simulated Concurrency Pill */}
-          <div
-            style={{
-              background: '#f0fdf4',
-              border: '1px solid rgba(16, 185, 129, 0.3)',
-              padding: '6px 12px',
-              borderRadius: 10,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-            }}
-          >
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }} className="pulse-neon" />
-            <span className="font-mono" style={{ fontSize: '0.76rem', fontWeight: 700, color: '#059669' }}>
-              {stats?.simulatedConcurrency?.toLocaleString() || '4,250'} LIVE
-            </span>
-          </div>
-
           <button
             onClick={onRefresh}
             className="btn btn-ghost"

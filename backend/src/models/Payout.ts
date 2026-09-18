@@ -7,8 +7,13 @@ export interface IPayout extends Document {
   accountDetails: string; // phone number, crypto address, faucetpay email, payeer account, etc.
   status: 'pending' | 'processing' | 'approved' | 'rejected';
   adminNotes?: string;
+  rejectionReason?: string;
   transactionRef?: string;
   ipAddress?: string;
+  country?: string;
+  browser?: string;
+  platform?: string;
+  deviceName?: string;
   userAgent?: string;
   deviceInfo?: string;
   clientPlatform?: string;
@@ -36,8 +41,13 @@ const PayoutSchema = new Schema<IPayout>(
       index: true,
     },
     adminNotes: { type: String },
+    rejectionReason: { type: String },
     transactionRef: { type: String },
     ipAddress: { type: String },
+    country: { type: String },
+    browser: { type: String },
+    platform: { type: String },
+    deviceName: { type: String },
     userAgent: { type: String },
     deviceInfo: { type: String },
     clientPlatform: { type: String },

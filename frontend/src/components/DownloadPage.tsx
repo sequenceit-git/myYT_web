@@ -69,14 +69,13 @@ export const DownloadPage: React.FC = () => {
         {/* App Icon */}
         <div style={{ display: 'inline-block', position: 'relative', marginBottom: 16 }}>
           <img
-            src="/payment-methods/image.png"
+            src="/icons/phone-icon.png"
             alt="ytCash"
             style={{
               width: 80,
               height: 80,
-              borderRadius: 20,
+              borderRadius: '50%',
               boxShadow: '0 8px 24px rgba(14, 165, 233, 0.35)',
-              border: '2px solid #ffffff',
             }}
           />
           <div

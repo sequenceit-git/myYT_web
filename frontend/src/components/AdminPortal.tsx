@@ -21,12 +21,13 @@ import {
   PricingTierItem,
   CooldownConfig,
   DailyLimitConfig,
+  HourlyLimitConfig,
   AdminTab,
   DEFAULT_ADMIN_DEPOSIT_METHODS,
   DEFAULT_ADMIN_WITHDRAW_METHODS,
 } from './admin/adminTypes';
 
-export type { PricingTierItem, CooldownConfig, DailyLimitConfig, AdminTab };
+export type { PricingTierItem, CooldownConfig, DailyLimitConfig, HourlyLimitConfig, AdminTab };
 
 interface AdminPortalProps {
   user: User | null;
@@ -69,6 +70,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
   });
   const [dailyLimitSaving, setDailyLimitSaving] = useState(false);
 
+  // Hourly Video Limit Engine States
+  const [hourlyLimitConfig, setHourlyLimitConfig] = useState<HourlyLimitConfig>({
+    enableHourlyLimit: false,
+    maxHourlyVideos: 20,
+  });
+  const [hourlyLimitSaving, setHourlyLimitSaving] = useState(false);
+
   // Deposit Methods & Receiver Addresses State
   const [depositMethodsConfig, setDepositMethodsConfig] = useState<DepositMethod[]>(DEFAULT_ADMIN_DEPOSIT_METHODS);
   const [depositMethodsSaving, setDepositMethodsSaving] = useState(false);
@@ -86,9 +94,11 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
   const [dataLoading, setDataLoading] = useState(false);
   const [actionNotice, setActionNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  // Search filters
+  // Search filters & category tabs
   const [userSearch, setUserSearch] = useState('');
   const [campaignSearch, setCampaignSearch] = useState('');
+  const [campaignFilter, setCampaignFilter] = useState<'all' | 'active' | 'paused' | 'completed' | 'cancelled'>('all');
+  const [userFilter, setUserFilter] = useState<'all' | 'active' | 'banned' | 'viewer' | 'campaigner'>('all');
 
   // Pagination states
   const [payoutPage, setPayoutPage] = useState(1);
@@ -159,6 +169,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
           pricingTiersList?: PricingTierItem[];
           cooldownSettings: any;
           dailyLimitSettings?: any;
+          hourlyLimitSettings?: any;
         }>('/admin/settings'),
       ]);
 
@@ -208,7 +219,16 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
           });
         }
 
-        // 4. USD to BDT Currency Rate
+        // 4. Hourly Limit Settings: normalize properties
+        if (settingsRes.data.hourlyLimitSettings) {
+          const hl = settingsRes.data.hourlyLimitSettings as any;
+          setHourlyLimitConfig({
+            enableHourlyLimit: Boolean(hl.enableHourlyLimit ?? hl.enabled),
+            maxHourlyVideos: Number(hl.maxHourlyVideos ?? hl.limit ?? 20),
+          });
+        }
+
+        // 5. USD to BDT Currency Rate
         if (settingsRes.data.usdToBdt) {
           setDollarRateInput(String(settingsRes.data.usdToBdt));
         }
@@ -340,6 +360,38 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
     }
   };
 
+  // Hourly Limit Settings Handlers
+  const handleSaveHourlyLimit = async () => {
+    setHourlyLimitSaving(true);
+    try {
+      const res = await apiRequest<{ message?: string; hourlyLimitSettings: any }>('/admin/settings/hourly-limit', {
+        method: 'POST',
+        body: JSON.stringify({
+          enableHourlyLimit: hourlyLimitConfig.enableHourlyLimit,
+          maxHourlyVideos: hourlyLimitConfig.maxHourlyVideos,
+          enabled: hourlyLimitConfig.enableHourlyLimit,
+          limit: hourlyLimitConfig.maxHourlyVideos,
+        }),
+      });
+      if (res.success) {
+        setActionNotice({ type: 'success', message: (res as any).message || 'Hourly watch limit saved successfully!' });
+        if (res.data?.hourlyLimitSettings) {
+          const hl = res.data.hourlyLimitSettings as any;
+          setHourlyLimitConfig({
+            enableHourlyLimit: Boolean(hl.enableHourlyLimit ?? hl.enabled),
+            maxHourlyVideos: Number(hl.maxHourlyVideos ?? hl.limit ?? 20),
+          });
+        }
+      } else {
+        setActionNotice({ type: 'error', message: res.error || 'Failed to save hourly limit settings' });
+      }
+    } catch (err: any) {
+      setActionNotice({ type: 'error', message: err.message || 'Error saving hourly limit settings' });
+    } finally {
+      setHourlyLimitSaving(false);
+    }
+  };
+
   useEffect(() => {
     if (user && user.role === 'admin') {
       fetchAdminData();
@@ -432,10 +484,12 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
     setRejectLoading(true);
 
     try {
+      const reasonText = rejectReason.trim() || 'Declined by Administrator (Invalid account or policy issue)';
       const res = await apiRequest(`/admin/payouts/${rejectModalPayout._id}/reject`, {
         method: 'POST',
         body: JSON.stringify({
-          adminNotes: rejectReason || 'Declined by Administrator (Invalid account or policy issue)',
+          adminNotes: reasonText,
+          rejectionReason: reasonText,
         }),
       });
 
@@ -682,6 +736,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
           campaignsList={campaignsList}
           campaignSearch={campaignSearch}
           setCampaignSearch={setCampaignSearch}
+          campaignFilter={campaignFilter}
+          setCampaignFilter={setCampaignFilter}
           campPage={campPage}
           setCampPage={setCampPage}
           pageSize={PAGE_SIZE}
@@ -695,6 +751,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
           usersList={usersList}
           userSearch={userSearch}
           setUserSearch={setUserSearch}
+          userFilter={userFilter}
+          setUserFilter={setUserFilter}
           userPage={userPage}
           setUserPage={setUserPage}
           pageSize={PAGE_SIZE}
@@ -723,6 +781,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
           setDailyLimitConfig={setDailyLimitConfig}
           dailyLimitSaving={dailyLimitSaving}
           handleSaveDailyLimit={handleSaveDailyLimit}
+          hourlyLimitConfig={hourlyLimitConfig}
+          setHourlyLimitConfig={setHourlyLimitConfig}
+          hourlyLimitSaving={hourlyLimitSaving}
+          handleSaveHourlyLimit={handleSaveHourlyLimit}
         />
       )}
 

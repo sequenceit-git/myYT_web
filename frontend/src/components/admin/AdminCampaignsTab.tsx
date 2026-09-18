@@ -3,10 +3,14 @@ import { Search, ExternalLink } from 'lucide-react';
 import { Campaign } from '../../types';
 import { AdminPagination } from './AdminPagination';
 
+export type CampaignFilterType = 'all' | 'active' | 'paused' | 'completed' | 'cancelled';
+
 interface AdminCampaignsTabProps {
   campaignsList: Campaign[];
   campaignSearch: string;
   setCampaignSearch: (term: string) => void;
+  campaignFilter?: CampaignFilterType;
+  setCampaignFilter?: (filter: CampaignFilterType) => void;
   campPage: number;
   setCampPage: (page: number) => void;
   pageSize: number;
@@ -17,12 +21,35 @@ export const AdminCampaignsTab: React.FC<AdminCampaignsTabProps> = ({
   campaignsList,
   campaignSearch,
   setCampaignSearch,
+  campaignFilter = 'all',
+  setCampaignFilter,
   campPage,
   setCampPage,
   pageSize,
   onToggleCampaign,
 }) => {
+  const [internalFilter, setInternalFilter] = React.useState<CampaignFilterType>('all');
+  const activeFilter = setCampaignFilter ? campaignFilter : internalFilter;
+  const handleFilterChange = (f: CampaignFilterType) => {
+    if (setCampaignFilter) setCampaignFilter(f);
+    else setInternalFilter(f);
+    setCampPage(1);
+  };
+
+  const getFilteredByStatus = (c: Campaign, filter: CampaignFilterType): boolean => {
+    if (filter === 'all') return true;
+    if (filter === 'active') return c.status === 'active' && !c.pausedByAdmin;
+    if (filter === 'paused') return c.status === 'paused' || !!c.pausedByAdmin;
+    if (filter === 'completed') return c.status === 'completed';
+    if (filter === 'cancelled') return c.status === 'cancelled';
+    return true;
+  };
+
   const filteredCampaigns = campaignsList.filter((c) => {
+    // 1. Status Filter Tab
+    if (!getFilteredByStatus(c, activeFilter)) return false;
+
+    // 2. Search Query
     if (!campaignSearch.trim()) return true;
     const q = campaignSearch.toLowerCase();
     return (
@@ -33,6 +60,7 @@ export const AdminCampaignsTab: React.FC<AdminCampaignsTabProps> = ({
 
   return (
     <div className="glass-card" style={{ padding: '22px', borderRadius: 18 }}>
+      {/* Header with Sub-filter Pills and Search */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h2 className="font-display" style={{ fontSize: '1.35rem', color: '#0f172a', margin: 0 }}>
@@ -43,25 +71,75 @@ export const AdminCampaignsTab: React.FC<AdminCampaignsTabProps> = ({
           </div>
         </div>
 
-        {/* Search Input */}
-        <div style={{ position: 'relative', width: 240 }}>
-          <input
-            type="text"
-            placeholder="Search campaigns..."
-            value={campaignSearch}
-            onChange={(e) => {
-              setCampaignSearch(e.target.value);
-              setCampPage(1);
+        {/* Sub-Filter Tabs & Search */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          {/* Touch-Scrollable Sub-Filter Pills */}
+          <div
+            className="mobile-scroll-x"
+            style={{
+              display: 'flex',
+              gap: 6,
+              background: '#f1f5f9',
+              padding: 4,
+              borderRadius: 12,
+              maxWidth: '100%',
+              overflowX: 'auto',
             }}
-            className="input-field"
-            style={{ padding: '7px 12px 7px 32px', fontSize: '0.82rem', borderRadius: 8 }}
-          />
-          <Search size={14} style={{ position: 'absolute', left: 10, top: 10, color: '#94a3b8' }} />
+          >
+            {(['all', 'active', 'paused', 'completed', 'cancelled'] as const).map((filter) => {
+              const isSelected = activeFilter === filter;
+              const count = campaignsList.filter((c) => getFilteredByStatus(c, filter)).length;
+              return (
+                <button
+                  key={filter}
+                  onClick={() => handleFilterChange(filter)}
+                  style={{
+                    padding: '6px 14px',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    borderRadius: 8,
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: isSelected ? '#ffffff' : 'transparent',
+                    color: isSelected ? 'var(--primary-neon)' : '#64748b',
+                    boxShadow: isSelected ? '0 1px 4px rgba(0,0,0,0.06)' : 'none',
+                    textTransform: 'uppercase',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    flexShrink: 0,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  <span>{filter}</span>
+                  <span style={{ fontSize: '0.72rem', opacity: 0.75 }}>({count})</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Search Input */}
+          <div style={{ position: 'relative', width: 220 }}>
+            <input
+              type="text"
+              placeholder="Search campaigns..."
+              value={campaignSearch}
+              onChange={(e) => {
+                setCampaignSearch(e.target.value);
+                setCampPage(1);
+              }}
+              className="input-field"
+              style={{ padding: '7px 12px 7px 32px', fontSize: '0.82rem', borderRadius: 8 }}
+            />
+            <Search size={14} style={{ position: 'absolute', left: 10, top: 10, color: '#94a3b8' }} />
+          </div>
         </div>
       </div>
 
       {!filteredCampaigns.length ? (
-        <div style={{ textAlign: 'center', padding: '36px', color: '#64748b' }}>No campaigns found.</div>
+        <div style={{ textAlign: 'center', padding: '40px', color: '#64748b', fontSize: '0.92rem' }}>
+          No {activeFilter !== 'all' ? activeFilter : ''} campaigns found.
+        </div>
       ) : (
         <>
           <div className="responsive-table-wrapper">

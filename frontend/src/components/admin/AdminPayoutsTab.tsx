@@ -119,7 +119,7 @@ export const AdminPayoutsTab: React.FC<AdminPayoutsTabProps> = ({
                   <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.76rem', fontWeight: 700 }}>User</th>
                   <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.76rem', fontWeight: 700 }}>Amount</th>
                   <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.76rem', fontWeight: 700 }}>Recipient Account</th>
-                  <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.76rem', fontWeight: 700 }}>IP & Device Info</th>
+                  <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.76rem', fontWeight: 700 }}>IP & Device Telemetry</th>
                   <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.76rem', fontWeight: 700 }}>Status</th>
                   <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.76rem', fontWeight: 700 }}>Date</th>
                   <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.76rem', fontWeight: 700, textAlign: 'right' }}>Actions</th>
@@ -131,11 +131,17 @@ export const AdminPayoutsTab: React.FC<AdminPayoutsTabProps> = ({
                   .map((p) => {
                     const isBDT = p.method === 'bkash' || p.method === 'nagad' || p.method === 'rocket';
                     const logo = getPaymentLogo(p.method);
+                    const countryDisplay = p.country || 'Bangladesh';
+                    const browserDisplay = p.browser || 'Web Browser';
+                    const platformDisplay = p.platform || p.clientPlatform || 'Web';
+                    const deviceDisplay = p.deviceName || p.deviceInfo || 'Desktop PC';
+                    const isRejected = p.status === 'rejected';
+                    const rejectionReason = p.rejectionReason || p.adminNotes;
 
                     return (
-                      <tr key={p._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <tr key={p._id} style={{ borderBottom: '1px solid #f1f5f9', verticalAlign: 'top' }}>
                         {/* Method with Official Brand Logo */}
-                        <td style={{ padding: '10px 12px' }}>
+                        <td style={{ padding: '12px 12px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <div
                               style={{
@@ -146,6 +152,7 @@ export const AdminPayoutsTab: React.FC<AdminPayoutsTabProps> = ({
                                 border: '1px solid #e2e8f0',
                                 display: 'flex',
                                 alignItems: 'center',
+                                justifyItems: 'center',
                                 justifyContent: 'center',
                                 padding: 4,
                                 flexShrink: 0,
@@ -160,7 +167,7 @@ export const AdminPayoutsTab: React.FC<AdminPayoutsTabProps> = ({
                         </td>
 
                         {/* User details */}
-                        <td style={{ padding: '10px 12px' }}>
+                        <td style={{ padding: '12px 12px' }}>
                           <div style={{ fontWeight: 600, color: '#0f172a' }}>
                             {p.viewerId?.name || 'Viewer User'}
                           </div>
@@ -170,7 +177,7 @@ export const AdminPayoutsTab: React.FC<AdminPayoutsTabProps> = ({
                         </td>
 
                         {/* Amount */}
-                        <td className="font-mono" style={{ padding: '10px 12px' }}>
+                        <td className="font-mono" style={{ padding: '12px 12px' }}>
                           <div style={{ fontWeight: 700, color: '#ef4444', fontSize: '0.94rem' }}>
                             -${p.amount.toFixed(2)}
                           </div>
@@ -182,7 +189,7 @@ export const AdminPayoutsTab: React.FC<AdminPayoutsTabProps> = ({
                         </td>
 
                         {/* Recipient Account Details (Copyable) */}
-                        <td style={{ padding: '10px 12px' }}>
+                        <td style={{ padding: '12px 12px' }}>
                           <div
                             onClick={() => handleCopy(p.accountDetails, p._id)}
                             style={{
@@ -204,76 +211,148 @@ export const AdminPayoutsTab: React.FC<AdminPayoutsTabProps> = ({
                           </div>
                         </td>
 
-                        {/* IP & Device Telemetry */}
-                        <td style={{ padding: '10px 12px' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                            <div
-                              onClick={() => p.ipAddress && handleCopy(p.ipAddress, `ip-${p._id}`)}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 5,
-                                background: '#f1f5f9',
-                                padding: '2px 8px',
-                                borderRadius: 6,
-                                fontSize: '0.74rem',
-                                fontWeight: 700,
-                                color: '#334155',
-                                cursor: p.ipAddress ? 'pointer' : 'default',
-                                width: 'fit-content',
-                              }}
-                              title="User IP Address (Click to copy)"
-                            >
-                              <Globe size={11} color="var(--primary-neon)" />
-                              <span className="font-mono">{p.ipAddress || 'IP: Unknown'}</span>
-                              {p.ipAddress && (copiedId === `ip-${p._id}` ? <Check size={10} color="#059669" /> : <Copy size={10} color="#94a3b8" />)}
+                        {/* IP & System Telemetry (IP, Country, Browser, Platform, Device Model) */}
+                        <td style={{ padding: '12px 12px', minWidth: 220 }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                            {/* Row 1: IP Address (Copyable) + Country Badge */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                              <div
+                                onClick={() => p.ipAddress && handleCopy(p.ipAddress, `ip-${p._id}`)}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  background: '#f1f5f9',
+                                  padding: '2px 7px',
+                                  borderRadius: 6,
+                                  fontSize: '0.74rem',
+                                  fontWeight: 700,
+                                  color: '#1e293b',
+                                  cursor: p.ipAddress ? 'pointer' : 'default',
+                                }}
+                                title="User IP Address (Click to copy)"
+                              >
+                                <Globe size={11} color="var(--primary-neon)" />
+                                <span className="font-mono">{p.ipAddress === '::1' ? '127.0.0.1' : (p.ipAddress || '127.0.0.1')}</span>
+                                {p.ipAddress && (copiedId === `ip-${p._id}` ? <Check size={10} color="#059669" /> : <Copy size={10} color="#94a3b8" />)}
+                              </div>
+
+                              <span
+                                className="badge-pill"
+                                style={{
+                                  padding: '1px 6px',
+                                  fontSize: '0.7rem',
+                                  background: '#ecfdf5',
+                                  color: '#059669',
+                                  border: '1px solid rgba(16,185,129,0.3)',
+                                  fontWeight: 700,
+                                }}
+                              >
+                                📍 {countryDisplay}
+                              </span>
                             </div>
+
+                            {/* Row 2: Browser & Platform Pills */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap', fontSize: '0.72rem' }}>
+                              <span
+                                style={{
+                                  background: '#f8fafc',
+                                  border: '1px solid #e2e8f0',
+                                  borderRadius: 5,
+                                  padding: '1px 6px',
+                                  color: '#334155',
+                                  fontWeight: 600,
+                                }}
+                              >
+                                🌐 {browserDisplay}
+                              </span>
+                              <span
+                                style={{
+                                  background: '#f8fafc',
+                                  border: '1px solid #e2e8f0',
+                                  borderRadius: 5,
+                                  padding: '1px 6px',
+                                  color: '#334155',
+                                  fontWeight: 600,
+                                }}
+                              >
+                                💻 {platformDisplay}
+                              </span>
+                            </div>
+
+                            {/* Row 3: Device Name / Model */}
                             <div style={{ fontSize: '0.72rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <Smartphone size={11} />
-                              <span>{p.deviceInfo || p.clientPlatform || 'Web / Mobile'}</span>
+                              <Smartphone size={11} color="#64748b" />
+                              <span>Model: <strong style={{ color: '#0f172a' }}>{deviceDisplay}</strong></span>
                             </div>
                           </div>
                         </td>
 
-                        {/* Status */}
-                        <td style={{ padding: '10px 12px' }}>
-                          <span
-                            className="badge-pill"
-                            style={{
-                              padding: '2px 8px',
-                              fontSize: '0.72rem',
-                              textTransform: 'uppercase',
-                              background:
-                                p.status === 'approved'
-                                  ? '#ecfdf5'
-                                  : p.status === 'pending'
-                                  ? '#fffbeb'
-                                  : '#fef2f2',
-                              color:
-                                p.status === 'approved'
-                                  ? '#059669'
-                                  : p.status === 'pending'
-                                  ? '#d97706'
-                                  : '#ef4444',
-                              border:
-                                p.status === 'approved'
-                                  ? '1px solid rgba(16,185,129,0.3)'
-                                  : p.status === 'pending'
-                                  ? '1px solid rgba(217,119,6,0.3)'
-                                  : '1px solid rgba(239,68,68,0.3)',
-                            }}
-                          >
-                            {p.status}
-                          </span>
+                        {/* Status + Rejection Reason Display */}
+                        <td style={{ padding: '12px 12px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                            <span
+                              className="badge-pill"
+                              style={{
+                                padding: '2px 8px',
+                                fontSize: '0.72rem',
+                                textTransform: 'uppercase',
+                                width: 'fit-content',
+                                background:
+                                  p.status === 'approved'
+                                    ? '#ecfdf5'
+                                    : p.status === 'pending'
+                                    ? '#fffbeb'
+                                    : '#fef2f2',
+                                color:
+                                  p.status === 'approved'
+                                    ? '#059669'
+                                    : p.status === 'pending'
+                                    ? '#d97706'
+                                    : '#ef4444',
+                                border:
+                                  p.status === 'approved'
+                                    ? '1px solid rgba(16,185,129,0.3)'
+                                    : p.status === 'pending'
+                                    ? '1px solid rgba(217,119,6,0.3)'
+                                    : '1px solid rgba(239,68,68,0.3)',
+                              }}
+                            >
+                              {p.status}
+                            </span>
+
+                            {/* Withdrawal Rejection Reason Alert Box */}
+                            {isRejected && rejectionReason && (
+                              <div
+                                style={{
+                                  padding: '6px 8px',
+                                  background: '#fef2f2',
+                                  border: '1px solid rgba(239, 68, 68, 0.25)',
+                                  borderRadius: 7,
+                                  fontSize: '0.72rem',
+                                  color: '#b91c1c',
+                                  maxWidth: 220,
+                                  lineHeight: 1.35,
+                                }}
+                              >
+                                <strong style={{ display: 'block', fontSize: '0.68rem', textTransform: 'uppercase', color: '#ef4444', marginBottom: 2 }}>
+                                  Rejection Reason:
+                                </strong>
+                                <span style={{ color: '#334155', wordBreak: 'break-word' }}>
+                                  {rejectionReason}
+                                </span>
+                              </div>
+                            )}
+                          </div>
                         </td>
 
                         {/* Date */}
-                        <td style={{ padding: '10px 12px', color: '#64748b' }}>
+                        <td style={{ padding: '12px 12px', color: '#64748b' }}>
                           {new Date(p.createdAt || p.requestedAt || Date.now()).toLocaleDateString()}
                         </td>
 
                         {/* Actions (Pay & Approve / Reject) */}
-                        <td style={{ padding: '10px 12px', textAlign: 'right' }}>
+                        <td style={{ padding: '12px 12px', textAlign: 'right' }}>
                           {p.status === 'pending' ? (
                             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
                               <button
@@ -302,9 +381,11 @@ export const AdminPayoutsTab: React.FC<AdminPayoutsTabProps> = ({
                               </button>
                             </div>
                           ) : (
-                            <span className="font-mono" style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                              {p.transactionRef ? `Ref: ${p.transactionRef}` : p.adminNotes || 'Settled'}
-                            </span>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                              <span className="font-mono" style={{ fontSize: '0.75rem', color: isRejected ? '#ef4444' : '#059669', fontWeight: 600 }}>
+                                {isRejected ? 'Refunded & Closed' : (p.transactionRef ? `Ref: ${p.transactionRef}` : 'Completed')}
+                              </span>
+                            </div>
                           )}
                         </td>
                       </tr>

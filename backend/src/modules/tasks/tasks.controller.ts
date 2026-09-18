@@ -7,7 +7,7 @@ import { Transaction } from '../../models/Transaction.js';
 import { config } from '../../config/index.js';
 import { cacheService } from '../../services/cache.service.js';
 import { requireAuth, AuthRequest } from '../../middleware/auth.middleware.js';
-import { getSystemPricingTiers, getSystemCooldownSettings, getSystemDailyLimitSettings } from '../admin/admin.controller.js';
+import { getSystemPricingTiers, getSystemCooldownSettings, getSystemDailyLimitSettings, getSystemHourlyLimitSettings } from '../admin/admin.controller.js';
 
 const router = Router();
 
@@ -16,7 +16,33 @@ router.get('/next', requireAuth, async (req: AuthRequest, res: Response): Promis
   try {
     const userId = req.user!._id.toString();
 
-    // Check daily video limit (if configured by admin)
+    // 1. Check hourly video limit (if configured by admin)
+    const hourlyLimitSettings = await getSystemHourlyLimitSettings();
+    if (hourlyLimitSettings.enableHourlyLimit && hourlyLimitSettings.maxHourlyVideos > 0) {
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+
+      const hourWatchedCount = await Task.countDocuments({
+        viewerId: req.user!._id,
+        status: 'completed',
+        $or: [
+          { completedAt: { $gte: oneHourAgo } },
+          { createdAt: { $gte: oneHourAgo } },
+        ],
+      });
+
+      if (hourWatchedCount >= hourlyLimitSettings.maxHourlyVideos) {
+        res.status(429).json({
+          success: false,
+          error: `Hourly video limit reached! You have completed ${hourWatchedCount}/${hourlyLimitSettings.maxHourlyVideos} videos in the past hour. Please take a short break and return shortly!`,
+          hourlyLimitReached: true,
+          hourWatchedCount,
+          maxHourlyVideos: hourlyLimitSettings.maxHourlyVideos,
+        });
+        return;
+      }
+    }
+
+    // 2. Check daily video limit (if configured by admin)
     const dailyLimitSettings = await getSystemDailyLimitSettings();
     if (dailyLimitSettings.enableDailyLimit && dailyLimitSettings.maxDailyVideos > 0) {
       const startOfDay = new Date();

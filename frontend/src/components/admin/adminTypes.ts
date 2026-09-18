@@ -16,6 +16,11 @@ export interface DailyLimitConfig {
   maxDailyVideos: number;
 }
 
+export interface HourlyLimitConfig {
+  enableHourlyLimit: boolean;
+  maxHourlyVideos: number;
+}
+
 export type AdminTab = 'overview' | 'payouts' | 'deposits' | 'campaigns' | 'users' | 'pricing' | 'gateways' | 'settings';
 
 export const DEFAULT_ADMIN_DEPOSIT_METHODS: DepositMethod[] = [

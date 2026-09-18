@@ -7,6 +7,11 @@ import { Task } from '../../models/Task.js';
 import { Setting } from '../../models/Setting.js';
 import { requireAdmin, AuthRequest } from '../../middleware/auth.middleware.js';
 import { config } from '../../config/index.js';
+import {
+  parseBrowserFromUserAgent,
+  parsePlatformFromUserAgent,
+  parseDeviceModelFromUserAgent,
+} from '../../services/telemetry.service.js';
 
 export const getSystemExchangeRate = async (): Promise<number> => {
   try {
@@ -310,6 +315,35 @@ export const getSystemDailyLimitSettings = async (): Promise<{
   };
 };
 
+export const getSystemHourlyLimitSettings = async (): Promise<{
+  enableHourlyLimit: boolean;
+  maxHourlyVideos: number;
+  enabled: boolean;
+  limit: number;
+}> => {
+  let isEnabled = false;
+  let limit = 20;
+  try {
+    const setting = await Setting.findOne({ key: 'hourly_limit_settings' });
+    if (setting && setting.value && typeof setting.value === 'object') {
+      const val = setting.value as any;
+      if (typeof val.enableHourlyLimit === 'boolean') isEnabled = val.enableHourlyLimit;
+      else if (typeof val.enabled === 'boolean') isEnabled = val.enabled;
+
+      if (typeof val.maxHourlyVideos === 'number') limit = val.maxHourlyVideos;
+      else if (typeof val.limit === 'number') limit = val.limit;
+    }
+  } catch {
+    // fallback
+  }
+  return {
+    enableHourlyLimit: isEnabled,
+    maxHourlyVideos: limit,
+    enabled: isEnabled,
+    limit,
+  };
+};
+
 const router = Router();
 
 // GET /api/admin/stats - Platform overview & comprehensive telemetry
@@ -507,10 +541,24 @@ router.get('/payouts', requireAdmin, async (req: AuthRequest, res: Response): Pr
       filter.status = status;
     }
 
-    const payouts = await Payout.find(filter)
+    const rawPayouts = await Payout.find(filter)
       .populate('viewerId', 'name email balance viewerBalance totalEarned totalWithdrawn')
       .sort({ createdAt: -1 })
       .limit(500);
+
+    const payouts = rawPayouts.map((p) => {
+      const obj = p.toObject() as any;
+      const ua = obj.userAgent || 'Unknown Client';
+      if (!obj.browser) obj.browser = parseBrowserFromUserAgent(ua);
+      if (!obj.platform) obj.platform = obj.clientPlatform || parsePlatformFromUserAgent(ua);
+      if (!obj.deviceName) obj.deviceName = obj.deviceInfo || parseDeviceModelFromUserAgent(ua);
+      if (!obj.country) obj.country = 'Bangladesh';
+      if (!obj.rejectionReason && obj.status === 'rejected') {
+        obj.rejectionReason = obj.adminNotes || 'Rejected by Admin';
+      }
+      return obj;
+    });
+
     res.json({ success: true, data: payouts });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
@@ -548,7 +596,8 @@ router.post('/payouts/:id/approve', requireAdmin, async (req: AuthRequest, res: 
 // POST /api/admin/payouts/:id/reject - Reject payout & refund user balance
 router.post('/payouts/:id/reject', requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { adminNotes } = req.body;
+    const { adminNotes, rejectionReason } = req.body;
+    const reasonText = rejectionReason || adminNotes || 'Declined by Administrator (Invalid account or policy issue)';
     const payout = await Payout.findById(req.params.id);
     if (!payout || payout.status !== 'pending') {
       res.status(400).json({ success: false, error: 'Payout not found or not in pending state' });
@@ -556,7 +605,8 @@ router.post('/payouts/:id/reject', requireAdmin, async (req: AuthRequest, res: R
     }
 
     payout.status = 'rejected';
-    payout.adminNotes = adminNotes || 'Rejected by Admin';
+    payout.adminNotes = reasonText;
+    payout.rejectionReason = reasonText;
     payout.processedAt = new Date();
     await payout.save();
 
@@ -570,7 +620,7 @@ router.post('/payouts/:id/reject', requireAdmin, async (req: AuthRequest, res: R
     // Update original transaction
     await Transaction.findOneAndUpdate(
       { referenceId: payout._id.toString() },
-      { status: 'failed', notes: `Rejected: ${adminNotes || 'Declined by Admin'}` }
+      { status: 'failed', notes: `Rejected: ${reasonText}` }
     );
 
     // Record explicit refund transaction
@@ -581,7 +631,7 @@ router.post('/payouts/:id/reject', requireAdmin, async (req: AuthRequest, res: R
       balanceAfter: updatedUser?.balance || 0,
       status: 'completed',
       referenceId: payout._id.toString(),
-      notes: `Refund for rejected payout: ${adminNotes || 'Declined by Admin'}`,
+      notes: `Refund for rejected payout: ${reasonText}`,
     });
 
     res.json({ success: true, data: payout, message: 'Payout rejected and funds refunded to user wallet' });
@@ -593,11 +643,12 @@ router.post('/payouts/:id/reject', requireAdmin, async (req: AuthRequest, res: R
 // GET /api/admin/settings - Platform configurations
 router.get('/settings', requireAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const [usdToBdt, pricingTiers, cooldownSettings, dailyLimitSettings] = await Promise.all([
+    const [usdToBdt, pricingTiers, cooldownSettings, dailyLimitSettings, hourlyLimitSettings] = await Promise.all([
       getSystemExchangeRate(),
       getSystemPricingTiers(),
       getSystemCooldownSettings(),
       getSystemDailyLimitSettings(),
+      getSystemHourlyLimitSettings(),
     ]);
 
     const pricingTiersList = formatPricingTiersList(pricingTiers);
@@ -610,6 +661,7 @@ router.get('/settings', requireAdmin, async (_req: AuthRequest, res: Response): 
         pricingTiersList,
         cooldownSettings,
         dailyLimitSettings,
+        hourlyLimitSettings,
       },
     });
   } catch (error: any) {
@@ -785,6 +837,42 @@ router.post('/settings/daily-limit', requireAdmin, async (req: AuthRequest, res:
       success: true,
       data: { dailyLimitSettings: limitData },
       message: `Daily watch limit updated! Daily limit is ${isEnabled ? `ACTIVE (${limit} videos/day)` : 'DISABLED (unlimited)'}.`,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/admin/settings/hourly-limit - Set maximum hourly videos a viewer can watch
+router.post('/settings/hourly-limit', requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { enableHourlyLimit, maxHourlyVideos, enabled, limit: rawLimit } = req.body;
+    const isEnabled = enabled !== undefined ? Boolean(enabled) : Boolean(enableHourlyLimit);
+    const limitNum = rawLimit !== undefined ? rawLimit : maxHourlyVideos;
+    const limit = parseInt(String(limitNum), 10);
+
+    if (isNaN(limit) || limit < 0 || limit > 10000) {
+      res.status(400).json({ success: false, error: 'Max hourly videos must be a valid number between 0 and 10,000' });
+      return;
+    }
+
+    const limitData = {
+      enableHourlyLimit: isEnabled,
+      maxHourlyVideos: limit,
+      enabled: isEnabled,
+      limit,
+    };
+
+    const updated = await Setting.findOneAndUpdate(
+      { key: 'hourly_limit_settings' },
+      { value: limitData, description: 'Viewer hourly maximum video watch limit settings' },
+      { upsert: true, new: true }
+    );
+
+    res.json({
+      success: true,
+      data: { hourlyLimitSettings: limitData },
+      message: `Hourly watch limit updated! Hourly limit is ${isEnabled ? `ACTIVE (${limit} videos/hour)` : 'DISABLED (unlimited)'}.`,
     });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });

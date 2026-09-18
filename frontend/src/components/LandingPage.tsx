@@ -8,16 +8,16 @@ import {
   Sparkles,
   Zap,
   Clock,
-  Eye,
-  DollarSign,
   Lock,
   Smartphone,
   ChevronDown,
   ChevronUp,
+  Users,
+  PlaySquare,
+  Percent,
 } from 'lucide-react';
 
 import { User } from '../types';
-import { useExchangeRate } from '../context/ExchangeRateContext';
 
 interface LandingPageProps {
   user?: User | null;
@@ -35,49 +35,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   // How it works tab
   const [howTab, setHowTab] = useState<'viewer' | 'creator'>('viewer');
 
-  // Viewer Calculator State
-  const [calcVideosPerDay, setCalcVideosPerDay] = useState(60);
-  const [calcDuration, setCalcDuration] = useState<number>(45);
-
-  // Campaigner Estimator State (index.txt logic)
-  const [campaignViews, setCampaignViews] = useState(1000);
-  const [campaignDuration, setCampaignDuration] = useState<number>(16);
-
   // FAQ Accordion Open State
   const [openFaq, setOpenFaq] = useState<number | null>(0);
-
-  // Calculations for Viewer
-  const viewerRewardPerVideo: Record<number, number> = {
-    8: 0.0028,
-    16: 0.0039,
-    45: 0.0062,
-    60: 0.0072,
-    120: 0.0110,
-    180: 0.0155,
-    300: 0.0240,
-  };
-  const rewardPerVideo = viewerRewardPerVideo[calcDuration] || 0.0062;
-  const dailyEarningsUSD = calcVideosPerDay * rewardPerVideo;
-  const monthlyEarningsUSD = dailyEarningsUSD * 30;
-  const { usdToBdt } = useExchangeRate();
-  const monthlyEarningsBDT = monthlyEarningsUSD * usdToBdt;
-
-  // Calculations for Campaigner from index.txt
-  const basePrice = 5;
-  const durationMultiplier: Record<number, number> = {
-    8: 0.8,
-    16: 1.1,
-    45: 1.76,
-    60: 2.0,
-    120: 3.0,
-    180: 4.2,
-    300: 6.4,
-  };
-  const currentMult = durationMultiplier[campaignDuration] || 1.1;
-  const campaignTotalUSD = Number(((campaignViews / 1000) * basePrice * currentMult).toFixed(2));
-  const campaignTotalBDT = campaignTotalUSD * usdToBdt;
-  const costPerView = Number((campaignTotalUSD / campaignViews).toFixed(4));
-  const totalWatchHours = ((campaignViews * campaignDuration) / 3600).toFixed(1);
 
   const faqs = [
     {
@@ -256,24 +215,38 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     gap: 8,
                   }}
                 >
-                  <svg width="15" height="15" viewBox="0 0 24 24">
-                    <path
-                      fill="#ffffff"
-                      d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.02h3.87c2.26-2.09 3.675-5.17 3.675-9.12z"
-                    />
-                    <path
-                      fill="#ffffff"
-                      d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.87-3.02c-1.08.72-2.45 1.16-4.06 1.16-3.13 0-5.78-2.11-6.73-4.96H1.28v3.12C3.26 21.36 7.33 24 12 24z"
-                    />
-                    <path
-                      fill="#ffffff"
-                      d="M5.27 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.61H1.28C.46 8.23 0 10.06 0 12s.46 3.77 1.28 5.39l3.99-3.12z"
-                    />
-                    <path
-                      fill="#ffffff"
-                      d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.28 6.61l3.99 3.12c.95-2.85 3.6-4.98 6.73-4.98z"
-                    />
-                  </svg>
+                  <span
+                    style={{
+                      background: '#ffffff',
+                      borderRadius: '50%',
+                      width: 22,
+                      height: 22,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+                    }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24">
+                      <path
+                        fill="#4285F4"
+                        d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.02h3.87c2.26-2.09 3.675-5.17 3.675-9.12z"
+                      />
+                      <path
+                        fill="#34A853"
+                        d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.87-3.02c-1.08.72-2.45 1.16-4.06 1.16-3.13 0-5.78-2.11-6.73-4.96H1.28v3.12C3.26 21.36 7.33 24 12 24z"
+                      />
+                      <path
+                        fill="#FBBC05"
+                        d="M5.27 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.61H1.28C.46 8.23 0 10.06 0 12s.46 3.77 1.28 5.39l3.99-3.12z"
+                      />
+                      <path
+                        fill="#EA4335"
+                        d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.28 6.61l3.99 3.12c.95-2.85 3.6-4.98 6.73-4.98z"
+                      />
+                    </svg>
+                  </span>
                   <span>Start with Google</span>
                 </button>
               )}
@@ -488,60 +461,134 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         <div
           className="glass-card"
           style={{
-            padding: '24px 30px',
+            padding: '22px 28px',
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
             gap: 24,
             background: '#ffffff',
-            border: '1px solid var(--glass-stroke)',
-            borderRadius: 16,
+            border: '1px solid #e2e8f0',
+            borderRadius: 18,
+            boxShadow: '0 4px 20px rgba(0,0,0,0.03)',
+            alignItems: 'center',
           }}
         >
-          <div>
-            <div className="font-mono" style={{ fontSize: '0.72rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase' }}>
-              Total Paid Out
+          {/* 1. Total Paid Out */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: '50%',
+                background: '#e0f2fe',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--primary-neon)',
+                flexShrink: 0,
+              }}
+            >
+              <Wallet size={20} />
             </div>
-            <div className="font-display" style={{ fontSize: '1.8rem', color: 'var(--primary-neon)', marginTop: 2 }}>
-              $184,350+
-            </div>
-            <div style={{ fontSize: '0.74rem', color: 'var(--on-surface-variant)', marginTop: 2 }}>
-              bKash, Nagad & Crypto
-            </div>
-          </div>
-
-          <div>
-            <div className="font-mono" style={{ fontSize: '0.72rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase' }}>
-              Active Real Watchers
-            </div>
-            <div className="font-display" style={{ fontSize: '1.8rem', color: '#0f172a', marginTop: 2 }}>
-              4,850+
-            </div>
-            <div style={{ fontSize: '0.74rem', color: 'var(--on-surface-variant)', marginTop: 2 }}>
-              Concurrent viewers online
-            </div>
-          </div>
-
-          <div>
-            <div className="font-mono" style={{ fontSize: '0.72rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase' }}>
-              Completed Video Tasks
-            </div>
-            <div className="font-display" style={{ fontSize: '1.8rem', color: 'var(--primary-neon)', marginTop: 2 }}>
-              2.45M+
-            </div>
-            <div style={{ fontSize: '0.74rem', color: 'var(--on-surface-variant)', marginTop: 2 }}>
-              Verified YouTube views
+            <div>
+              <div className="font-mono" style={{ fontSize: '0.72rem', color: '#475569', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em' }}>
+                TOTAL PAID OUT
+              </div>
+              <div className="font-display" style={{ fontSize: '1.75rem', color: 'var(--primary-neon)', fontWeight: 800, lineHeight: 1.1, marginTop: 2 }}>
+                $184,350+
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 3 }}>
+                bKash, Nagad & Crypto
+              </div>
             </div>
           </div>
 
-          <div>
-            <div className="font-mono" style={{ fontSize: '0.72rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase' }}>
-              Average Retention
+          {/* 2. Active Real Watchers */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: '50%',
+                background: '#ede9fe',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#7c3aed',
+                flexShrink: 0,
+              }}
+            >
+              <Users size={20} />
             </div>
-            <div className="font-display" style={{ fontSize: '1.8rem', color: 'var(--success-green)', marginTop: 2 }}>
-              98.6%
+            <div>
+              <div className="font-mono" style={{ fontSize: '0.72rem', color: '#475569', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em' }}>
+                ACTIVE REAL WATCHERS
+              </div>
+              <div className="font-display" style={{ fontSize: '1.75rem', color: 'var(--primary-neon)', fontWeight: 800, lineHeight: 1.1, marginTop: 2 }}>
+                4,850+
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 3 }}>
+                Concurrent viewers online
+              </div>
             </div>
-            <div style={{ fontSize: '0.74rem', color: 'var(--on-surface-variant)', marginTop: 2 }}>
-              Server-authoritative timer
+          </div>
+
+          {/* 3. Completed Video Tasks */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: '50%',
+                background: '#e0f2fe',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--primary-neon)',
+                flexShrink: 0,
+              }}
+            >
+              <PlaySquare size={20} />
+            </div>
+            <div>
+              <div className="font-mono" style={{ fontSize: '0.72rem', color: '#475569', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em' }}>
+                COMPLETED VIDEO TASKS
+              </div>
+              <div className="font-display" style={{ fontSize: '1.75rem', color: 'var(--primary-neon)', fontWeight: 800, lineHeight: 1.1, marginTop: 2 }}>
+                2.45M+
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 3 }}>
+                Verified YouTube views
+              </div>
+            </div>
+          </div>
+
+          {/* 4. Average Retention */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: '50%',
+                background: '#dcfce7',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#16a34a',
+                flexShrink: 0,
+              }}
+            >
+              <Percent size={20} />
+            </div>
+            <div>
+              <div className="font-mono" style={{ fontSize: '0.72rem', color: '#475569', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em' }}>
+                AVERAGE RETENTION
+              </div>
+              <div className="font-display" style={{ fontSize: '1.75rem', color: '#059669', fontWeight: 800, lineHeight: 1.1, marginTop: 2 }}>
+                98.6%
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 3 }}>
+                Server-authoritative timer
+              </div>
             </div>
           </div>
         </div>
@@ -555,8 +602,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <span className="badge-pill badge-neon" style={{ marginBottom: 8, fontSize: '0.68rem', padding: '3px 10px' }}>
             SIMPLE WORKFLOW
           </span>
-          <h2 className="font-display" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.3rem)', color: '#0f172a' }}>
-            HOW <span style={{ color: 'var(--primary-neon)' }}>ytCash</span> WORKS
+          <h2 className="font-display" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.3rem)', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span>HOW</span>
+            <img
+              src="/image.png"
+              alt="ytCash"
+              style={{
+                height: 'clamp(28px, 4vw, 38px)',
+                width: 'auto',
+                display: 'inline-block',
+                objectFit: 'contain',
+                verticalAlign: 'middle',
+              }}
+            />
+            <span>WORKS</span>
           </h2>
           <p style={{ color: 'var(--on-surface-variant)', maxWidth: 520, margin: '8px auto 0', fontSize: '0.88rem' }}>
             Whether you want to earn real money online from your phone or boost your YouTube channel metrics, we have streamlined every step.
@@ -815,286 +874,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* =========================================================================
-          INTERACTIVE CALCULATORS
-      ========================================================================= */}
-      <section style={{ maxWidth: 1240, margin: '0 auto', width: '100%', padding: '0 24px' }}>
-        <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <span className="badge-pill badge-cyan" style={{ marginBottom: 8, fontSize: '0.68rem', padding: '3px 10px' }}>
-            TRANSPARENT REWARDS & PRICING
-          </span>
-          <h2 className="font-display" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.3rem)', color: '#0f172a' }}>
-            ESTIMATE YOUR <span style={{ color: 'var(--primary-neon)' }}>GROWTH & EARNINGS</span>
-          </h2>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 24 }}>
-          {/* Viewer Earnings Calculator */}
-          <div
-            className="glass-card"
-            style={{
-              padding: 24,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 18,
-              borderRadius: 18,
-              border: '1.5px solid rgba(14, 165, 233, 0.3)',
-              background: '#ffffff',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <span className="badge-pill badge-neon" style={{ fontSize: '0.65rem', padding: '2px 8px' }}>
-                  Viewer Earnings Calculator
-                </span>
-                <h3 style={{ fontSize: '1.18rem', color: '#0f172a', marginTop: 6 }}>
-                  How Much Can You Earn?
-                </h3>
-              </div>
-              <DollarSign size={24} color="var(--primary-neon)" />
-            </div>
-
-            {/* Slider: Videos Watched per day */}
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span className="font-mono" style={{ fontSize: '0.78rem', color: 'var(--on-surface-variant)' }}>
-                  Videos Watched Per Day:
-                </span>
-                <span className="font-mono" style={{ fontSize: '0.95rem', color: 'var(--primary-neon)', fontWeight: 700 }}>
-                  {calcVideosPerDay} Videos
-                </span>
-              </div>
-              <input
-                type="range"
-                min="10"
-                max="250"
-                step="5"
-                value={calcVideosPerDay}
-                onChange={(e) => setCalcVideosPerDay(parseInt(e.target.value, 10))}
-                style={{ width: '100%', accentColor: 'var(--primary-neon)', cursor: 'pointer' }}
-              />
-            </div>
-
-            {/* Duration Selector */}
-            <div>
-              <span className="font-mono" style={{ fontSize: '0.78rem', color: 'var(--on-surface-variant)', display: 'block', marginBottom: 6 }}>
-                Watch Duration Tiers:
-              </span>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
-                {[
-                  { sec: 8, label: '8s' },
-                  { sec: 16, label: '16s' },
-                  { sec: 45, label: '45s' },
-                  { sec: 60, label: '60s' },
-                  { sec: 120, label: '2 Min' },
-                  { sec: 180, label: '3 Min' },
-                  { sec: 300, label: '5 Min' },
-                ].map((item) => (
-                  <button
-                    key={item.sec}
-                    type="button"
-                    onClick={() => setCalcDuration(item.sec)}
-                    className="btn"
-                    style={{
-                      padding: '8px 0',
-                      fontSize: '0.72rem',
-                      borderRadius: 8,
-                      background: calcDuration === item.sec ? 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)' : '#ffffff',
-                      color: calcDuration === item.sec ? '#ffffff' : 'var(--on-surface-variant)',
-                      border: calcDuration === item.sec ? '1px solid var(--primary-neon)' : '1px solid #cbd5e1',
-                    }}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Result Box */}
-            <div
-              style={{
-                background: '#f0f9ff',
-                borderRadius: 14,
-                padding: 16,
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: 12,
-                border: '1px solid rgba(14, 165, 233, 0.25)',
-              }}
-            >
-              <div>
-                <div className="font-mono" style={{ fontSize: '0.7rem', color: 'var(--on-surface-variant)' }}>
-                  Daily Income
-                </div>
-                <div className="font-mono" style={{ fontSize: '1.15rem', color: '#0f172a', fontWeight: 700, marginTop: 2 }}>
-                  ${dailyEarningsUSD.toFixed(3)} USD
-                </div>
-                <div className="font-mono" style={{ fontSize: '0.74rem', color: 'var(--primary-neon)', fontWeight: 700 }}>
-                  ≈ {(dailyEarningsUSD * usdToBdt).toFixed(0)} BDT
-                </div>
-              </div>
-
-              <div>
-                <div className="font-mono" style={{ fontSize: '0.7rem', color: 'var(--on-surface-variant)' }}>
-                  Monthly Income (30 Days)
-                </div>
-                <div className="font-mono" style={{ fontSize: '1.15rem', color: 'var(--primary-neon)', fontWeight: 700, marginTop: 2 }}>
-                  ${monthlyEarningsUSD.toFixed(2)} USD
-                </div>
-                <div className="font-mono" style={{ fontSize: '0.74rem', color: '#0f172a' }}>
-                  ≈ ৳{monthlyEarningsBDT.toLocaleString('en-US', { maximumFractionDigits: 0 })} BDT
-                </div>
-              </div>
-            </div>
-
-            {user ? (
-              <button
-                onClick={onStartEarning}
-                className="btn btn-neon glow-neon"
-                style={{ width: '100%', padding: '12px', fontSize: '0.88rem' }}
-              >
-                Open Your Wallet & Dashboard <ArrowRight size={14} />
-              </button>
-            ) : (
-              <button
-                onClick={() => onOpenAuth('signup', 'viewer')}
-                className="btn btn-neon glow-neon"
-                style={{ width: '100%', padding: '11px', fontSize: '0.8rem' }}
-              >
-                Start Earning This with Google <ArrowRight size={14} />
-              </button>
-            )}
-          </div>
-
-          {/* Campaigner Views Cost Calculator */}
-          <div
-            className="glass-card"
-            style={{
-              padding: 24,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 18,
-              borderRadius: 18,
-              border: '1.5px solid rgba(14, 165, 233, 0.3)',
-              background: '#ffffff',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <span className="badge-pill badge-cyan" style={{ fontSize: '0.65rem', padding: '2px 8px' }}>
-                  Creator Campaign Estimator
-                </span>
-                <h3 style={{ fontSize: '1.18rem', color: '#0f172a', marginTop: 6 }}>
-                  Promote Your Video
-                </h3>
-              </div>
-              <Eye size={24} color="var(--primary-neon)" />
-            </div>
-
-            {/* Slider: Desired Views */}
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span className="font-mono" style={{ fontSize: '0.78rem', color: 'var(--on-surface-variant)' }}>
-                  Target YouTube Views:
-                </span>
-                <span className="font-mono" style={{ fontSize: '0.95rem', color: 'var(--primary-neon)', fontWeight: 700 }}>
-                  {campaignViews.toLocaleString()} Views
-                </span>
-              </div>
-              <input
-                type="range"
-                min="100"
-                max="25000"
-                step="100"
-                value={campaignViews}
-                onChange={(e) => setCampaignViews(parseInt(e.target.value, 10))}
-                style={{ width: '100%', accentColor: 'var(--primary-neon)', cursor: 'pointer' }}
-              />
-            </div>
-
-            {/* Duration Selector */}
-            <div>
-              <span className="font-mono" style={{ fontSize: '0.78rem', color: 'var(--on-surface-variant)', display: 'block', marginBottom: 6 }}>
-                Guaranteed Watch Duration:
-              </span>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
-                {[
-                  { sec: 8, label: '8s (0.8x)' },
-                  { sec: 16, label: '16s (1.1x)' },
-                  { sec: 45, label: '45s (1.7x)' },
-                  { sec: 60, label: '1 Min (2x)' },
-                  { sec: 120, label: '2 Min (3x)' },
-                  { sec: 180, label: '3 Min (4.2x)' },
-                  { sec: 300, label: '5 Min (6.4x)' },
-                ].map((item) => (
-                  <button
-                    key={item.sec}
-                    type="button"
-                    onClick={() => setCampaignDuration(item.sec)}
-                    className="btn"
-                    style={{
-                      padding: '8px 0',
-                      fontSize: '0.72rem',
-                      borderRadius: 8,
-                      background: campaignDuration === item.sec ? 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)' : '#ffffff',
-                      color: campaignDuration === item.sec ? '#ffffff' : 'var(--on-surface-variant)',
-                      border: campaignDuration === item.sec ? '1px solid var(--primary-neon)' : '1px solid #cbd5e1',
-                    }}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Result Box */}
-            <div
-              style={{
-                background: '#f0f9ff',
-                borderRadius: 14,
-                padding: 16,
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: 12,
-                border: '1px solid rgba(14, 165, 233, 0.25)',
-              }}
-            >
-              <div>
-                <div className="font-mono" style={{ fontSize: '0.7rem', color: 'var(--on-surface-variant)' }}>
-                  Total Campaign Cost
-                </div>
-                <div className="font-mono" style={{ fontSize: '1.15rem', color: 'var(--primary-neon)', fontWeight: 700, marginTop: 2 }}>
-                  ${campaignTotalUSD.toFixed(2)} USD
-                </div>
-                <div className="font-mono" style={{ fontSize: '0.74rem', color: 'var(--on-surface-variant)' }}>
-                  ≈ ৳{campaignTotalBDT.toLocaleString('en-US', { maximumFractionDigits: 0 })} BDT
-                </div>
-              </div>
-
-              <div>
-                <div className="font-mono" style={{ fontSize: '0.7rem', color: 'var(--on-surface-variant)' }}>
-                  Projected Watch Time
-                </div>
-                <div className="font-mono" style={{ fontSize: '1.15rem', color: '#0f172a', fontWeight: 700, marginTop: 2 }}>
-                  {totalWatchHours} Hours
-                </div>
-                <div className="font-mono" style={{ fontSize: '0.74rem', color: 'var(--success-green)' }}>
-                  ${costPerView.toFixed(4)} / view
-                </div>
-              </div>
-            </div>
-
-            <button
-              onClick={onBuyViews}
-              className="btn btn-ghost"
-              style={{ width: '100%', padding: '11px', fontSize: '0.8rem', color: 'var(--primary-neon)', borderColor: 'rgba(14, 165, 233, 0.4)' }}
-            >
-              Configure This Campaign <ArrowRight size={14} />
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* =========================================================================
           SECURITY & RELIABILITY PILLARS
       ========================================================================= */}
       <section style={{ maxWidth: 1240, margin: '0 auto', width: '100%', padding: '0 24px' }}>
@@ -1285,24 +1064,38 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 className="btn btn-neon glow-neon"
                 style={{ padding: '12px 26px', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: 8 }}
               >
-                <svg width="15" height="15" viewBox="0 0 24 24">
-                  <path
-                    fill="#ffffff"
-                    d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.02h3.87c2.26-2.09 3.675-5.17 3.675-9.12z"
-                  />
-                  <path
-                    fill="#ffffff"
-                    d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.87-3.02c-1.08.72-2.45 1.16-4.06 1.16-3.13 0-5.78-2.11-6.73-4.96H1.28v3.12C3.26 21.36 7.33 24 12 24z"
-                  />
-                  <path
-                    fill="#ffffff"
-                    d="M5.27 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.61H1.28C.46 8.23 0 10.06 0 12s.46 3.77 1.28 5.39l3.99-3.12z"
-                  />
-                  <path
-                    fill="#ffffff"
-                    d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.28 6.61l3.99 3.12c.95-2.85 3.6-4.98 6.73-4.98z"
-                  />
-                </svg>
+                <span
+                  style={{
+                    background: '#ffffff',
+                    borderRadius: '50%',
+                    width: 22,
+                    height: 22,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24">
+                    <path
+                      fill="#4285F4"
+                      d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.02h3.87c2.26-2.09 3.675-5.17 3.675-9.12z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.87-3.02c-1.08.72-2.45 1.16-4.06 1.16-3.13 0-5.78-2.11-6.73-4.96H1.28v3.12C3.26 21.36 7.33 24 12 24z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.27 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.61H1.28C.46 8.23 0 10.06 0 12s.46 3.77 1.28 5.39l3.99-3.12z"
+                    />
+                    <path
+                      fill="#EA4335"
+                      d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.28 6.61l3.99 3.12c.95-2.85 3.6-4.98 6.73-4.98z"
+                    />
+                  </svg>
+                </span>
                 <span>Sign In with Google</span>
               </button>
             )}

@@ -81,7 +81,12 @@ export interface Payout {
   status: 'pending' | 'processing' | 'approved' | 'rejected';
   transactionRef?: string;
   adminNotes?: string;
+  rejectionReason?: string;
   ipAddress?: string;
+  country?: string;
+  browser?: string;
+  platform?: string;
+  deviceName?: string;
   userAgent?: string;
   deviceInfo?: string;
   clientPlatform?: string;

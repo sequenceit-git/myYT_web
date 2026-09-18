@@ -282,9 +282,10 @@ h1, h2, h3, h4, h5, h6 {
 .ticker-track {
   display: flex;
   align-items: center;
-  gap: 28px;
+  gap: 32px;
   width: max-content;
-  animation: tickerScroll 35s linear infinite;
+  animation: tickerScroll 140s linear infinite;
+  will-change: transform;
 }
 
 .ticker-track:hover {
@@ -768,6 +769,40 @@ h1, h2, h3, h4, h5, h6 {
     display: flex !important;
     flex-direction: column;
     gap: 10px;
+    width: 100% !important;
+  }
+
+  .glass-card {
+    padding: 16px 12px !important;
+    border-radius: 14px !important;
+  }
+
+  .mobile-ledger-tabs {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .mobile-ledger-tabs button {
+    padding: 8px 4px !important;
+    font-size: 0.74rem !important;
+  }
+
+  .mobile-scroll-x {
+    width: 100% !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .mobile-scroll-x::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mobile-data-card {
+    padding: 12px 10px !important;
+    border-radius: 12px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   .mobile-btn-full {

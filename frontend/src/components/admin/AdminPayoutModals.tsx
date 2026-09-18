@@ -128,16 +128,32 @@ export const AdminPayoutModals: React.FC<AdminPayoutModalsProps> = ({
                 </strong>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6, fontSize: '0.84rem' }}>
-                <span style={{ color: '#64748b' }}>Request IP & Device:</span>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <span className="font-mono" style={{ background: '#e2e8f0', color: '#0f172a', padding: '2px 6px', borderRadius: 4, fontSize: '0.8rem', fontWeight: 600 }}>
-                    {approveModalPayout.ipAddress || 'Not recorded'}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '8px 10px', background: '#f1f5f9', borderRadius: 8, fontSize: '0.8rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                  <span style={{ color: '#64748b', fontWeight: 600 }}>IP & Location:</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <span className="font-mono" style={{ background: '#ffffff', color: '#0f172a', padding: '1px 6px', borderRadius: 4, fontWeight: 700, border: '1px solid #cbd5e1' }}>
+                      {approveModalPayout.ipAddress === '::1' ? '127.0.0.1' : (approveModalPayout.ipAddress || '127.0.0.1')}
+                    </span>
+                    <span style={{ color: '#059669', fontWeight: 700 }}>
+                      📍 {approveModalPayout.country || 'Bangladesh'}
+                    </span>
                   </span>
-                  <span style={{ color: '#64748b', fontSize: '0.8rem' }}>
-                    • {approveModalPayout.deviceInfo || approveModalPayout.clientPlatform || 'Web Browser'}
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                  <span style={{ color: '#64748b', fontWeight: 600 }}>Browser & Platform:</span>
+                  <span style={{ color: '#334155', fontWeight: 600 }}>
+                    🌐 {approveModalPayout.browser || 'Web Browser'} • 💻 {approveModalPayout.platform || approveModalPayout.clientPlatform || 'Web'}
                   </span>
-                </span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                  <span style={{ color: '#64748b', fontWeight: 600 }}>Device Model:</span>
+                  <strong style={{ color: '#0f172a' }}>
+                    📱 {approveModalPayout.deviceName || approveModalPayout.deviceInfo || 'Desktop PC'}
+                  </strong>
+                </div>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6, paddingTop: 6, borderTop: '1px solid #e2e8f0' }}>
@@ -273,7 +289,7 @@ export const AdminPayoutModals: React.FC<AdminPayoutModalsProps> = ({
                 marginBottom: 14,
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 6,
+                gap: 8,
                 fontSize: '0.84rem',
               }}
             >
@@ -289,12 +305,28 @@ export const AdminPayoutModals: React.FC<AdminPayoutModalsProps> = ({
                   <strong style={{ textTransform: 'uppercase' }}>{rejectModalPayout.method}</strong> • {rejectModalPayout.accountDetails}
                 </span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#64748b' }}>Request IP & Device:</span>
-                <span className="font-mono" style={{ color: '#475569', fontSize: '0.8rem' }}>
-                  {rejectModalPayout.ipAddress || 'Not recorded'} ({rejectModalPayout.deviceInfo || rejectModalPayout.clientPlatform || 'Web'})
-                </span>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '6px 8px', background: '#f1f5f9', borderRadius: 6, fontSize: '0.78rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#64748b' }}>IP & Country:</span>
+                  <span className="font-mono" style={{ color: '#0f172a', fontWeight: 600 }}>
+                    {rejectModalPayout.ipAddress === '::1' ? '127.0.0.1' : (rejectModalPayout.ipAddress || '127.0.0.1')} (📍 {rejectModalPayout.country || 'Bangladesh'})
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#64748b' }}>Browser & Platform:</span>
+                  <span style={{ color: '#334155' }}>
+                    {rejectModalPayout.browser || 'Browser'} • {rejectModalPayout.platform || rejectModalPayout.clientPlatform || 'Web'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#64748b' }}>Device Model:</span>
+                  <span style={{ color: '#0f172a', fontWeight: 600 }}>
+                    {rejectModalPayout.deviceName || rejectModalPayout.deviceInfo || 'Desktop PC'}
+                  </span>
+                </div>
               </div>
+
               <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 4, borderTop: '1px solid #e2e8f0' }}>
                 <span style={{ color: '#64748b' }}>Refund Amount:</span>
                 <strong style={{ color: '#ef4444' }}>${rejectModalPayout.amount.toFixed(2)} USD</strong>

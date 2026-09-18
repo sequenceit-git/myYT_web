@@ -29,14 +29,19 @@ import {
   Lock,
   X,
   ArrowRight,
+  ArrowDownLeft,
+  ArrowUpRight,
+  Plus,
   ShieldCheck,
 } from 'lucide-react';
-import { Campaign, User, Transaction, DepositMethod } from '../types';
+import { Campaign, User, Transaction, DepositMethod, WithdrawMethod } from '../types';
 import { UserAvatar } from './UserAvatar';
 import { apiRequest } from '../api';
 import { ProfileSwitchBanner } from './ProfileSwitchBanner';
 import { ProfileSettingsSection } from './ProfileSettingsSection';
+import { TotalStatsLogView } from './TotalStatsLogView';
 import { useExchangeRate } from '../context/ExchangeRateContext';
+import { getClientTelemetry } from '../utils/telemetry';
 
 interface CampaignerPortalProps {
   user: User | null;
@@ -45,7 +50,152 @@ interface CampaignerPortalProps {
   onSwitchProfile?: (targetRole: 'viewer' | 'campaigner') => void;
 }
 
-type CreatorTab = 'overview' | 'campaigns' | 'deposit' | 'ledger' | 'profile';
+type CreatorTab = 'overview' | 'campaigns' | 'deposit' | 'withdraw' | 'ledger' | 'profile';
+
+interface PayoutMethodConfig {
+  id: string;
+  name: string;
+  logoBg: string;
+  logoMark: string;
+  logoUrl: string;
+  inputLabel: string;
+  placeholder: string;
+  rateText: string;
+  minLimitText: string;
+  minWithdrawUsd: number;
+  instructions?: string;
+  enabled?: boolean;
+  isBDT: boolean;
+}
+
+const getPayoutMethods = (usdToBdt: number, dynamicMethods?: WithdrawMethod[]): PayoutMethodConfig[] => {
+  const getMin = (id: string, defaultMin = 5.0): number => {
+    const found = dynamicMethods?.find((m) => m.id === id);
+    return typeof found?.minWithdrawUsd === 'number' && found.minWithdrawUsd > 0 ? found.minWithdrawUsd : defaultMin;
+  };
+  const getEnabled = (id: string): boolean => {
+    const found = dynamicMethods?.find((m) => m.id === id);
+    return found?.enabled !== false;
+  };
+  const getInstr = (id: string): string | undefined => {
+    const found = dynamicMethods?.find((m) => m.id === id);
+    return found?.instructions;
+  };
+  const getName = (id: string, defName: string): string => {
+    const found = dynamicMethods?.find((m) => m.id === id);
+    return found?.name || defName;
+  };
+
+  const methods: PayoutMethodConfig[] = [
+    {
+      id: 'bkash',
+      name: getName('bkash', 'bKash'),
+      logoBg: '#ffffff',
+      logoMark: 'bK',
+      logoUrl: '/payment-methods/bkash.svg',
+      inputLabel: 'bKash Account Number',
+      placeholder: '01XXXXXXXXX',
+      rateText: `1 USD = ${usdToBdt} BDT`,
+      minLimitText: `Min: $${getMin('bkash').toFixed(2)} USD`,
+      minWithdrawUsd: getMin('bkash'),
+      instructions: getInstr('bkash'),
+      enabled: getEnabled('bkash'),
+      isBDT: true,
+    },
+    {
+      id: 'nagad',
+      name: getName('nagad', 'Nagad'),
+      logoBg: '#ffffff',
+      logoMark: 'Nagad',
+      logoUrl: '/payment-methods/nagad.svg',
+      inputLabel: 'Nagad Account Number',
+      placeholder: '01XXXXXXXXX',
+      rateText: `1 USD = ${usdToBdt} BDT`,
+      minLimitText: `Min: $${getMin('nagad').toFixed(2)} USD`,
+      minWithdrawUsd: getMin('nagad'),
+      instructions: getInstr('nagad'),
+      enabled: getEnabled('nagad'),
+      isBDT: true,
+    },
+    {
+      id: 'rocket',
+      name: getName('rocket', 'Rocket'),
+      logoBg: '#ffffff',
+      logoMark: 'Rocket',
+      logoUrl: '/payment-methods/rocket.svg',
+      inputLabel: 'Rocket Account Number',
+      placeholder: '01XXXXXXXXX',
+      rateText: `1 USD = ${usdToBdt} BDT`,
+      minLimitText: `Min: $${getMin('rocket').toFixed(2)} USD`,
+      minWithdrawUsd: getMin('rocket'),
+      instructions: getInstr('rocket'),
+      enabled: getEnabled('rocket'),
+      isBDT: true,
+    },
+    {
+      id: 'faucetpay',
+      name: getName('faucetpay', 'FaucetPay'),
+      logoBg: '#ffffff',
+      logoMark: 'FP',
+      logoUrl: '/payment-methods/faucetpay.svg',
+      inputLabel: 'FaucetPay Email',
+      placeholder: 'your-email@example.com',
+      rateText: 'Instant Automated • Zero Fee',
+      minLimitText: `Min: $${getMin('faucetpay').toFixed(2)} USD`,
+      minWithdrawUsd: getMin('faucetpay'),
+      instructions: getInstr('faucetpay'),
+      enabled: getEnabled('faucetpay'),
+      isBDT: false,
+    },
+    {
+      id: 'crypto',
+      name: getName('crypto', 'USDT (BEP-20)'),
+      logoBg: '#ffffff',
+      logoMark: '₮',
+      logoUrl: '/payment-methods/crypto.svg',
+      inputLabel: 'USDT (BEP-20) Address',
+      placeholder: '0x... (BNB Smart Chain BEP-20)',
+      rateText: 'Only BEP-20 USDT Supported (BNB Smart Chain)',
+      minLimitText: `Min: $${getMin('crypto').toFixed(2)} USD`,
+      minWithdrawUsd: getMin('crypto'),
+      instructions: getInstr('crypto'),
+      enabled: getEnabled('crypto'),
+      isBDT: false,
+    },
+    {
+      id: 'webmoney',
+      name: getName('webmoney', 'WebMoney'),
+      logoBg: '#ffffff',
+      logoMark: 'WM',
+      logoUrl: '/payment-methods/webmoney.svg',
+      inputLabel: 'WebMoney Purse ID',
+      placeholder: 'Z123456789012',
+      rateText: 'USD Purse (WMZ)',
+      minLimitText: `Min: $${getMin('webmoney').toFixed(2)} USD`,
+      minWithdrawUsd: getMin('webmoney'),
+      instructions: getInstr('webmoney'),
+      enabled: getEnabled('webmoney'),
+      isBDT: false,
+    },
+    {
+      id: 'payeer',
+      name: getName('payeer', 'Payeer'),
+      logoBg: '#ffffff',
+      logoMark: 'PAYEER',
+      logoUrl: '/payment-methods/payeer.png',
+      inputLabel: 'Payeer Account (P...)',
+      placeholder: 'P1000000000',
+      rateText: 'USD Account Transfer',
+      minLimitText: `Min: $${getMin('payeer').toFixed(2)} USD`,
+      minWithdrawUsd: getMin('payeer'),
+      instructions: getInstr('payeer'),
+      enabled: getEnabled('payeer'),
+      isBDT: false,
+    },
+  ];
+
+  return methods.filter((m) => m.enabled);
+};
 
 interface DepositMethodConfig {
   id: string;
@@ -356,17 +506,17 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab') as CreatorTab | null;
   const [internalTab, setInternalTab] = useState<CreatorTab>(() => {
-    return (tabFromUrl && ['overview', 'campaigns', 'deposit', 'ledger', 'profile'].includes(tabFromUrl))
+    return (tabFromUrl && ['overview', 'campaigns', 'deposit', 'withdraw', 'ledger', 'profile'].includes(tabFromUrl))
       ? tabFromUrl
       : 'overview';
   });
 
-  const activeTab = (tabFromUrl && ['overview', 'campaigns', 'deposit', 'ledger', 'profile'].includes(tabFromUrl))
+  const activeTab = (tabFromUrl && ['overview', 'campaigns', 'deposit', 'withdraw', 'ledger', 'profile'].includes(tabFromUrl))
     ? tabFromUrl
     : internalTab;
 
   useEffect(() => {
-    if (tabFromUrl && ['overview', 'campaigns', 'deposit', 'ledger', 'profile'].includes(tabFromUrl)) {
+    if (tabFromUrl && ['overview', 'campaigns', 'deposit', 'withdraw', 'ledger', 'profile'].includes(tabFromUrl)) {
       setInternalTab(tabFromUrl);
     }
   }, [tabFromUrl]);
@@ -391,9 +541,15 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
   const [isDepositModalOpen, setIsDepositModalOpen] = useState<boolean>(false);
   const [depositModalError, setDepositModalError] = useState<string | null>(null);
 
+  // Withdraw State
+  const [withdrawMethod, setWithdrawMethod] = useState<string>('bkash');
+  const [withdrawAmount, setWithdrawAmount] = useState<string | number>('');
+  const [withdrawLoading, setWithdrawLoading] = useState<boolean>(false);
+  const [serverWithdrawMethods, setServerWithdrawMethods] = useState<WithdrawMethod[]>([]);
+
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
 
-  // Transactions State (Spend Ledger - Deposits & Campaign Spends) & Pagination State (10 per page)
+  // Transactions State (Spend Ledger - Deposits, Campaign Spends & Withdrawals) & Pagination State (10 per page)
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [txLoading, setTxLoading] = useState<boolean>(false);
   const [txPage, setTxPage] = useState<number>(1);
@@ -401,8 +557,9 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
 
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  // Spend Ledger Sub-Tab state
+  // Spend & Withdraw Ledger Sub-Tab & Filter state
   const [ledgerTab, setLedgerTab] = useState<'my_tx' | 'platform'>('my_tx');
+  const [creatorTxFilter, setCreatorTxFilter] = useState<'all' | 'spend' | 'withdraw' | 'deposit'>('all');
   const [platformStats, setPlatformStats] = useState<{
     totalViewsDelivered: number;
     activeCampaigns: number;
@@ -437,14 +594,21 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
     }
   };
 
-  // Fetch Creator Transactions (Deposits & Campaign Spends only)
+  const fetchWithdrawMethods = async () => {
+    const res = await apiRequest<WithdrawMethod[]>('/wallet/withdraw-methods');
+    if (res.success && res.data) {
+      setServerWithdrawMethods(res.data);
+    }
+  };
+
+  // Fetch Creator Transactions (Deposits, Campaign Spends & Payouts)
   const fetchTransactions = async () => {
     setTxLoading(true);
     const res = await apiRequest<Transaction[]>('/wallet/transactions?role=creator');
     setTxLoading(false);
     if (res.success && res.data) {
       const creatorTx = res.data.filter((tx) =>
-        ['deposit', 'campaign_spend'].includes(tx.type)
+        ['deposit', 'campaign_spend', 'payout'].includes(tx.type)
       );
       setTransactions(creatorTx);
       setTxPage(1);
@@ -576,6 +740,7 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
       fetchCampaigns();
       fetchTransactions();
       fetchDepositMethods();
+      fetchWithdrawMethods();
     }
   }, [user]);
 
@@ -718,6 +883,77 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
   const isDepositBelowMin = hasDepositInput && numDepositAmount < minRequiredUsd;
   const isDepositValid = hasDepositInput && numDepositAmount >= minRequiredUsd && senderAccount.trim() !== '' && transactionHash.trim() !== '';
 
+  // Creator Withdraw calculations & handler
+  const payoutMethods = getPayoutMethods(usdToBdt, serverWithdrawMethods);
+  const selectedWithdrawConfig = payoutMethods.find((m) => m.id === withdrawMethod) || payoutMethods[0];
+  const selectedMinWithdraw = selectedWithdrawConfig?.minWithdrawUsd ?? 5.0;
+  const linkedPaymentMethod = user?.savedPaymentMethods?.find((p) => p.method === withdrawMethod);
+  const isWithdrawLinked = Boolean(linkedPaymentMethod && linkedPaymentMethod.accountNumber && linkedPaymentMethod.accountNumber.trim());
+  const hasWithdrawInput = withdrawAmount !== '' && withdrawAmount !== null && withdrawAmount !== undefined && withdrawAmount.toString().trim() !== '';
+  const numWithdrawAmount = hasWithdrawInput ? (parseFloat(withdrawAmount.toString()) || 0) : 0;
+  const isWithdrawBelowMin = hasWithdrawInput && numWithdrawAmount > 0 && numWithdrawAmount < selectedMinWithdraw;
+  const isWithdrawExceedsBal = hasWithdrawInput && numWithdrawAmount > creatorBal;
+
+  const handleWithdraw = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) {
+      if (onOpenAuth) onOpenAuth('signin');
+      return;
+    }
+
+    if (!hasWithdrawInput || numWithdrawAmount <= 0) {
+      setFeedback({ type: 'error', message: 'Please enter a valid withdrawal amount.' });
+      return;
+    }
+
+    if (numWithdrawAmount < selectedMinWithdraw) {
+      const bdtPart = selectedWithdrawConfig?.isBDT ? ` (≈ ৳${Math.round(selectedMinWithdraw * usdToBdt)} BDT)` : '';
+      setFeedback({ type: 'error', message: `Minimum withdrawal for ${selectedWithdrawConfig?.name} is $${selectedMinWithdraw.toFixed(2)} USD${bdtPart}.` });
+      return;
+    }
+
+    if (numWithdrawAmount > creatorBal) {
+      setFeedback({ type: 'error', message: `Requested amount ($${numWithdrawAmount.toFixed(2)}) exceeds available Ad Budget ($${creatorBal.toFixed(2)}).` });
+      return;
+    }
+
+    if (!isWithdrawLinked || !linkedPaymentMethod?.accountNumber) {
+      setFeedback({ type: 'error', message: `Please link your ${selectedWithdrawConfig?.name} account in Account Profile settings before requesting a withdrawal.` });
+      return;
+    }
+
+    setWithdrawLoading(true);
+    const telemetry = getClientTelemetry();
+    const res = await apiRequest<{ newBalance: number; message: string }>('/wallet/withdraw', {
+      method: 'POST',
+      body: JSON.stringify({
+        amount: numWithdrawAmount,
+        method: withdrawMethod,
+        accountDetails: linkedPaymentMethod.accountNumber,
+        sourceBalance: 'creator',
+        country: telemetry.country,
+        browser: telemetry.browser,
+        platform: telemetry.platform,
+        deviceName: telemetry.deviceName,
+        timezone: telemetry.timezone,
+        deviceInfo: telemetry.deviceInfo,
+      }),
+    });
+    setWithdrawLoading(false);
+
+    if (res.success) {
+      setFeedback({
+        type: 'success',
+        message: res.data?.message || `✓ Withdrawal request of $${numWithdrawAmount.toFixed(2)} USD submitted! Admin will review and disburse your payment.`,
+      });
+      setWithdrawAmount('');
+      onRefreshUser();
+      fetchTransactions();
+    } else {
+      setFeedback({ type: 'error', message: res.error || 'Failed to submit withdrawal request.' });
+    }
+  };
+
   return (
     <div className="responsive-container">
       <div className="dashboard-layout">
@@ -788,12 +1024,22 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
             </button>
 
             <button
+              onClick={() => { setActiveTab('withdraw'); setFeedback(null); }}
+              className={`dashboard-nav-item ${activeTab === 'withdraw' ? 'active-neon' : ''}`}
+            >
+              <div className="nav-left">
+                <ArrowDownLeft size={20} />
+                <span>Withdraw Budget</span>
+              </div>
+            </button>
+
+            <button
               onClick={() => { setActiveTab('ledger'); setFeedback(null); }}
               className={`dashboard-nav-item ${activeTab === 'ledger' ? 'active-neon' : ''}`}
             >
               <div className="nav-left">
                 <History size={20} />
-                <span>Spend Ledger</span>
+                <span>Spend & Withdraw</span>
               </div>
             </button>
 
@@ -911,13 +1157,59 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                   <div className="font-mono responsive-kpi-val" style={{ fontSize: '2.3rem', fontWeight: 800, color: 'var(--primary-neon)', marginTop: 6, lineHeight: 1 }}>
                     ${creatorBal.toFixed(2)}
                   </div>
-                  <button
-                    onClick={() => setActiveTab('deposit')}
-                    className="btn btn-ghost"
-                    style={{ marginTop: 12, width: '100%', padding: '7px', fontSize: '0.82rem', borderRadius: 8, color: 'var(--primary-neon)' }}
-                  >
-                    + Deposit Budget
-                  </button>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 14 }}>
+                    <button
+                      onClick={() => setActiveTab('deposit')}
+                      className="btn btn-neon glow-neon"
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        fontSize: '0.84rem',
+                        fontWeight: 700,
+                        borderRadius: 10,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 6,
+                        textTransform: 'none',
+                        letterSpacing: '0.01em',
+                      }}
+                    >
+                      <Plus size={15} strokeWidth={2.5} /> Deposit Budget
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('withdraw')}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        fontSize: '0.84rem',
+                        fontWeight: 700,
+                        borderRadius: 10,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 6,
+                        background: '#f8fafc',
+                        color: '#0f172a',
+                        border: '1.5px solid #cbd5e1',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                        letterSpacing: '0.01em',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = '#f0f9ff';
+                        e.currentTarget.style.borderColor = 'var(--primary-neon)';
+                        e.currentTarget.style.color = 'var(--primary-neon)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = '#f8fafc';
+                        e.currentTarget.style.borderColor = '#cbd5e1';
+                        e.currentTarget.style.color = '#0f172a';
+                      }}
+                    >
+                      <ArrowUpRight size={15} strokeWidth={2.5} /> Withdraw Budget
+                    </button>
+                  </div>
                 </div>
 
                 {/* 2. Today's Spending */}
@@ -1985,13 +2277,432 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
             </div>
           )}
 
-          {/* TAB 4: SPEND LEDGER (2 SUB-TABS) */}
+          {/* =========================================================================
+              TAB 4: WITHDRAW AD BUDGET (CREATOR WITHDRAWAL)
+              ========================================================================= */}
+          {activeTab === 'withdraw' && (
+            <div className="glass-card" style={{ padding: '24px', borderRadius: 18, border: '1.5px solid var(--primary-neon)' }}>
+
+              {/* Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+                <div>
+                  <h3 className="font-display" style={{ fontSize: '1.45rem', color: '#0f172a', margin: 0 }}>
+                    WITHDRAW AD BUDGET
+                  </h3>
+                  <span style={{ fontSize: '0.88rem', color: '#64748b' }}>
+                    Available Budget: <strong className="font-mono" style={{ color: 'var(--primary-neon)' }}>${creatorBal.toFixed(2)} USD</strong> (≈ ৳{Math.round(creatorBal * usdToBdt)} BDT)
+                  </span>
+                </div>
+                <span className="badge-pill badge-cyan" style={{ fontSize: '0.74rem', padding: '4px 12px' }}>
+                  Min Payout: ${selectedMinWithdraw.toFixed(2)} USD {selectedWithdrawConfig?.isBDT ? `(≈ ৳${Math.round(selectedMinWithdraw * usdToBdt)} BDT)` : ''}
+                </span>
+              </div>
+
+              {/* INDIVIDUAL METHOD CARDS - LOGO + NAME + MIN WITHDRAW AMOUNT ON CARD */}
+              <div style={{ marginBottom: 18 }}>
+                <label className="font-mono" style={{ fontSize: '0.84rem', color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: 10, fontWeight: 700 }}>
+                  Select Withdrawal Method:
+                </label>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 125px), 1fr))', gap: 12 }}>
+                  {payoutMethods.map((m) => {
+                    const isSelected = withdrawMethod === m.id;
+                    return (
+                      <div
+                        key={m.id}
+                        onClick={() => {
+                          setWithdrawMethod(m.id);
+                          setFeedback(null);
+                        }}
+                        style={{
+                          background: isSelected ? '#f0f9ff' : '#ffffff',
+                          border: isSelected ? '2px solid var(--primary-neon)' : '1px solid #e2e8f0',
+                          borderRadius: 14,
+                          padding: '14px 10px 12px',
+                          cursor: 'pointer',
+                          transition: 'all 0.18s ease',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          minHeight: 142,
+                          position: 'relative',
+                          boxShadow: isSelected ? '0 4px 14px rgba(14, 165, 233, 0.2)' : '0 1px 3px rgba(0,0,0,0.02)',
+                        }}
+                      >
+                        {/* Checkmark Indicator */}
+                        {isSelected && (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              top: 6,
+                              right: 6,
+                              width: 18,
+                              height: 18,
+                              borderRadius: '50%',
+                              background: 'var(--primary-neon)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <Check size={11} color="#ffffff" strokeWidth={3} />
+                          </div>
+                        )}
+
+                        {/* Top Section: Logo & Name */}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: '100%' }}>
+                          <div
+                            style={{
+                              width: 48,
+                              height: 48,
+                              borderRadius: 12,
+                              background: '#ffffff',
+                              border: isSelected ? '1.5px solid var(--primary-neon)' : '1px solid #e2e8f0',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              padding: 6,
+                              boxShadow: isSelected ? '0 4px 14px rgba(14, 165, 233, 0.22)' : '0 2px 6px rgba(0,0,0,0.04)',
+                              transition: 'all 0.18s ease',
+                            }}
+                          >
+                            <img
+                              src={m.logoUrl}
+                              alt={m.name}
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'contain',
+                                display: 'block',
+                              }}
+                            />
+                          </div>
+
+                          <span
+                            style={{
+                              fontSize: '0.88rem',
+                              fontWeight: 800,
+                              color: '#0f172a',
+                              textAlign: 'center',
+                              lineHeight: 1.2,
+                              minHeight: 22,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            {m.name}
+                          </span>
+                        </div>
+
+                        {/* Min Limit Badge on Card */}
+                        <span
+                          style={{
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            color: isSelected ? 'var(--primary-neon)' : '#64748b',
+                            background: isSelected ? '#e0f2fe' : '#f1f5f9',
+                            border: isSelected ? '1px solid rgba(14, 165, 233, 0.3)' : '1px solid #e2e8f0',
+                            padding: '2px 8px',
+                            borderRadius: 6,
+                            textAlign: 'center',
+                            whiteSpace: 'nowrap',
+                            marginTop: 4,
+                          }}
+                        >
+                          {m.minLimitText}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* WITHDRAWAL FORM */}
+              <form onSubmit={handleWithdraw} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: 14, alignItems: 'start' }}>
+                  {/* Amount Input */}
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: 24, marginBottom: 6 }}>
+                      <label className="font-mono" style={{ fontSize: '0.84rem', color: '#475569', fontWeight: 700 }}>
+                        Amount (USD):
+                      </label>
+                      <span className="font-mono" style={{ fontSize: '0.82rem', color: 'var(--primary-neon)', fontWeight: 700 }}>
+                        Max: ${creatorBal.toFixed(2)}
+                      </span>
+                    </div>
+
+                    <input
+                      type="number"
+                      step="any"
+                      placeholder={`Enter amount (min $${selectedMinWithdraw.toFixed(2)})`}
+                      value={withdrawAmount}
+                      onChange={(e) => setWithdrawAmount(e.target.value)}
+                      className="input-field"
+                      style={{
+                        padding: '11px 14px',
+                        fontSize: '0.98rem',
+                        borderColor: (isWithdrawBelowMin || isWithdrawExceedsBal) ? '#ef4444' : undefined,
+                        color: (isWithdrawBelowMin || isWithdrawExceedsBal) ? '#dc2626' : undefined,
+                        background: (isWithdrawBelowMin || isWithdrawExceedsBal) ? '#fff1f2' : undefined,
+                      }}
+                      required
+                    />
+
+                    {/* Warning Messages */}
+                    {isWithdrawBelowMin && (
+                      <div style={{ color: '#ef4444', fontSize: '0.82rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5, marginTop: 6 }}>
+                        <AlertCircle size={14} color="#ef4444" style={{ flexShrink: 0 }} />
+                        <span>Minimum withdrawal for {selectedWithdrawConfig?.name} is ${selectedMinWithdraw.toFixed(2)} USD{selectedWithdrawConfig?.isBDT ? ` (≈ ৳${Math.round(selectedMinWithdraw * usdToBdt)} BDT)` : ''}.</span>
+                      </div>
+                    )}
+                    {!isWithdrawBelowMin && isWithdrawExceedsBal && (
+                      <div style={{ color: '#ef4444', fontSize: '0.82rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5, marginTop: 6 }}>
+                        <AlertCircle size={14} color="#ef4444" style={{ flexShrink: 0 }} />
+                        <span>Amount exceeds available Ad Budget (${creatorBal.toFixed(2)} USD).</span>
+                      </div>
+                    )}
+
+                    {/* Quick Amount Pills */}
+                    <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                      {[5, 10, 25, 50, 100].map((preset) => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => setWithdrawAmount(preset)}
+                          className="btn btn-ghost"
+                          style={{
+                            padding: '5px 12px',
+                            fontSize: '0.84rem',
+                            borderRadius: 8,
+                            background: hasWithdrawInput && numWithdrawAmount === preset ? '#e0f2fe' : '#ffffff',
+                            color: hasWithdrawInput && numWithdrawAmount === preset ? 'var(--primary-neon)' : '#64748b',
+                            borderColor: hasWithdrawInput && numWithdrawAmount === preset ? 'var(--primary-neon)' : undefined,
+                            fontWeight: hasWithdrawInput && numWithdrawAmount === preset ? 700 : 500,
+                          }}
+                        >
+                          ${preset}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setWithdrawAmount(parseFloat(creatorBal.toFixed(2)))}
+                        className="btn btn-ghost"
+                        style={{
+                          padding: '5px 12px',
+                          fontSize: '0.84rem',
+                          borderRadius: 8,
+                          color: '#059669',
+                          fontWeight: 700,
+                        }}
+                      >
+                        ALL
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Account Details */}
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: 24, marginBottom: 6, gap: 6 }}>
+                      <label className="font-mono" style={{ fontSize: '0.84rem', color: '#475569', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={selectedWithdrawConfig?.inputLabel}>
+                        {selectedWithdrawConfig?.inputLabel}:
+                      </label>
+                      {isWithdrawLinked ? (
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            color: '#059669',
+                            background: '#ecfdf5',
+                            border: '1px solid #a7f3d0',
+                            padding: '2px 8px',
+                            borderRadius: 6,
+                            flexShrink: 0,
+                          }}
+                        >
+                          <Lock size={11} /> Linked & Locked
+                        </span>
+                      ) : (
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            color: '#b45309',
+                            background: '#fef3c7',
+                            border: '1px solid #fde68a',
+                            padding: '2px 8px',
+                            borderRadius: 6,
+                            flexShrink: 0,
+                          }}
+                        >
+                          <AlertCircle size={11} /> Not Linked
+                        </span>
+                      )}
+                    </div>
+
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type="text"
+                        placeholder={isWithdrawLinked ? selectedWithdrawConfig?.placeholder : `No linked ${selectedWithdrawConfig?.name} account found in profile`}
+                        value={isWithdrawLinked ? linkedPaymentMethod?.accountNumber : ''}
+                        readOnly={true}
+                        disabled={!isWithdrawLinked}
+                        className="input-field"
+                        style={{
+                          padding: isWithdrawLinked ? '11px 38px 11px 14px' : '11px 14px',
+                          fontSize: '0.98rem',
+                          background: '#f8fafc',
+                          borderColor: isWithdrawLinked ? '#cbd5e1' : '#fde68a',
+                          cursor: 'not-allowed',
+                          color: isWithdrawLinked ? '#0f172a' : '#94a3b8',
+                          fontWeight: isWithdrawLinked ? 600 : 400,
+                        }}
+                        required={isWithdrawLinked}
+                      />
+                      {isWithdrawLinked && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            right: 12,
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            color: '#059669',
+                            display: 'flex',
+                            alignItems: 'center',
+                          }}
+                          title="This payment method is bound to your account profile."
+                        >
+                          <Lock size={15} />
+                        </div>
+                      )}
+                    </div>
+
+                    {isWithdrawLinked ? (
+                      <span style={{ fontSize: '0.78rem', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 5, flexWrap: 'wrap', gap: 6 }}>
+                        <span>✓ Pre-filled from your linked account.</span>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('profile')}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--primary-neon)',
+                            fontSize: '0.78rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            textDecoration: 'underline',
+                            padding: 0,
+                          }}
+                        >
+                          Edit in Profile Settings
+                        </button>
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: '0.78rem', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 5, flexWrap: 'wrap', gap: 6 }}>
+                        <span>⚠️ You must link and save your {selectedWithdrawConfig?.name} number in Profile before withdrawing.</span>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('profile')}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--primary-neon)',
+                            fontSize: '0.78rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            textDecoration: 'underline',
+                            padding: 0,
+                          }}
+                        >
+                          Go to Profile Settings →
+                        </button>
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Conversion Summary & Payout Instruction Box */}
+                <div
+                  style={{
+                    background: '#f0f9ff',
+                    border: '1px solid rgba(14, 165, 233, 0.25)',
+                    borderRadius: 12,
+                    padding: '12px 16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 6,
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                    <span style={{ fontSize: '0.82rem', color: '#475569', fontWeight: 600 }}>
+                      Payout Exchange Rate: <strong style={{ color: '#0f172a' }}>{selectedWithdrawConfig?.rateText}</strong>
+                    </span>
+                    {selectedWithdrawConfig?.isBDT && hasWithdrawInput && numWithdrawAmount > 0 && (
+                      <span className="font-mono" style={{ fontSize: '0.92rem', color: 'var(--primary-neon)', fontWeight: 800 }}>
+                        Estimated Payout: ≈ ৳{Math.round(numWithdrawAmount * usdToBdt).toLocaleString()} BDT
+                      </span>
+                    )}
+                  </div>
+                  {selectedWithdrawConfig?.instructions && (
+                    <span style={{ fontSize: '0.76rem', color: '#64748b' }}>
+                      ℹ️ {selectedWithdrawConfig.instructions}
+                    </span>
+                  )}
+                </div>
+
+                {/* Submit Action Button */}
+                <button
+                  type="submit"
+                  disabled={
+                    withdrawLoading ||
+                    !isWithdrawLinked ||
+                    !hasWithdrawInput ||
+                    isWithdrawBelowMin ||
+                    isWithdrawExceedsBal
+                  }
+                  className="btn btn-neon glow-neon"
+                  style={{
+                    width: '100%',
+                    padding: '13px',
+                    fontSize: '0.94rem',
+                    fontWeight: 700,
+                    borderRadius: 12,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    opacity: (withdrawLoading || !isWithdrawLinked || !hasWithdrawInput || isWithdrawBelowMin || isWithdrawExceedsBal) ? 0.6 : 1,
+                    cursor: (withdrawLoading || !isWithdrawLinked || !hasWithdrawInput || isWithdrawBelowMin || isWithdrawExceedsBal) ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {withdrawLoading ? (
+                    <>
+                      <RefreshCw size={16} className="spin-fast" /> Processing Withdrawal...
+                    </>
+                  ) : (
+                    <>
+                      <ArrowDownLeft size={16} /> Request Withdrawal ({hasWithdrawInput && numWithdrawAmount > 0 ? `$${numWithdrawAmount.toFixed(2)} USD` : 'Enter Amount'})
+                    </>
+                  )}
+                </button>
+              </form>
+            </div>
+          )}
+
+          {/* TAB 5: SPEND & WITHDRAW LEDGER (2 SUB-TABS) */}
           {activeTab === 'ledger' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {/* Header with Sub-tab Switcher */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
                 <h3 className="font-display" style={{ fontSize: '1.5rem', color: '#0f172a', margin: 0 }}>
-                  SPEND LEDGER
+                  SPEND & WITHDRAW LEDGER
                 </h3>
 
                 {/* Sub-Tab Selector (Responsive 2-column on mobile) */}
@@ -2006,14 +2717,14 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                     borderRadius: 12,
                     border: '1px solid #e2e8f0',
                     width: '100%',
-                    maxWidth: 420,
+                    maxWidth: 440,
                   }}
                 >
                   <button
                     onClick={() => setLedgerTab('my_tx')}
                     style={{
-                      padding: '7px 8px',
-                      fontSize: 'clamp(0.74rem, 2.4vw, 0.84rem)',
+                      padding: '7px 6px',
+                      fontSize: 'clamp(0.72rem, 2.6vw, 0.82rem)',
                       fontWeight: 700,
                       borderRadius: 10,
                       border: 'none',
@@ -2024,341 +2735,443 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: 5,
+                      gap: 4,
                       whiteSpace: 'nowrap',
+                      minWidth: 0,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
                       transition: 'all 0.15s ease',
                     }}
                   >
-                    <Wallet size={14} style={{ flexShrink: 0 }} />
-                    <span>My Transactions ({transactions.length})</span>
+                    <Wallet size={13} style={{ flexShrink: 0 }} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>My Logs ({transactions.length})</span>
                   </button>
 
                   <button
                     onClick={() => { setLedgerTab('platform'); fetchPlatformStats(); }}
                     style={{
-                      padding: '7px 8px',
-                      fontSize: 'clamp(0.74rem, 2.4vw, 0.84rem)',
+                      padding: '7px 6px',
+                      fontSize: 'clamp(0.72rem, 2.6vw, 0.82rem)',
                       fontWeight: 700,
                       borderRadius: 10,
                       border: 'none',
                       cursor: 'pointer',
                       background: ledgerTab === 'platform' ? '#ffffff' : 'transparent',
-                      color: ledgerTab === 'platform' ? '#0284c7' : '#64748b',
+                      color: ledgerTab === 'platform' ? '#059669' : '#64748b',
                       boxShadow: ledgerTab === 'platform' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: 5,
+                      gap: 4,
                       whiteSpace: 'nowrap',
+                      minWidth: 0,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
                       transition: 'all 0.15s ease',
                     }}
                   >
-                    <Globe size={14} style={{ flexShrink: 0 }} />
-                    <span>Total Spend & Stats</span>
+                    <Globe size={13} style={{ flexShrink: 0 }} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>Total Stats & Feed</span>
                   </button>
                 </div>
               </div>
 
               {/* SUB-TAB 1: MY TRANSACTIONS */}
-              {ledgerTab === 'my_tx' && (
-                <div className="glass-card" style={{ padding: '22px', borderRadius: 16 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                    <h4 className="font-display" style={{ fontSize: '1.15rem', color: '#0f172a', margin: 0 }}>
-                      SPEND LEDGER
-                    </h4>
-                    <button
-                      onClick={fetchTransactions}
-                      className="btn btn-ghost"
-                      style={{ padding: '5px 12px', fontSize: '0.82rem', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6 }}
-                    >
-                      <RefreshCw size={14} className={txLoading ? 'animate-spin' : ''} /> Refresh
-                    </button>
-                  </div>
+              {ledgerTab === 'my_tx' && (() => {
+                const filteredCreatorTransactions = transactions.filter((tx) => {
+                  if (creatorTxFilter === 'all') return true;
+                  if (creatorTxFilter === 'spend') return tx.type === 'campaign_spend';
+                  if (creatorTxFilter === 'withdraw') return tx.type === 'payout' || tx.type === 'refund';
+                  if (creatorTxFilter === 'deposit') return tx.type === 'deposit';
+                  return true;
+                });
 
-                  {!transactions.length ? (
-                    <div style={{ textAlign: 'center', padding: '36px', color: '#64748b', fontSize: '0.9rem' }}>
-                      No deposit or spend history recorded yet.
+                const spendCount = transactions.filter((t) => t.type === 'campaign_spend').length;
+                const withdrawCount = transactions.filter((t) => t.type === 'payout' || t.type === 'refund').length;
+                const depositCount = transactions.filter((t) => t.type === 'deposit').length;
+
+                return (
+                  <div className="glass-card" style={{ padding: 'clamp(14px, 3.5vw, 22px)', borderRadius: 16 }}>
+                    {/* Filter Pills and Refresh Button Header */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+                      <div>
+                        <h4 className="font-display" style={{ fontSize: '1.15rem', color: '#0f172a', margin: 0 }}>
+                          SPEND & WITHDRAW LOGS
+                        </h4>
+                        <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 2 }}>
+                          Track campaign budget spends, withdrawals, and top-up deposits.
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', width: '100%', justifyContent: 'space-between' }}>
+                        {/* Sub-Filter Pills */}
+                        <div
+                          className="mobile-scroll-x"
+                          style={{
+                            display: 'flex',
+                            gap: 4,
+                            background: '#f1f5f9',
+                            padding: 3,
+                            borderRadius: 10,
+                            overflowX: 'auto',
+                            maxWidth: '100%',
+                            flex: 1,
+                            minWidth: 0,
+                          }}
+                        >
+                          {[
+                            { id: 'all' as const, label: 'All', count: transactions.length },
+                            { id: 'spend' as const, label: 'Spends', count: spendCount },
+                            { id: 'withdraw' as const, label: 'Withdrawals', count: withdrawCount },
+                            { id: 'deposit' as const, label: 'Deposits', count: depositCount },
+                          ].map((f) => {
+                            const isSelected = creatorTxFilter === f.id;
+                            return (
+                              <button
+                                key={f.id}
+                                onClick={() => {
+                                  setCreatorTxFilter(f.id);
+                                  setTxPage(1);
+                                }}
+                                style={{
+                                  padding: '5px 9px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 700,
+                                  borderRadius: 7,
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  background: isSelected ? '#ffffff' : 'transparent',
+                                  color: isSelected ? 'var(--primary-neon)' : '#64748b',
+                                  boxShadow: isSelected ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
+                                  textTransform: 'uppercase',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 3,
+                                  whiteSpace: 'nowrap',
+                                  flexShrink: 0,
+                                  transition: 'all 0.15s ease',
+                                }}
+                              >
+                                <span>{f.label}</span>
+                                <span style={{ fontSize: '0.68rem', opacity: 0.75 }}>({f.count})</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        <button
+                          onClick={fetchTransactions}
+                          className="btn btn-ghost"
+                          style={{ padding: '6px 10px', fontSize: '0.78rem', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}
+                        >
+                          <RefreshCw size={13} className={txLoading ? 'animate-spin' : ''} /> Refresh
+                        </button>
+                      </div>
                     </div>
-                  ) : (
-                    <>
-                      {/* Desktop Table View */}
-                      <div className="desktop-only-table responsive-table-wrapper">
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                          <thead>
-                            <tr style={{ borderBottom: '1.5px solid #e2e8f0', color: '#64748b', textAlign: 'left' }}>
-                              <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Type</th>
-                              <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Amount</th>
-                              <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Balance</th>
-                              <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Status</th>
-                              <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Date</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {transactions
-                              .slice((txPage - 1) * TX_PAGE_SIZE, txPage * TX_PAGE_SIZE)
-                              .map((tx) => (
-                                <tr key={tx._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                  <td style={{ padding: '10px 12px' }}>
-                                    <span
-                                      className="badge-pill"
+
+                    {!filteredCreatorTransactions.length ? (
+                      <div style={{ textAlign: 'center', padding: '36px', color: '#64748b', fontSize: '0.9rem' }}>
+                        {creatorTxFilter === 'all'
+                          ? 'No spend, withdrawal, or deposit logs recorded yet.'
+                          : `No ${creatorTxFilter} logs found.`}
+                      </div>
+                    ) : (
+                      <>
+                        {/* Desktop Table View */}
+                        <div className="desktop-only-table responsive-table-wrapper">
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                            <thead>
+                              <tr style={{ borderBottom: '1.5px solid #e2e8f0', color: '#64748b', textAlign: 'left' }}>
+                                <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Type</th>
+                                <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Amount</th>
+                                <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Balance</th>
+                                <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Status</th>
+                                <th style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 700 }}>Date</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {filteredCreatorTransactions
+                                .slice((txPage - 1) * TX_PAGE_SIZE, txPage * TX_PAGE_SIZE)
+                                .map((tx) => {
+                                  const isDeposit = tx.type === 'deposit';
+                                  const isPayout = tx.type === 'payout';
+                                  const isRefund = tx.type === 'refund';
+                                  const isSpend = tx.type === 'campaign_spend';
+
+                                  return (
+                                    <tr key={tx._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                      <td style={{ padding: '10px 12px' }}>
+                                        {isDeposit && (
+                                          <span
+                                            className="badge-pill"
+                                            style={{
+                                              padding: '2px 8px',
+                                              fontSize: '0.72rem',
+                                              fontWeight: 700,
+                                              background: '#ecfdf5',
+                                              color: '#059669',
+                                              border: '1px solid rgba(16, 185, 129, 0.3)',
+                                              textTransform: 'uppercase',
+                                            }}
+                                          >
+                                            Deposit {tx.gateway ? `(${tx.gateway.toUpperCase()})` : ''}
+                                          </span>
+                                        )}
+                                        {isRefund && (
+                                          <span
+                                            className="badge-pill"
+                                            style={{
+                                              padding: '2px 8px',
+                                              fontSize: '0.72rem',
+                                              fontWeight: 700,
+                                              background: '#ecfdf5',
+                                              color: '#059669',
+                                              border: '1px solid rgba(16, 185, 129, 0.3)',
+                                              textTransform: 'uppercase',
+                                            }}
+                                          >
+                                            Withdrawal Refund
+                                          </span>
+                                        )}
+                                        {isPayout && (
+                                          <span
+                                            className="badge-pill"
+                                            style={{
+                                              padding: '2px 8px',
+                                              fontSize: '0.72rem',
+                                              fontWeight: 700,
+                                              background: '#faf5ff',
+                                              color: '#7c3aed',
+                                              border: '1px solid rgba(124, 58, 237, 0.3)',
+                                              textTransform: 'uppercase',
+                                            }}
+                                          >
+                                            Withdrawal {tx.gateway ? `(${tx.gateway.toUpperCase()})` : ''}
+                                          </span>
+                                        )}
+                                        {isSpend && (
+                                          <span
+                                            className="badge-pill"
+                                            style={{
+                                              padding: '2px 8px',
+                                              fontSize: '0.72rem',
+                                              fontWeight: 700,
+                                              background: '#f0f9ff',
+                                              color: '#0284c7',
+                                              border: '1px solid rgba(14, 165, 233, 0.3)',
+                                              textTransform: 'uppercase',
+                                            }}
+                                          >
+                                            Campaign Spend
+                                          </span>
+                                        )}
+                                        {!isDeposit && !isRefund && !isPayout && !isSpend && (
+                                          <span
+                                            className="badge-pill"
+                                            style={{
+                                              padding: '2px 8px',
+                                              fontSize: '0.72rem',
+                                              fontWeight: 700,
+                                              background: '#f1f5f9',
+                                              color: '#475569',
+                                              border: '1px solid #cbd5e1',
+                                              textTransform: 'uppercase',
+                                            }}
+                                          >
+                                            {tx.type}
+                                          </span>
+                                        )}
+                                      </td>
+                                      <td
+                                        className="font-mono"
+                                        style={{
+                                          padding: '10px 12px',
+                                          fontWeight: 700,
+                                          color: isDeposit || isRefund || tx.amount > 0 ? '#059669' : isPayout ? '#7c3aed' : '#ef4444',
+                                        }}
+                                      >
+                                        {isDeposit || isRefund || tx.amount > 0
+                                          ? `+$${tx.amount.toFixed(2)}`
+                                          : `-$${Math.abs(tx.amount).toFixed(2)}`}
+                                      </td>
+                                      <td className="font-mono" style={{ padding: '10px 12px', color: '#0f172a' }}>
+                                        ${(tx.balanceAfter || 0).toFixed(2)}
+                                      </td>
+                                      <td style={{ padding: '10px 12px' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                          <span style={{ color: tx.status === 'completed' ? '#059669' : tx.status === 'pending' ? '#d97706' : '#ef4444', fontWeight: 600, textTransform: 'capitalize' }}>
+                                            {tx.status === 'failed' ? 'Rejected' : tx.status === 'pending' ? 'Pending Review' : tx.status}
+                                          </span>
+                                          {tx.status === 'failed' && tx.notes && (
+                                            <div style={{ fontSize: '0.73rem', color: '#b91c1c', background: '#fef2f2', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '3px 6px', borderRadius: 4, maxWidth: 220, lineHeight: 1.3 }}>
+                                              <strong>Reason:</strong> {tx.notes.replace(/^Rejected:\s*/i, '')}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </td>
+                                      <td style={{ padding: '10px 12px', color: '#64748b' }}>
+                                        {new Date(tx.createdAt).toLocaleDateString()}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Mobile Card List View */}
+                        <div className="mobile-card-list">
+                          {filteredCreatorTransactions
+                            .slice((txPage - 1) * TX_PAGE_SIZE, txPage * TX_PAGE_SIZE)
+                            .map((tx) => {
+                              const isDeposit = tx.type === 'deposit';
+                              const isPayout = tx.type === 'payout';
+                              const isRefund = tx.type === 'refund';
+                              const isSpend = tx.type === 'campaign_spend';
+
+                              return (
+                                <div key={tx._id} className="mobile-data-card" style={{ width: '100%', boxSizing: 'border-box' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, width: '100%' }}>
+                                    <div style={{ minWidth: 0, flexShrink: 1 }}>
+                                      {isDeposit && (
+                                        <span
+                                          className="badge-pill"
+                                          style={{
+                                            padding: '2px 7px',
+                                            fontSize: '0.7rem',
+                                            fontWeight: 700,
+                                            background: '#ecfdf5',
+                                            color: '#059669',
+                                            border: '1px solid rgba(16, 185, 129, 0.3)',
+                                            textTransform: 'uppercase',
+                                          }}
+                                        >
+                                          Deposit {tx.gateway ? `(${tx.gateway.toUpperCase()})` : ''}
+                                        </span>
+                                      )}
+                                      {isRefund && (
+                                        <span
+                                          className="badge-pill"
+                                          style={{
+                                            padding: '2px 7px',
+                                            fontSize: '0.7rem',
+                                            fontWeight: 700,
+                                            background: '#ecfdf5',
+                                            color: '#059669',
+                                            border: '1px solid rgba(16, 185, 129, 0.3)',
+                                            textTransform: 'uppercase',
+                                          }}
+                                        >
+                                          Withdrawal Refund
+                                        </span>
+                                      )}
+                                      {isPayout && (
+                                        <span
+                                          className="badge-pill"
+                                          style={{
+                                            padding: '2px 7px',
+                                            fontSize: '0.7rem',
+                                            fontWeight: 700,
+                                            background: '#faf5ff',
+                                            color: '#7c3aed',
+                                            border: '1px solid rgba(124, 58, 237, 0.3)',
+                                            textTransform: 'uppercase',
+                                          }}
+                                        >
+                                          Withdrawal {tx.gateway ? `(${tx.gateway.toUpperCase()})` : ''}
+                                        </span>
+                                      )}
+                                      {isSpend && (
+                                        <span
+                                          className="badge-pill"
+                                          style={{
+                                            padding: '2px 7px',
+                                            fontSize: '0.7rem',
+                                            fontWeight: 700,
+                                            background: '#f0f9ff',
+                                            color: '#0284c7',
+                                            border: '1px solid rgba(14, 165, 233, 0.3)',
+                                            textTransform: 'uppercase',
+                                          }}
+                                        >
+                                          Campaign Spend
+                                        </span>
+                                      )}
+                                      {!isDeposit && !isRefund && !isPayout && !isSpend && (
+                                        <span
+                                          className="badge-pill"
+                                          style={{
+                                            padding: '2px 7px',
+                                            fontSize: '0.7rem',
+                                            fontWeight: 700,
+                                            background: '#f1f5f9',
+                                            color: '#475569',
+                                            border: '1px solid #cbd5e1',
+                                            textTransform: 'uppercase',
+                                          }}
+                                        >
+                                          {tx.type}
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    <div
+                                      className="font-mono"
                                       style={{
-                                        padding: '2px 8px',
-                                        fontSize: '0.72rem',
-                                        fontWeight: 700,
-                                        background: tx.type === 'deposit' ? '#ecfdf5' : '#f0f9ff',
-                                        color: tx.type === 'deposit' ? '#059669' : '#0284c7',
-                                        border: `1px solid ${tx.type === 'deposit' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(14, 165, 233, 0.3)'}`,
-                                        textTransform: 'uppercase',
+                                        fontWeight: 800,
+                                        fontSize: '0.96rem',
+                                        color: isDeposit || isRefund || tx.amount > 0 ? '#059669' : isPayout ? '#7c3aed' : '#ef4444',
+                                        flexShrink: 0,
+                                        textAlign: 'right',
                                       }}
                                     >
-                                      {tx.type === 'deposit' ? `Deposit (${(tx.gateway || 'ssl').toUpperCase()})` : 'Campaign Spend'}
-                                    </span>
-                                  </td>
-                                  <td
-                                    className="font-mono"
-                                    style={{
-                                      padding: '10px 12px',
-                                      fontWeight: 700,
-                                      color: tx.type === 'deposit' || tx.amount > 0 ? '#059669' : '#ef4444',
-                                    }}
-                                  >
-                                    {tx.type === 'deposit' || tx.amount > 0
-                                      ? `+$${tx.amount.toFixed(2)}`
-                                      : `-$${Math.abs(tx.amount).toFixed(2)}`}
-                                  </td>
-                                  <td className="font-mono" style={{ padding: '10px 12px', color: '#0f172a' }}>
-                                    ${(tx.balanceAfter || 0).toFixed(2)}
-                                  </td>
-                                  <td style={{ padding: '10px 12px', color: tx.status === 'completed' ? '#059669' : '#d97706', fontWeight: 600 }}>
-                                    {tx.status}
-                                  </td>
-                                  <td style={{ padding: '10px 12px', color: '#64748b' }}>
-                                    {new Date(tx.createdAt).toLocaleDateString()}
-                                  </td>
-                                </tr>
-                              ))}
-                          </tbody>
-                        </table>
-                      </div>
+                                      {isDeposit || isRefund || tx.amount > 0
+                                        ? `+$${tx.amount.toFixed(2)}`
+                                        : `-$${Math.abs(tx.amount).toFixed(2)}`}
+                                    </div>
+                                  </div>
 
-                      {/* Mobile Card List View */}
-                      <div className="mobile-card-list">
-                        {transactions
-                          .slice((txPage - 1) * TX_PAGE_SIZE, txPage * TX_PAGE_SIZE)
-                          .map((tx) => (
-                            <div key={tx._id} className="mobile-data-card">
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                                {tx.type === 'deposit' ? (
-                                  <span
-                                    className="badge-pill"
-                                    style={{
-                                      padding: '2px 8px',
-                                      fontSize: '0.72rem',
-                                      fontWeight: 700,
-                                      background: '#ecfdf5',
-                                      color: '#059669',
-                                      border: '1px solid rgba(16, 185, 129, 0.3)',
-                                      textTransform: 'uppercase',
-                                    }}
-                                  >
-                                    Deposit {tx.gateway ? `(${tx.gateway.toUpperCase()})` : ''}
-                                  </span>
-                                ) : (
-                                  <span
-                                    className="badge-pill"
-                                    style={{
-                                      padding: '2px 8px',
-                                      fontSize: '0.72rem',
-                                      fontWeight: 700,
-                                      background: '#f0f9ff',
-                                      color: '#0284c7',
-                                      border: '1px solid rgba(14, 165, 233, 0.3)',
-                                      textTransform: 'uppercase',
-                                    }}
-                                  >
-                                    Campaign Spend
-                                  </span>
-                                )}
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.76rem', color: '#64748b', gap: 6, width: '100%' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, flexWrap: 'wrap' }}>
+                                      <span>Status:</span>
+                                      <span style={{ color: tx.status === 'completed' ? '#059669' : tx.status === 'pending' ? '#d97706' : '#ef4444', fontWeight: 700, textTransform: 'capitalize' }}>
+                                        {tx.status === 'failed' ? 'Rejected' : tx.status === 'pending' ? 'Pending Review' : tx.status}
+                                      </span>
+                                      <span>•</span>
+                                      <span>{new Date(tx.createdAt).toLocaleDateString()}</span>
+                                    </div>
+                                    <div className="font-mono" style={{ color: '#0f172a', fontWeight: 600, flexShrink: 0, textAlign: 'right' }}>
+                                      Bal: ${(tx.balanceAfter || 0).toFixed(2)}
+                                    </div>
+                                  </div>
 
-                                <div
-                                  className="font-mono"
-                                  style={{
-                                    fontWeight: 800,
-                                    fontSize: '1rem',
-                                    color: tx.type === 'deposit' || tx.amount > 0 ? '#059669' : '#ef4444',
-                                  }}
-                                >
-                                  {tx.type === 'deposit' || tx.amount > 0
-                                    ? `+$${tx.amount.toFixed(2)}`
-                                    : `-$${Math.abs(tx.amount).toFixed(2)}`}
+                                  {tx.status === 'failed' && tx.notes && (
+                                    <div style={{ fontSize: '0.72rem', color: '#b91c1c', background: '#fef2f2', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '4px 8px', borderRadius: 6, marginTop: 2 }}>
+                                      <strong>Rejection Reason:</strong> {tx.notes.replace(/^Rejected:\s*/i, '')}
+                                    </div>
+                                  )}
                                 </div>
-                              </div>
+                              );
+                            })}
+                        </div>
 
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.82rem', color: '#64748b' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                  <span>Status:</span>
-                                  <span style={{ color: tx.status === 'completed' ? '#059669' : '#d97706', fontWeight: 700, textTransform: 'capitalize' }}>
-                                    {tx.status}
-                                  </span>
-                                  <span>•</span>
-                                  <span>{new Date(tx.createdAt).toLocaleDateString()}</span>
-                                </div>
-                                <div className="font-mono" style={{ color: '#0f172a', fontWeight: 600 }}>
-                                  Bal: ${(tx.balanceAfter || 0).toFixed(2)}
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                      </div>
-
-                      {renderPagination(
-                        txPage,
-                        Math.ceil(transactions.length / TX_PAGE_SIZE) || 1,
-                        transactions.length,
-                        TX_PAGE_SIZE,
-                        setTxPage,
-                        'transactions'
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
+                        {renderPagination(
+                          txPage,
+                          Math.ceil(filteredCreatorTransactions.length / TX_PAGE_SIZE) || 1,
+                          filteredCreatorTransactions.length,
+                          TX_PAGE_SIZE,
+                          setTxPage,
+                          'transactions'
+                        )}
+                      </>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* SUB-TAB 2: TOTAL SPEND & CAMPAIGN STATS */}
               {ledgerTab === 'platform' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  {/* 4 Real Data Metric Cards in Responsive Fluid Grid */}
-                  <div className="responsive-kpi-grid">
-                    {/* 1. Total Views Delivered */}
-                    <div className="glass-card responsive-kpi-card" style={{ padding: '16px 14px', borderRadius: 16, border: '1.5px solid rgba(14, 165, 233, 0.3)', overflow: 'hidden' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
-                        <span className="font-mono" style={{ fontSize: '0.74rem', color: 'var(--primary-neon)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          Views Delivered
-                        </span>
-                        <div style={{ width: 28, height: 28, borderRadius: 8, background: '#f0f9ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <PlaySquare size={15} color="var(--primary-neon)" />
-                        </div>
-                      </div>
-                      <div className="font-mono responsive-kpi-val" style={{ fontSize: '1.65rem', fontWeight: 800, color: 'var(--primary-neon)', marginTop: 8, lineHeight: 1 }}>
-                        {(platformStats?.totalViewsDelivered || 0).toLocaleString()}
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        Total real YouTube views
-                      </div>
-                    </div>
-
-                    {/* 2. Total Ad Spend */}
-                    <div className="glass-card responsive-kpi-card" style={{ padding: '16px 14px', borderRadius: 16, border: '1.5px solid rgba(16, 185, 129, 0.3)', overflow: 'hidden' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
-                        <span className="font-mono" style={{ fontSize: '0.74rem', color: '#059669', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          Total Ad Spend
-                        </span>
-                        <div style={{ width: 28, height: 28, borderRadius: 8, background: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <CreditCard size={15} color="#059669" />
-                        </div>
-                      </div>
-                      <div className="font-mono responsive-kpi-val" style={{ fontSize: '1.65rem', fontWeight: 800, color: '#059669', marginTop: 8, lineHeight: 1 }}>
-                        ${(platformStats?.totalSpendUsd || 0).toFixed(2)}
-                      </div>
-                      <div className="font-mono" style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        ≈ ৳{Math.round((platformStats?.totalSpendUsd || 0) * bdtRate).toLocaleString()} BDT
-                      </div>
-                    </div>
-
-                    {/* 3. Active Campaigns */}
-                    <div className="glass-card responsive-kpi-card" style={{ padding: '16px 14px', borderRadius: 16, border: '1px solid #f1f5f9', overflow: 'hidden' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
-                        <span className="font-mono" style={{ fontSize: '0.74rem', color: '#7c3aed', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          Active Campaigns
-                        </span>
-                        <div style={{ width: 28, height: 28, borderRadius: 8, background: '#f5f3ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <Activity size={15} color="#7c3aed" />
-                        </div>
-                      </div>
-                      <div className="font-mono responsive-kpi-val" style={{ fontSize: '1.65rem', fontWeight: 800, color: '#7c3aed', marginTop: 8, lineHeight: 1 }}>
-                        {(platformStats?.activeCampaigns || 0).toLocaleString()}
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        Promotions running now
-                      </div>
-                    </div>
-
-                    {/* 4. Total Campaigns Created */}
-                    <div className="glass-card responsive-kpi-card" style={{ padding: '16px 14px', borderRadius: 16, border: '1px solid #f1f5f9', overflow: 'hidden' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
-                        <span className="font-mono" style={{ fontSize: '0.74rem', color: '#d97706', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          Total Campaigns
-                        </span>
-                        <div style={{ width: 28, height: 28, borderRadius: 8, background: '#fffbeb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <Megaphone size={15} color="#d97706" />
-                        </div>
-                      </div>
-                      <div className="font-mono responsive-kpi-val" style={{ fontSize: '1.65rem', fontWeight: 800, color: '#d97706', marginTop: 8, lineHeight: 1 }}>
-                        {(platformStats?.totalCampaigns || 0).toLocaleString()}
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        Platform promotions
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 2 Interactive Real Graphs Grid */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 350px), 1fr))', gap: 14 }}>
-                    {/* Graph 1: Daily Creator Spend Volume */}
-                    <div className="glass-card" style={{ padding: '18px', borderRadius: 16 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <BarChart3 size={16} color="var(--primary-neon)" />
-                          <h4 className="font-display" style={{ fontSize: '1.05rem', color: '#0f172a', margin: 0 }}>
-                            Daily Ad Spend ($ USD)
-                          </h4>
-                        </div>
-                        <button
-                          onClick={fetchPlatformStats}
-                          className="btn btn-ghost"
-                          style={{ padding: '4px 8px', fontSize: '0.78rem', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}
-                        >
-                          <RefreshCw size={12} className={platformStatsLoading ? 'animate-spin' : ''} />
-                        </button>
-                      </div>
-                      {platformStats ? (
-                        renderSpendCurve(
-                          platformStats.dailySpend || [0, 0, 0, 0, 0, 0, 0],
-                          platformStats.chartLabels || ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-                        )
-                      ) : (
-                        <div style={{ height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>Loading...</div>
-                      )}
-                    </div>
-
-                    {/* Graph 2: Daily YouTube Views Delivered */}
-                    <div className="glass-card" style={{ padding: '18px', borderRadius: 16 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <PlaySquare size={16} color="#0284c7" />
-                          <h4 className="font-display" style={{ fontSize: '1.05rem', color: '#0f172a', margin: 0 }}>
-                            Daily Views Delivered
-                          </h4>
-                        </div>
-                        <button
-                          onClick={fetchPlatformStats}
-                          className="btn btn-ghost"
-                          style={{ padding: '4px 8px', fontSize: '0.78rem', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}
-                        >
-                          <RefreshCw size={12} className={platformStatsLoading ? 'animate-spin' : ''} />
-                        </button>
-                      </div>
-                      {platformStats ? (
-                        renderViewsBarChart(
-                          platformStats.dailyViews || [0, 0, 0, 0, 0, 0, 0],
-                          platformStats.chartLabels || ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-                        )
-                      ) : (
-                        <div style={{ height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>Loading...</div>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                <TotalStatsLogView type="creator" />
               )}
             </div>
           )}

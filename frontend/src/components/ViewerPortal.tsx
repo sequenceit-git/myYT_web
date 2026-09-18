@@ -35,7 +35,9 @@ import { UserAvatar } from './UserAvatar';
 import { apiRequest } from '../api';
 import { ProfileSwitchBanner } from './ProfileSwitchBanner';
 import { ProfileSettingsSection } from './ProfileSettingsSection';
+import { TotalStatsLogView } from './TotalStatsLogView';
 import { useExchangeRate } from '../context/ExchangeRateContext';
+import { getClientTelemetry } from '../utils/telemetry';
 
 // Custom sleek Smartphone device icon with bezel, speaker, and home bar
 const PhoneDeviceIcon: React.FC<{ size?: number; color?: string }> = ({ size = 24, color = 'currentColor' }) => (
@@ -638,14 +640,19 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
     }
 
     setLoading(true);
-    const deviceInfo = navigator.userAgent.includes('Mobile') ? 'Mobile Web Browser' : 'Desktop Browser';
+    const telemetry = getClientTelemetry();
     const res = await apiRequest<any>('/wallet/withdraw', {
       method: 'POST',
       body: JSON.stringify({
         amount: Number(numWithdrawAmount),
         method: withdrawMethod,
         accountDetails: linkedMethod.accountNumber.trim(),
-        deviceInfo,
+        country: telemetry.country,
+        browser: telemetry.browser,
+        platform: telemetry.platform,
+        deviceName: telemetry.deviceName,
+        timezone: telemetry.timezone,
+        deviceInfo: telemetry.deviceInfo,
       }),
     });
     setLoading(false);
@@ -937,7 +944,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                     className="btn btn-neon glow-neon"
                     style={{ padding: '9px 18px', fontSize: '0.88rem', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 7 }}
                   >
-                    <img src="/payment-methods/image.png" alt="" style={{ width: 17, height: 17, borderRadius: '50%' }} /> Watch & Earn (App)
+                    <img src="/icons/phone-icon.png" alt="" style={{ width: 17, height: 17, borderRadius: '50%' }} /> Watch & Earn (App)
                   </button>
                 </div>
               </div>
@@ -961,9 +968,24 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                   <button
                     onClick={() => setActiveTab('withdraw')}
                     className="btn btn-ghost"
-                    style={{ marginTop: 12, width: '100%', padding: '7px', fontSize: '0.82rem', borderRadius: 8, color: 'var(--primary-neon)' }}
+                    style={{
+                      marginTop: 14,
+                      width: '100%',
+                      padding: '9px 12px',
+                      fontSize: '0.84rem',
+                      fontWeight: 700,
+                      borderRadius: 10,
+                      color: 'var(--primary-neon)',
+                      borderColor: 'rgba(14, 165, 233, 0.4)',
+                      background: '#f0f9ff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      textTransform: 'none',
+                    }}
                   >
-                    <ArrowUpRight size={13} /> Withdraw Cash
+                    <ArrowUpRight size={15} strokeWidth={2.5} /> Withdraw Cash
                   </button>
                 </div>
 
@@ -1053,7 +1075,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                   <img
-                    src="/payment-methods/image.png"
+                    src="/icons/phone-icon.png"
                     alt="ytCash Mobile App"
                     style={{
                       width: 48,
@@ -1257,7 +1279,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                 {/* Left: Compact Icon & Headline */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <img
-                    src="/payment-methods/image.png"
+                    src="/icons/phone-icon.png"
                     alt="ytCash Mobile App"
                     style={{
                       width: 46,
@@ -1367,7 +1389,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                 {!watchHistory.length ? (
                   <div style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b', fontSize: '0.92rem' }}>
                     <img
-                      src="/payment-methods/image.png"
+                      src="/icons/phone-icon.png"
                       alt="ytCash App"
                       style={{
                         width: 48,
@@ -2096,27 +2118,39 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                           <tbody>
                             {transactions
                               .slice((txPage - 1) * TX_PAGE_SIZE, txPage * TX_PAGE_SIZE)
-                              .map((tx) => (
-                                <tr key={tx._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                  <td style={{ padding: '10px 12px' }}>
-                                    <span className="badge-pill badge-cyan" style={{ padding: '2px 8px', fontSize: '0.72rem', textTransform: 'uppercase' }}>
-                                      {tx.gateway || tx.type}
-                                    </span>
-                                  </td>
-                                  <td className="font-mono" style={{ padding: '10px 12px', fontWeight: 700, fontSize: '0.92rem', color: '#ef4444' }}>
-                                    -${Math.abs(tx.amount).toFixed(2)}
-                                  </td>
-                                  <td className="font-mono" style={{ padding: '10px 12px', color: '#0f172a', fontSize: '0.92rem' }}>
-                                    ${(tx.balanceAfter || 0).toFixed(4)}
-                                  </td>
-                                  <td style={{ padding: '10px 12px', color: tx.status === 'completed' ? '#059669' : tx.status === 'pending' ? '#d97706' : '#ef4444', fontWeight: 600 }}>
-                                    {tx.status}
-                                  </td>
-                                  <td style={{ padding: '10px 12px', color: '#64748b' }}>
-                                    {new Date(tx.createdAt).toLocaleDateString()}
-                                  </td>
-                                </tr>
-                              ))}
+                              .map((tx) => {
+                                const isFailed = tx.status === 'failed' || tx.status === 'rejected';
+                                return (
+                                  <tr key={tx._id} style={{ borderBottom: '1px solid #f1f5f9', verticalAlign: 'top' }}>
+                                    <td style={{ padding: '10px 12px' }}>
+                                      <span className="badge-pill badge-cyan" style={{ padding: '2px 8px', fontSize: '0.72rem', textTransform: 'uppercase' }}>
+                                        {tx.gateway || tx.type}
+                                      </span>
+                                    </td>
+                                    <td className="font-mono" style={{ padding: '10px 12px', fontWeight: 700, fontSize: '0.92rem', color: '#ef4444' }}>
+                                      -${Math.abs(tx.amount).toFixed(2)}
+                                    </td>
+                                    <td className="font-mono" style={{ padding: '10px 12px', color: '#0f172a', fontSize: '0.92rem' }}>
+                                      ${(tx.balanceAfter || 0).toFixed(4)}
+                                    </td>
+                                    <td style={{ padding: '10px 12px' }}>
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                        <span style={{ color: tx.status === 'completed' ? '#059669' : tx.status === 'pending' ? '#d97706' : '#ef4444', fontWeight: 700, textTransform: 'capitalize' }}>
+                                          {isFailed ? 'Rejected' : tx.status}
+                                        </span>
+                                        {isFailed && tx.notes && (
+                                          <div style={{ fontSize: '0.73rem', color: '#b91c1c', background: '#fef2f2', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '3px 6px', borderRadius: 4, maxWidth: 220, lineHeight: 1.3 }}>
+                                            <strong>Reason:</strong> {tx.notes.replace(/^Rejected:\s*/i, '')}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </td>
+                                    <td style={{ padding: '10px 12px', color: '#64748b' }}>
+                                      {new Date(tx.createdAt).toLocaleDateString()}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
                           </tbody>
                         </table>
                       </div>
@@ -2125,32 +2159,41 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
                       <div className="mobile-card-list">
                         {transactions
                           .slice((txPage - 1) * TX_PAGE_SIZE, txPage * TX_PAGE_SIZE)
-                          .map((tx) => (
-                            <div key={tx._id} className="mobile-data-card">
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                                <span className="badge-pill badge-cyan" style={{ padding: '2px 8px', fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700 }}>
-                                  {tx.gateway || tx.type}
-                                </span>
-                                <div className="font-mono" style={{ fontWeight: 800, fontSize: '1rem', color: '#ef4444' }}>
-                                  -${Math.abs(tx.amount).toFixed(2)}
-                                </div>
-                              </div>
-
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.82rem', color: '#64748b' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                  <span>Status:</span>
-                                  <span style={{ color: tx.status === 'completed' ? '#059669' : tx.status === 'pending' ? '#d97706' : '#ef4444', fontWeight: 700, textTransform: 'capitalize' }}>
-                                    {tx.status}
+                          .map((tx) => {
+                            const isFailed = tx.status === 'failed' || tx.status === 'rejected';
+                            return (
+                              <div key={tx._id} className="mobile-data-card" style={{ width: '100%', boxSizing: 'border-box' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, width: '100%' }}>
+                                  <span className="badge-pill badge-cyan" style={{ padding: '2px 7px', fontSize: '0.7rem', textTransform: 'uppercase', fontWeight: 700 }}>
+                                    {tx.gateway || tx.type}
                                   </span>
-                                  <span>•</span>
-                                  <span>{new Date(tx.createdAt).toLocaleDateString()}</span>
+                                  <div className="font-mono" style={{ fontWeight: 800, fontSize: '0.96rem', color: '#ef4444', flexShrink: 0, textAlign: 'right' }}>
+                                    -${Math.abs(tx.amount).toFixed(2)}
+                                  </div>
                                 </div>
-                                <div className="font-mono" style={{ color: '#0f172a', fontWeight: 600 }}>
-                                  Bal: ${(tx.balanceAfter || 0).toFixed(4)}
+
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.76rem', color: '#64748b', gap: 6, width: '100%' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, flexWrap: 'wrap' }}>
+                                    <span>Status:</span>
+                                    <span style={{ color: tx.status === 'completed' ? '#059669' : tx.status === 'pending' ? '#d97706' : '#ef4444', fontWeight: 700, textTransform: 'capitalize' }}>
+                                      {isFailed ? 'Rejected' : tx.status}
+                                    </span>
+                                    <span>•</span>
+                                    <span>{new Date(tx.createdAt).toLocaleDateString()}</span>
+                                  </div>
+                                  <div className="font-mono" style={{ color: '#0f172a', fontWeight: 600, flexShrink: 0, textAlign: 'right' }}>
+                                    Bal: ${(tx.balanceAfter || 0).toFixed(4)}
+                                  </div>
                                 </div>
+
+                                {isFailed && tx.notes && (
+                                  <div style={{ fontSize: '0.72rem', color: '#b91c1c', background: '#fef2f2', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '4px 8px', borderRadius: 6, marginTop: 2 }}>
+                                    <strong>Rejection Reason:</strong> {tx.notes.replace(/^Rejected:\s*/i, '')}
+                                  </div>
+                                )}
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                       </div>
 
                       {renderPagination(
@@ -2168,139 +2211,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
 
               {/* SUB-TAB 2: TOTAL WITHDRAWALS & ALL WEBSITE DATA */}
               {ledgerTab === 'platform' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  {/* 4 Real Data Metric Cards in Fluid Responsive Grid */}
-                  <div className="responsive-kpi-grid">
-                    {/* 1. Total Withdrawals Done */}
-                    <div className="glass-card responsive-kpi-card" style={{ padding: '16px 14px', borderRadius: 16, border: '1.5px solid rgba(16, 185, 129, 0.3)', overflow: 'hidden' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
-                        <span className="font-mono" style={{ fontSize: '0.74rem', color: '#059669', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          Total Paid Out
-                        </span>
-                        <div style={{ width: 28, height: 28, borderRadius: 8, background: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <CreditCard size={15} color="#059669" />
-                        </div>
-                      </div>
-                      <div className="font-mono responsive-kpi-val" style={{ fontSize: '1.65rem', fontWeight: 800, color: '#059669', marginTop: 8, lineHeight: 1 }}>
-                        ${(platformStats?.totalWithdrawnUsd || 0).toFixed(2)}
-                      </div>
-                      <div className="font-mono" style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        ≈ ৳{Math.round((platformStats?.totalWithdrawnUsd || 0) * bdtRate).toLocaleString()} BDT
-                      </div>
-                    </div>
-
-                    {/* 2. Total Times Watched */}
-                    <div className="glass-card responsive-kpi-card" style={{ padding: '16px 14px', borderRadius: 16, border: '1.5px solid rgba(14, 165, 233, 0.3)', overflow: 'hidden' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
-                        <span className="font-mono" style={{ fontSize: '0.74rem', color: 'var(--primary-neon)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          Total Watched
-                        </span>
-                        <div style={{ width: 28, height: 28, borderRadius: 8, background: '#f0f9ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <PlaySquare size={15} color="var(--primary-neon)" />
-                        </div>
-                      </div>
-                      <div className="font-mono responsive-kpi-val" style={{ fontSize: '1.65rem', fontWeight: 800, color: 'var(--primary-neon)', marginTop: 8, lineHeight: 1 }}>
-                        {(platformStats?.totalTimesWatched || 0).toLocaleString()}
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        Completed views
-                      </div>
-                    </div>
-
-                    {/* 3. Active Community Earners */}
-                    <div className="glass-card responsive-kpi-card" style={{ padding: '16px 14px', borderRadius: 16, border: '1px solid #f1f5f9', overflow: 'hidden' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
-                        <span className="font-mono" style={{ fontSize: '0.74rem', color: '#7c3aed', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          Total Members
-                        </span>
-                        <div style={{ width: 28, height: 28, borderRadius: 8, background: '#f5f3ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <Users size={15} color="#7c3aed" />
-                        </div>
-                      </div>
-                      <div className="font-mono responsive-kpi-val" style={{ fontSize: '1.65rem', fontWeight: 800, color: '#7c3aed', marginTop: 8, lineHeight: 1 }}>
-                        {(platformStats?.activeEarnersCount || 0).toLocaleString()}
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        Registered users
-                      </div>
-                    </div>
-
-                    {/* 4. Average Payout Turnaround */}
-                    <div className="glass-card responsive-kpi-card" style={{ padding: '16px 14px', borderRadius: 16, border: '1px solid #f1f5f9', overflow: 'hidden' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
-                        <span className="font-mono" style={{ fontSize: '0.74rem', color: '#d97706', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          Avg Payout Time
-                        </span>
-                        <div style={{ width: 28, height: 28, borderRadius: 8, background: '#fffbeb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <Activity size={15} color="#d97706" />
-                        </div>
-                      </div>
-                      <div className="font-mono responsive-kpi-val" style={{ fontSize: '1.65rem', fontWeight: 800, color: '#d97706', marginTop: 8, lineHeight: 1 }}>
-                        &lt; 15 min
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        Disbursement speed
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 2 Interactive Real Graphs Grid */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 350px), 1fr))', gap: 14 }}>
-                    {/* Graph 1: Daily Withdrawal Volume */}
-                    <div className="glass-card" style={{ padding: '18px', borderRadius: 16 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <BarChart3 size={16} color="#059669" />
-                          <h4 className="font-display" style={{ fontSize: '1.05rem', color: '#0f172a', margin: 0 }}>
-                            Daily Withdrawals ($ USD)
-                          </h4>
-                        </div>
-                        <button
-                          onClick={fetchPlatformStats}
-                          className="btn btn-ghost"
-                          style={{ padding: '4px 8px', fontSize: '0.78rem', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}
-                        >
-                          <RefreshCw size={12} className={platformStatsLoading ? 'animate-spin' : ''} />
-                        </button>
-                      </div>
-                      {platformStats ? (
-                        renderWithdrawalCurve(
-                          platformStats.dailyWithdrawals || [0, 0, 0, 0, 0, 0, 0],
-                          platformStats.chartLabels || ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-                        )
-                      ) : (
-                        <div style={{ height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>Loading...</div>
-                      )}
-                    </div>
-
-                    {/* Graph 2: Daily Videos Watched */}
-                    <div className="glass-card" style={{ padding: '18px', borderRadius: 16 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <PlaySquare size={16} color="var(--primary-neon)" />
-                          <h4 className="font-display" style={{ fontSize: '1.05rem', color: '#0f172a', margin: 0 }}>
-                            Daily Videos Watched
-                          </h4>
-                        </div>
-                        <button
-                          onClick={fetchPlatformStats}
-                          className="btn btn-ghost"
-                          style={{ padding: '4px 8px', fontSize: '0.78rem', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}
-                        >
-                          <RefreshCw size={12} className={platformStatsLoading ? 'animate-spin' : ''} />
-                        </button>
-                      </div>
-                      {platformStats ? (
-                        renderViewsBarChart(
-                          platformStats.dailyViews || [0, 0, 0, 0, 0, 0, 0],
-                          platformStats.chartLabels || ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-                        )
-                      ) : (
-                        <div style={{ height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>Loading...</div>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                <TotalStatsLogView type="viewer" />
               )}
             </div>
           )}

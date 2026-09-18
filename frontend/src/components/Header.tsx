@@ -54,12 +54,12 @@ export const Header: React.FC<HeaderProps> = ({
     ? (!isCreatorMode)
     : (currentPath === '/viewer' || currentPath === '/simulator' || currentPath === '/watch');
 
-  // Strict Contextual Navigation Rules:
-  // 1. Viewer Profile: 'Buy Views' is completely hidden
-  // 2. Creator Profile: 'Watch App' is completely hidden
-  // 3. Guest / Exploring Home: both visible for discovery
-  const showBuyViews = user ? isCreatorMode : !isViewerMode;
-  const showWatchApp = user ? isViewerMode : !isCreatorMode;
+  // Navigation Visibility Rules:
+  // 1. Guest / Logged out: ALL 3 options (Home, Buy Views, Watch App) are ALWAYS visible simultaneously
+  // 2. Viewer Profile (Logged in): 'Buy Views' is hidden
+  // 3. Creator Profile (Logged in): 'Watch App' is hidden
+  const showBuyViews = user ? isCreatorMode : true;
+  const showWatchApp = user ? isViewerMode : true;
 
   // Contextual Profile Balance:
   // Viewer Profile -> show viewer earnings
@@ -101,29 +101,18 @@ export const Header: React.FC<HeaderProps> = ({
         <Link
           to="/"
           onClick={closeMenu}
-          style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}
+          style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}
         >
           <img
-            src="/favicon.svg"
+            src="/image.png"
             alt="ytCash"
             style={{
-              width: 34,
-              height: 34,
+              height: 38,
+              width: 'auto',
               display: 'block',
-              borderRadius: 10,
-              boxShadow: '0 3px 12px rgba(230, 0, 38, 0.28)',
+              objectFit: 'contain',
             }}
           />
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <span className="font-display" style={{ fontSize: '1.4rem', letterSpacing: '0.02em', color: '#0f172a' }}>
-                YT<span style={{ color: 'var(--primary-neon)' }}>CASH</span>
-              </span>
-              <span className="badge-pill badge-cyan" style={{ fontSize: '0.52rem', padding: '1px 5px' }}>
-                PRO
-              </span>
-            </div>
-          </div>
         </Link>
 
         {/* 3 Clean Navigation Options (Desktop) */}
@@ -185,14 +174,14 @@ export const Header: React.FC<HeaderProps> = ({
                 padding: '6px 14px',
                 fontSize: '0.74rem',
                 borderRadius: 9999,
-                background: currentPath === '/simulator' || currentPath === '/watch' ? 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)' : 'transparent',
-                color: currentPath === '/simulator' || currentPath === '/watch' ? '#ffffff' : 'var(--on-surface-variant)',
-                fontWeight: currentPath === '/simulator' || currentPath === '/watch' ? 700 : 500,
+                background: currentPath === '/simulator' || currentPath === '/watch' || currentPath === '/app' || currentPath === '/download' ? 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)' : 'transparent',
+                color: currentPath === '/simulator' || currentPath === '/watch' || currentPath === '/app' || currentPath === '/download' ? '#ffffff' : 'var(--on-surface-variant)',
+                fontWeight: currentPath === '/simulator' || currentPath === '/watch' || currentPath === '/app' || currentPath === '/download' ? 700 : 500,
                 textDecoration: 'none',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 5,
-                boxShadow: currentPath === '/simulator' || currentPath === '/watch' ? '0 2px 8px rgba(14, 165, 233, 0.25)' : 'none',
+                boxShadow: currentPath === '/simulator' || currentPath === '/watch' || currentPath === '/app' || currentPath === '/download' ? '0 2px 8px rgba(14, 165, 233, 0.25)' : 'none',
               }}
             >
               <Smartphone size={13} /> Watch App
@@ -908,7 +897,7 @@ export const Header: React.FC<HeaderProps> = ({
                         </div>
                       </button>
 
-                      {/* Spend Ledger */}
+                      {/* Spend & Withdraw */}
                       <button
                         type="button"
                         onClick={() => {
@@ -934,7 +923,7 @@ export const Header: React.FC<HeaderProps> = ({
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <History size={16} color="var(--primary-neon)" />
-                          <span>Spend Ledger</span>
+                          <span>Spend & Withdraw</span>
                         </div>
                       </button>
 
@@ -1052,7 +1041,8 @@ export const Header: React.FC<HeaderProps> = ({
                 style={{
                   padding: '9px 12px',
                   borderRadius: 8,
-                  color: '#0f172a',
+                  background: currentPath === '/buy-views' || currentPath === '/creator' ? '#e0f2fe' : 'transparent',
+                  color: currentPath === '/buy-views' || currentPath === '/creator' ? 'var(--primary-neon)' : '#0f172a',
                   fontWeight: 700,
                   fontSize: '0.88rem',
                   textDecoration: 'none',
@@ -1069,7 +1059,8 @@ export const Header: React.FC<HeaderProps> = ({
                 style={{
                   padding: '9px 12px',
                   borderRadius: 8,
-                  color: '#0f172a',
+                  background: currentPath === '/simulator' || currentPath === '/watch' || currentPath === '/app' || currentPath === '/download' ? '#e0f2fe' : 'transparent',
+                  color: currentPath === '/simulator' || currentPath === '/watch' || currentPath === '/app' || currentPath === '/download' ? 'var(--primary-neon)' : '#0f172a',
                   fontWeight: 700,
                   fontSize: '0.88rem',
                   textDecoration: 'none',
