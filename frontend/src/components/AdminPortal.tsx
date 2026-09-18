@@ -667,7 +667,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
 
   // 2. Full Admin Dashboard
   return (
-    <div className="container" style={{ padding: '36px 20px', maxWidth: 1260, margin: '0 auto' }}>
+    <div className="container admin-portal-wrapper" style={{ padding: 'clamp(12px, 3vw, 36px) clamp(10px, 2vw, 20px)', maxWidth: 1260, margin: '0 auto' }}>
       {/* Header, Stats Bar & Navigation */}
       <AdminHeader
         stats={stats}

@@ -2,6 +2,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IPayout extends Document {
   viewerId: mongoose.Types.ObjectId;
+  sourceBalance?: 'creator' | 'viewer';
   amount: number;
   method: 'bkash' | 'nagad' | 'rocket' | 'crypto' | 'faucetpay' | 'webmoney' | 'payeer';
   accountDetails: string; // phone number, crypto address, faucetpay email, payeer account, etc.
@@ -26,6 +27,7 @@ export interface IPayout extends Document {
 const PayoutSchema = new Schema<IPayout>(
   {
     viewerId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    sourceBalance: { type: String, enum: ['creator', 'viewer'], default: 'viewer', index: true },
     amount: { type: Number, required: true, min: 1 }, // e.g. min $1
     method: {
       type: String,

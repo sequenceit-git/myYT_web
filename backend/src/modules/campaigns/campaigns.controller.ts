@@ -133,9 +133,10 @@ router.post('/', requireAuth, async (req: AuthRequest, res: Response): Promise<v
     // Record Transaction
     await Transaction.create({
       userId: req.user!._id,
+      role: 'creator',
       type: 'campaign_spend',
       amount: -totalCost,
-      balanceAfter: updatedUser.balance,
+      balanceAfter: updatedUser.creatorBalance !== undefined ? updatedUser.creatorBalance : updatedUser.balance,
       status: 'completed',
       referenceId: campaign._id.toString(),
       notes: `Order for ${targetViews} views at ${watchDurationSec}s duration`,

@@ -46,10 +46,7 @@ export const AdminCampaignsTab: React.FC<AdminCampaignsTabProps> = ({
   };
 
   const filteredCampaigns = campaignsList.filter((c) => {
-    // 1. Status Filter Tab
     if (!getFilteredByStatus(c, activeFilter)) return false;
-
-    // 2. Search Query
     if (!campaignSearch.trim()) return true;
     const q = campaignSearch.toLowerCase();
     return (
@@ -58,12 +55,14 @@ export const AdminCampaignsTab: React.FC<AdminCampaignsTabProps> = ({
     );
   });
 
+  const pageSlice = filteredCampaigns.slice((campPage - 1) * pageSize, campPage * pageSize);
+
   return (
     <div className="glass-card" style={{ padding: '22px', borderRadius: 18 }}>
-      {/* Header with Sub-filter Pills and Search */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h2 className="font-display" style={{ fontSize: '1.35rem', color: '#0f172a', margin: 0 }}>
+          <h2 className="font-display" style={{ fontSize: 'clamp(1.1rem, 4vw, 1.35rem)', color: '#0f172a', margin: 0 }}>
             ALL VIDEO CAMPAIGNS ({campaignsList.length})
           </h2>
           <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 2 }}>
@@ -72,19 +71,11 @@ export const AdminCampaignsTab: React.FC<AdminCampaignsTabProps> = ({
         </div>
 
         {/* Sub-Filter Tabs & Search */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', width: '100%' }}>
           {/* Touch-Scrollable Sub-Filter Pills */}
           <div
-            className="mobile-scroll-x"
-            style={{
-              display: 'flex',
-              gap: 6,
-              background: '#f1f5f9',
-              padding: 4,
-              borderRadius: 12,
-              maxWidth: '100%',
-              overflowX: 'auto',
-            }}
+            className="admin-filter-pills"
+            style={{ display: 'flex', flexWrap: 'wrap', gap: 6, background: '#f1f5f9', padding: 4, borderRadius: 12, maxWidth: '100%', flex: 1 }}
           >
             {(['all', 'active', 'paused', 'completed', 'cancelled'] as const).map((filter) => {
               const isSelected = activeFilter === filter;
@@ -94,21 +85,11 @@ export const AdminCampaignsTab: React.FC<AdminCampaignsTabProps> = ({
                   key={filter}
                   onClick={() => handleFilterChange(filter)}
                   style={{
-                    padding: '6px 14px',
-                    fontSize: '0.8rem',
-                    fontWeight: 700,
-                    borderRadius: 8,
-                    border: 'none',
-                    cursor: 'pointer',
+                    padding: '6px 14px', fontSize: '0.8rem', fontWeight: 700, borderRadius: 8, border: 'none', cursor: 'pointer',
                     background: isSelected ? '#ffffff' : 'transparent',
                     color: isSelected ? 'var(--primary-neon)' : '#64748b',
                     boxShadow: isSelected ? '0 1px 4px rgba(0,0,0,0.06)' : 'none',
-                    textTransform: 'uppercase',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 5,
-                    flexShrink: 0,
-                    whiteSpace: 'nowrap',
+                    textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0, whiteSpace: 'nowrap',
                   }}
                 >
                   <span>{filter}</span>
@@ -119,17 +100,14 @@ export const AdminCampaignsTab: React.FC<AdminCampaignsTabProps> = ({
           </div>
 
           {/* Search Input */}
-          <div style={{ position: 'relative', width: 220 }}>
+          <div style={{ position: 'relative', width: '100%', maxWidth: 280 }}>
             <input
               type="text"
               placeholder="Search campaigns..."
               value={campaignSearch}
-              onChange={(e) => {
-                setCampaignSearch(e.target.value);
-                setCampPage(1);
-              }}
+              onChange={(e) => { setCampaignSearch(e.target.value); setCampPage(1); }}
               className="input-field"
-              style={{ padding: '7px 12px 7px 32px', fontSize: '0.82rem', borderRadius: 8 }}
+              style={{ padding: '7px 12px 7px 32px', fontSize: '0.82rem', borderRadius: 8, width: '100%', boxSizing: 'border-box' }}
             />
             <Search size={14} style={{ position: 'absolute', left: 10, top: 10, color: '#94a3b8' }} />
           </div>
@@ -142,7 +120,8 @@ export const AdminCampaignsTab: React.FC<AdminCampaignsTabProps> = ({
         </div>
       ) : (
         <>
-          <div className="responsive-table-wrapper">
+          {/* ── DESKTOP TABLE ── */}
+          <div className="desktop-only-table responsive-table-wrapper">
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
               <thead>
                 <tr style={{ borderBottom: '1.5px solid #e2e8f0', color: '#64748b', textAlign: 'left' }}>
@@ -155,74 +134,144 @@ export const AdminCampaignsTab: React.FC<AdminCampaignsTabProps> = ({
                 </tr>
               </thead>
               <tbody>
-                {filteredCampaigns
-                  .slice((campPage - 1) * pageSize, campPage * pageSize)
-                  .map((c) => (
-                    <tr key={c._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '10px 12px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <img
-                            src={c.thumbnailUrl || `https://img.youtube.com/vi/${c.videoId}/default.jpg`}
-                            alt="thumb"
-                            style={{ width: 50, height: 34, borderRadius: 6, objectFit: 'cover', background: '#000' }}
-                          />
-                          <div>
-                            <div style={{ fontWeight: 600, color: '#0f172a', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {c.title || `Video ${c.videoId}`}
-                            </div>
-                            <a
-                              href={`https://youtube.com/watch?v=${c.videoId}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              style={{ fontSize: '0.74rem', color: 'var(--primary-neon)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 3 }}
-                            >
-                              Watch on YouTube <ExternalLink size={10} />
-                            </a>
+                {pageSlice.map((c) => (
+                  <tr key={c._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <td style={{ padding: '10px 12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <img
+                          src={c.thumbnailUrl || `https://img.youtube.com/vi/${c.videoId}/default.jpg`}
+                          alt="thumb"
+                          style={{ width: 50, height: 34, borderRadius: 6, objectFit: 'cover', background: '#000' }}
+                        />
+                        <div>
+                          <div style={{ fontWeight: 600, color: '#0f172a', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {c.title || `Video ${c.videoId}`}
                           </div>
+                          <a
+                            href={`https://youtube.com/watch?v=${c.videoId}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{ fontSize: '0.74rem', color: 'var(--primary-neon)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 3 }}
+                          >
+                            Watch on YouTube <ExternalLink size={10} />
+                          </a>
                         </div>
-                      </td>
-                      <td className="font-mono" style={{ padding: '10px 12px', color: '#0f172a' }}>{c.watchDurationSec}s</td>
-                      <td className="font-mono" style={{ padding: '10px 12px', color: 'var(--primary-neon)', fontWeight: 700 }}>
-                        {c.viewsDelivered?.toLocaleString() || 0} / {c.targetViews?.toLocaleString() || 0}
-                      </td>
-                      <td className="font-mono" style={{ padding: '10px 12px', color: '#0f172a' }}>${c.totalCost.toFixed(2)}</td>
-                      <td style={{ padding: '10px 12px' }}>
-                        <span
-                          className="badge-pill"
-                          style={{
-                            padding: '2px 8px',
-                            fontSize: '0.72rem',
-                            textTransform: 'uppercase',
-                            background: c.pausedByAdmin ? '#fef2f2' : c.status === 'active' ? '#ecfdf5' : '#f1f5f9',
-                            color: c.pausedByAdmin ? '#ef4444' : c.status === 'active' ? '#059669' : '#64748b',
-                            border: c.pausedByAdmin ? '1px solid #fecaca' : undefined,
-                            fontWeight: c.pausedByAdmin ? 700 : 600,
-                          }}
-                        >
-                          {c.pausedByAdmin ? 'Admin Paused' : c.status}
-                        </span>
-                      </td>
-                      <td style={{ padding: '10px 12px', textAlign: 'right' }}>
-                        <button
-                          onClick={() => onToggleCampaign(c)}
-                          className="btn btn-ghost"
-                          style={{
-                            padding: '4px 10px',
-                            fontSize: '0.76rem',
-                            borderRadius: 6,
-                            color: c.status === 'active' ? '#ef4444' : '#059669',
-                            background: c.status === 'active' ? '#fef2f2' : '#ecfdf5',
-                            border: c.status === 'active' ? '1px solid #fecaca' : '1px solid #a7f3d0',
-                            fontWeight: 600,
-                          }}
-                        >
-                          {c.status === 'active' ? 'Force Pause' : 'Force Resume'}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                      </div>
+                    </td>
+                    <td className="font-mono" style={{ padding: '10px 12px', color: '#0f172a' }}>{c.watchDurationSec}s</td>
+                    <td className="font-mono" style={{ padding: '10px 12px', color: 'var(--primary-neon)', fontWeight: 700 }}>
+                      {c.viewsDelivered?.toLocaleString() || 0} / {c.targetViews?.toLocaleString() || 0}
+                    </td>
+                    <td className="font-mono" style={{ padding: '10px 12px', color: '#0f172a' }}>${c.totalCost.toFixed(2)}</td>
+                    <td style={{ padding: '10px 12px' }}>
+                      <span
+                        className="badge-pill"
+                        style={{
+                          padding: '2px 8px', fontSize: '0.72rem', textTransform: 'uppercase',
+                          background: c.pausedByAdmin ? '#fef2f2' : c.status === 'active' ? '#ecfdf5' : '#f1f5f9',
+                          color: c.pausedByAdmin ? '#ef4444' : c.status === 'active' ? '#059669' : '#64748b',
+                          border: c.pausedByAdmin ? '1px solid #fecaca' : undefined,
+                          fontWeight: c.pausedByAdmin ? 700 : 600,
+                        }}
+                      >
+                        {c.pausedByAdmin ? 'Admin Paused' : c.status}
+                      </span>
+                    </td>
+                    <td style={{ padding: '10px 12px', textAlign: 'right' }}>
+                      <button
+                        onClick={() => onToggleCampaign(c)}
+                        className="btn btn-ghost"
+                        style={{
+                          padding: '4px 10px', fontSize: '0.76rem', borderRadius: 6,
+                          color: c.status === 'active' ? '#ef4444' : '#059669',
+                          background: c.status === 'active' ? '#fef2f2' : '#ecfdf5',
+                          border: c.status === 'active' ? '1px solid #fecaca' : '1px solid #a7f3d0',
+                          fontWeight: 600,
+                        }}
+                      >
+                        {c.status === 'active' ? 'Force Pause' : 'Force Resume'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
+          </div>
+
+          {/* ── MOBILE CARD LIST ── */}
+          <div className="mobile-card-list">
+            {pageSlice.map((c) => (
+              <div key={c._id} className="mobile-data-card">
+                {/* Row 1: Thumbnail + Title */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <img
+                    src={c.thumbnailUrl || `https://img.youtube.com/vi/${c.videoId}/default.jpg`}
+                    alt="thumb"
+                    style={{ width: 60, height: 40, borderRadius: 6, objectFit: 'cover', background: '#000', flexShrink: 0 }}
+                  />
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.88rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {c.title || `Video ${c.videoId}`}
+                    </div>
+                    <a
+                      href={`https://youtube.com/watch?v=${c.videoId}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ fontSize: '0.72rem', color: 'var(--primary-neon)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 3 }}
+                    >
+                      Watch on YouTube <ExternalLink size={9} />
+                    </a>
+                  </div>
+                </div>
+
+                {/* Row 2: Stats */}
+                <div style={{ display: 'flex', gap: 12, fontSize: '0.8rem', flexWrap: 'wrap' }}>
+                  <div>
+                    <span style={{ color: '#64748b', fontSize: '0.72rem' }}>Duration </span>
+                    <span className="font-mono" style={{ fontWeight: 700, color: '#0f172a' }}>{c.watchDurationSec}s</span>
+                  </div>
+                  <div>
+                    <span style={{ color: '#64748b', fontSize: '0.72rem' }}>Progress </span>
+                    <span className="font-mono" style={{ fontWeight: 700, color: 'var(--primary-neon)' }}>
+                      {c.viewsDelivered?.toLocaleString() || 0}/{c.targetViews?.toLocaleString() || 0}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ color: '#64748b', fontSize: '0.72rem' }}>Cost </span>
+                    <span className="font-mono" style={{ fontWeight: 700, color: '#0f172a' }}>${c.totalCost.toFixed(2)}</span>
+                  </div>
+                </div>
+
+                {/* Row 3: Status + Action */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span
+                    className="badge-pill"
+                    style={{
+                      padding: '2px 8px', fontSize: '0.72rem', textTransform: 'uppercase',
+                      background: c.pausedByAdmin ? '#fef2f2' : c.status === 'active' ? '#ecfdf5' : '#f1f5f9',
+                      color: c.pausedByAdmin ? '#ef4444' : c.status === 'active' ? '#059669' : '#64748b',
+                      border: c.pausedByAdmin ? '1px solid #fecaca' : undefined,
+                      fontWeight: c.pausedByAdmin ? 700 : 600,
+                    }}
+                  >
+                    {c.pausedByAdmin ? 'Admin Paused' : c.status}
+                  </span>
+                  <button
+                    onClick={() => onToggleCampaign(c)}
+                    className="btn btn-ghost"
+                    style={{
+                      flex: 1, padding: '6px', fontSize: '0.78rem', borderRadius: 8,
+                      color: c.status === 'active' ? '#ef4444' : '#059669',
+                      background: c.status === 'active' ? '#fef2f2' : '#ecfdf5',
+                      border: c.status === 'active' ? '1px solid #fecaca' : '1px solid #a7f3d0',
+                      fontWeight: 600, textAlign: 'center',
+                    }}
+                  >
+                    {c.status === 'active' ? 'Force Pause' : 'Force Resume'}
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
 
           <AdminPagination

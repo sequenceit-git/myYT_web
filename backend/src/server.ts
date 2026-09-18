@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import dns from 'node:dns';
 import { app } from './app.js';
 import { config } from './config/index.js';
+import { migrateTransactionRoles } from './modules/wallet/wallet.controller.js';
 
 // Prioritize IPv4 and resilient public DNS to mitigate Windows SRV query timeouts
 try {
@@ -45,6 +46,7 @@ async function connectDatabase() {
 async function bootstrap() {
   try {
     await connectDatabase();
+    await migrateTransactionRoles();
 
     app.listen(config.port, () => {
       console.log(`[Server] ytCash API Server running on port ${config.port} (env: ${config.nodeEnv})`);

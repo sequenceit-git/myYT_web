@@ -238,9 +238,10 @@ router.post('/:id/complete', requireAuth, async (req: AuthRequest, res: Response
     // Record direct earning transaction in USD
     await Transaction.create({
       userId: req.user!._id,
+      role: 'viewer',
       type: 'earning',
       amount: rewardAmount,
-      balanceAfter: updatedUser?.balance || 0,
+      balanceAfter: updatedUser?.viewerBalance !== undefined ? updatedUser.viewerBalance : (updatedUser?.balance || 0),
       status: 'completed',
       referenceId: task._id.toString(),
       notes: `+$${rewardAmount.toFixed(4)} USD earned from ${task.requiredDurationSec}s video view (${task.videoId})`,
@@ -267,9 +268,10 @@ router.post('/:id/complete', requireAuth, async (req: AuthRequest, res: Response
           if (referrer) {
             await Transaction.create({
               userId: referrer._id,
+              role: 'viewer',
               type: 'referral_commission',
               amount: referralCommission,
-              balanceAfter: referrer.balance,
+              balanceAfter: referrer.viewerBalance !== undefined ? referrer.viewerBalance : referrer.balance,
               status: 'completed',
               referenceId: task._id.toString(),
               notes: `10% referral reward (+$${referralCommission.toFixed(4)} USD) from ${updatedUser.name || 'referral'}'s watch task`,

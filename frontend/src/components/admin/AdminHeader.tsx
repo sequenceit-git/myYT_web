@@ -146,15 +146,15 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
           <div style={{ width: 1, height: 28, backgroundColor: '#e2e8f0' }} />
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <h1 className="font-display" style={{ fontSize: '1.45rem', color: '#0f172a', margin: 0 }}>
+              <h1 className="font-display" style={{ fontSize: 'clamp(1.1rem, 4vw, 1.45rem)', color: '#0f172a', margin: 0 }}>
                 ADMIN CONTROL DESK
               </h1>
               <span className="badge-pill badge-cyan" style={{ fontSize: '0.68rem', padding: '2px 8px' }}>
                 MASTER PANEL
               </span>
             </div>
-            <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 2 }}>
-              Manual payouts desk, platform watch hours, ad spend, and system configurations.
+            <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 2 }}>
+              Payouts, deposits, campaigns, users &amp; system configurations.
             </div>
           </div>
         </div>
@@ -214,7 +214,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
 
       {/* Unified Single-Interface Navigator Bar */}
       <div
-        className="glass-card"
+        className="glass-card admin-tab-nav-grid"
         style={{
           background: '#ffffff',
           borderRadius: 16,
@@ -222,8 +222,8 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
           border: '1.5px solid #e2e8f0',
           boxShadow: '0 4px 16px rgba(0,0,0,0.03)',
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(135px, 1fr))',
-          gap: 6,
+          gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))',
+          gap: 5,
           alignItems: 'stretch',
         }}
       >
@@ -241,9 +241,9 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
               }}
               className="btn"
               style={{
-                padding: '9px 10px',
+                padding: '8px 6px',
                 borderRadius: 10,
-                fontSize: '0.8rem',
+                fontSize: 'clamp(0.72rem, 2vw, 0.8rem)',
                 fontWeight: isSelected ? 800 : 600,
                 background: isSelected
                   ? 'linear-gradient(135deg, var(--primary-neon) 0%, #0284c7 100%)'
@@ -253,7 +253,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 6,
+                gap: 4,
                 boxShadow: isSelected ? '0 3px 10px rgba(14, 165, 233, 0.3)' : 'none',
                 transition: 'all 0.15s ease',
                 whiteSpace: 'nowrap',

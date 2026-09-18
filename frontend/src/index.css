@@ -5,7 +5,7 @@
   --surface: #ffffff;
   --surface-card: #ffffff;
   --surface-container-high: #f0f9ff;
-  
+
   /* Sky Blue Primary & Accent Palette */
   --primary-sky: #0ea5e9;
   --primary-sky-dark: #0284c7;
@@ -14,12 +14,12 @@
   --primary-neon-dim: #0369a1;
   --on-primary: #ffffff;
   --secondary-cyan: #0ea5e9;
-  
+
   /* Text & Surfaces */
   --on-surface: #0f172a;
   --on-surface-variant: #475569;
   --glass-stroke: rgba(14, 165, 233, 0.18);
-  
+
   /* Feedback Colors */
   --success-green: #059669;
   --brand-red: #ef4444;
@@ -50,7 +50,12 @@ body {
 }
 
 /* Typography Classes */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   color: #0f172a;
   font-family: 'Doppio One', sans-serif;
 }
@@ -82,6 +87,9 @@ h1, h2, h3, h4, h5, h6 {
   border: 1px solid var(--glass-stroke);
   border-radius: 18px;
   box-shadow: 0 10px 25px -4px rgba(14, 165, 233, 0.07), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .glass-card:hover {
@@ -252,6 +260,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Pulse animation */
 @keyframes neonPulse {
+
   0%,
   100% {
     opacity: 0.7;
@@ -318,6 +327,7 @@ h1, h2, h3, h4, h5, h6 {
     padding-left: 10px !important;
     padding-right: 14px !important;
   }
+
   .ticker-content {
     padding-left: 78px !important;
   }
@@ -333,8 +343,9 @@ h1, h2, h3, h4, h5, h6 {
   max-width: 1280px;
   margin-left: auto;
   margin-right: auto;
-  padding-left: clamp(12px, 3vw, 24px);
-  padding-right: clamp(12px, 3vw, 24px);
+  padding-left: clamp(10px, 3vw, 24px);
+  padding-right: clamp(10px, 3vw, 24px);
+  box-sizing: border-box;
 }
 
 /* Responsive Table Wrapper */
@@ -454,6 +465,8 @@ h1, h2, h3, h4, h5, h6 {
   align-items: flex-start;
   margin: 18px auto;
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .dashboard-sidebar {
@@ -593,9 +606,12 @@ h1, h2, h3, h4, h5, h6 {
 .dashboard-main {
   flex: 1;
   min-width: 0;
+  width: 100%;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   gap: 20px;
+  box-sizing: border-box;
 }
 
 @media (max-width: 900px) {
@@ -642,13 +658,15 @@ h1, h2, h3, h4, h5, h6 {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .mobile-scroll-x::-webkit-scrollbar {
   display: none;
 }
 
-.mobile-scroll-x > * {
+.mobile-scroll-x>* {
   flex-shrink: 0;
 }
 
@@ -775,11 +793,15 @@ h1, h2, h3, h4, h5, h6 {
   .glass-card {
     padding: 16px 12px !important;
     border-radius: 14px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   .mobile-ledger-tabs {
     max-width: 100% !important;
     width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   .mobile-ledger-tabs button {
@@ -788,10 +810,11 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   .mobile-scroll-x {
-    width: 100% !important;
+    max-width: 100% !important;
     overflow-x: auto !important;
     scrollbar-width: none !important;
     -webkit-overflow-scrolling: touch !important;
+    box-sizing: border-box !important;
   }
 
   .mobile-scroll-x::-webkit-scrollbar {
@@ -802,6 +825,7 @@ h1, h2, h3, h4, h5, h6 {
     padding: 12px 10px !important;
     border-radius: 12px !important;
     width: 100% !important;
+    max-width: 100% !important;
     box-sizing: border-box !important;
   }
 
@@ -849,10 +873,85 @@ h1, h2, h3, h4, h5, h6 {
   .viewer-stats-grid {
     grid-template-columns: 1fr;
   }
+
   .viewer-stats-featured {
     grid-column: span 1;
   }
 }
+
+/* ==========================================================================
+   Admin Inner Filter Pills (wrapping, no scroll)
+   ========================================================================== */
+.admin-filter-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.admin-filter-pills > button {
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .admin-filter-pills > button {
+    font-size: 0.76rem !important;
+    padding: 5px 10px !important;
+  }
+}
+
+/* ==========================================================================
+   Admin Panel Mobile Responsive Overrides
+   ========================================================================== */
+@media (max-width: 640px) {
+  /* Admin portal outer padding */
+  .admin-portal-wrapper {
+    padding: 10px 8px !important;
+  }
+
+  /* Admin header bar */
+  .admin-header-subtitle {
+    display: none !important;
+  }
+
+  /* Admin search inputs go full width */
+  .admin-search-input {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Ensure admin glass cards don't overflow */
+  .glass-card table {
+    min-width: auto;
+  }
+}
+@media (max-width: 640px) {
+  .admin-tab-nav-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 4px !important;
+  }
+
+  .admin-tab-nav-grid > button {
+    font-size: 0.68rem !important;
+    padding: 7px 4px !important;
+    gap: 3px !important;
+    white-space: normal !important;
+    text-align: center !important;
+    line-height: 1.2 !important;
+  }
+}
+
+@media (max-width: 400px) {
+  .admin-tab-nav-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 3px !important;
+  }
+
+  .admin-tab-nav-grid > button {
+    font-size: 0.62rem !important;
+    padding: 6px 2px !important;
+  }
+}
+
 
 /* Campaign Duration & Quick Preset Responsive Grid */
 .duration-grid {
@@ -880,11 +979,13 @@ h1, h2, h3, h4, h5, h6 {
   .duration-grid {
     gap: 6px !important;
   }
+
   .duration-btn {
     padding: 8px 2px !important;
     font-size: 0.80rem !important;
     border-radius: 10px !important;
   }
+
   .duration-btn div {
     font-size: 0.58rem !important;
   }
@@ -894,10 +995,12 @@ h1, h2, h3, h4, h5, h6 {
   .duration-grid {
     gap: 4px !important;
   }
+
   .duration-btn {
     padding: 6px 2px !important;
     font-size: 0.74rem !important;
   }
+
   .duration-btn div {
     font-size: 0.52rem !important;
   }

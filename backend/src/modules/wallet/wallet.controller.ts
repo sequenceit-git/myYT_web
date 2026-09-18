@@ -80,6 +80,7 @@ router.post('/deposit', requireAuth, async (req: AuthRequest, res: Response): Pr
 
     const transaction = await Transaction.create({
       userId: req.user!._id,
+      role: 'creator',
       type: 'deposit',
       amount,
       balanceAfter: req.user!.creatorBalance !== undefined ? req.user!.creatorBalance : req.user!.balance,
@@ -209,8 +210,11 @@ router.post('/withdraw', requireAuth, async (req: AuthRequest, res: Response): P
       userAgent: req.headers['user-agent'] as string,
     });
 
+    const withdrawRole = isCreatorWithdraw ? 'creator' : 'viewer';
+
     const payout = await Payout.create({
       viewerId: req.user!._id,
+      sourceBalance: withdrawRole,
       amount,
       method,
       accountDetails: normalizedAccount,
@@ -227,9 +231,12 @@ router.post('/withdraw', requireAuth, async (req: AuthRequest, res: Response): P
 
     await Transaction.create({
       userId: req.user!._id,
+      role: withdrawRole,
       type: 'payout',
       amount: -amount,
-      balanceAfter: isCreatorWithdraw ? updatedUser.creatorBalance : updatedUser.balance,
+      balanceAfter: isCreatorWithdraw
+        ? updatedUser.creatorBalance
+        : (updatedUser.viewerBalance !== undefined ? updatedUser.viewerBalance : updatedUser.balance),
       status: 'pending',
       gateway: method as any,
       referenceId: payout._id.toString(),
@@ -280,9 +287,10 @@ router.post('/convert-credits', requireAuth, async (req: AuthRequest, res: Respo
 
     const transaction = await Transaction.create({
       userId: user._id,
+      role: 'viewer',
       type: 'credit_conversion',
       amount: usdAmount,
-      balanceAfter: user.balance,
+      balanceAfter: user.viewerBalance !== undefined ? user.viewerBalance : user.balance,
       status: 'completed',
       notes: `Converted ${creditsToConvert.toLocaleString()} Watch Credits to $${usdAmount.toFixed(4)} USD Funds`,
     });
@@ -311,18 +319,67 @@ router.get('/transactions', requireAuth, async (req: AuthRequest, res: Response)
     const { role, type, page, limit } = req.query;
     const query: any = { userId: req.user!._id };
 
-    if (type) {
-      const types = (type as string).split(',').map((t) => t.trim());
-      query.type = types.length === 1 ? types[0] : { $in: types };
-    } else if (role === 'viewer' || role === 'viewer_payout') {
-      // Viewer ledger shows withdrawal history
-      query.type = 'payout';
+    if (role === 'creator' || role === 'campaigner') {
+      // Strictly Creator / Campaigner ad budget ledger: deposit, campaign_spend, and creator budget payouts/refunds
+      if (type) {
+        const types = (type as string).split(',').map((t) => t.trim());
+        query.type = types.length === 1 ? types[0] : { $in: types };
+      } else {
+        query.type = { $in: ['deposit', 'campaign_spend', 'payout', 'refund'] };
+      }
+      query.role = { $ne: 'viewer' };
+      query.$or = [
+        { role: 'creator' },
+        { role: 'campaigner' },
+        {
+          role: { $exists: false },
+          type: { $in: ['deposit', 'campaign_spend'] },
+        },
+        {
+          role: { $exists: false },
+          type: { $in: ['payout', 'refund'] },
+          notes: { $regex: /Creator/i },
+        },
+      ];
+    } else if (role === 'viewer_payout') {
+      // Viewer ledger shows viewer withdrawal history and viewer refund records only
+      query.type = { $in: ['payout', 'refund'] };
+      query.role = { $ne: 'creator' };
+      query.$or = [
+        { role: 'viewer' },
+        {
+          role: { $exists: false },
+          notes: { $not: { $regex: /Creator/i } },
+        },
+      ];
     } else if (role === 'viewer_earning') {
       // Earning transactions
-      query.type = { $in: ['earning', 'watch_credit', 'credit_conversion'] };
-    } else if (role === 'creator' || role === 'campaigner') {
-      // Creator spend and withdraw ledger shows deposit, campaign_spend, payout, and refunds
-      query.type = { $in: ['deposit', 'campaign_spend', 'payout', 'refund'] };
+      query.type = { $in: ['earning', 'watch_credit', 'credit_conversion', 'referral_commission'] };
+      query.role = { $ne: 'creator' };
+    } else if (role === 'viewer') {
+      // All viewer transactions
+      if (type) {
+        const types = (type as string).split(',').map((t) => t.trim());
+        query.type = types.length === 1 ? types[0] : { $in: types };
+      } else {
+        query.type = { $in: ['earning', 'watch_credit', 'credit_conversion', 'referral_commission', 'payout', 'refund'] };
+      }
+      query.role = { $ne: 'creator' };
+      query.$or = [
+        { role: 'viewer' },
+        {
+          role: { $exists: false },
+          type: { $in: ['earning', 'watch_credit', 'credit_conversion', 'referral_commission'] },
+        },
+        {
+          role: { $exists: false },
+          type: { $in: ['payout', 'refund'] },
+          notes: { $not: { $regex: /Creator/i } },
+        },
+      ];
+    } else if (type) {
+      const types = (type as string).split(',').map((t) => t.trim());
+      query.type = types.length === 1 ? types[0] : { $in: types };
     }
 
     const pageSize = limit ? Math.min(Math.max(parseInt(limit as string, 10) || 10, 1), 500) : 500;
@@ -655,5 +712,55 @@ router.get('/platform-stats', async (_req, res: Response): Promise<void> => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
+export async function migrateTransactionRoles(): Promise<void> {
+  try {
+    // 1. Backfill creator role for deposits and campaign spends
+    await Transaction.updateMany(
+      { type: { $in: ['deposit', 'campaign_spend'] }, role: { $exists: false } },
+      { $set: { role: 'creator' } }
+    );
+
+    // 2. Backfill viewer role for earnings, watch credits, credit conversions, referral commissions
+    await Transaction.updateMany(
+      { type: { $in: ['earning', 'watch_credit', 'credit_conversion', 'referral_commission'] }, role: { $exists: false } },
+      { $set: { role: 'viewer' } }
+    );
+
+    // 3. Backfill creator role for payouts with notes containing "Creator"
+    await Transaction.updateMany(
+      { type: 'payout', notes: { $regex: /Creator/i }, role: { $exists: false } },
+      { $set: { role: 'creator' } }
+    );
+
+    // 4. Backfill viewer role for remaining payouts
+    await Transaction.updateMany(
+      { type: 'payout', role: { $exists: false } },
+      { $set: { role: 'viewer' } }
+    );
+
+    // 5. Backfill creator role for refunds with notes containing "Creator"
+    await Transaction.updateMany(
+      { type: 'refund', notes: { $regex: /Creator/i }, role: { $exists: false } },
+      { $set: { role: 'creator' } }
+    );
+
+    // 6. Backfill viewer role for remaining refunds
+    await Transaction.updateMany(
+      { type: 'refund', role: { $exists: false } },
+      { $set: { role: 'viewer' } }
+    );
+
+    // 7. Backfill Payout collection sourceBalance
+    await Payout.updateMany(
+      { sourceBalance: { $exists: false } },
+      { $set: { sourceBalance: 'viewer' } }
+    );
+
+    console.log('[Migration] Transaction and Payout roles verified/backfilled successfully.');
+  } catch (err: any) {
+    console.error('[Migration] Note on transaction migration:', err.message);
+  }
+}
 
 export const walletRouter = router;

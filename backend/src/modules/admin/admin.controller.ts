@@ -610,10 +610,16 @@ router.post('/payouts/:id/reject', requireAdmin, async (req: AuthRequest, res: R
     payout.processedAt = new Date();
     await payout.save();
 
-    // Atomic refund back to user wallet (both balance and viewerBalance) and reverse totalWithdrawn
+    // Check whether payout was requested from creator budget or viewer earnings
+    const isCreatorPayout = payout.sourceBalance === 'creator';
+    const refundRole = isCreatorPayout ? 'creator' : 'viewer';
+
+    // Atomic refund back to user wallet (creatorBalance or viewerBalance) and reverse totalWithdrawn
     const updatedUser = await User.findByIdAndUpdate(
       payout.viewerId,
-      { $inc: { balance: payout.amount, viewerBalance: payout.amount, totalWithdrawn: -payout.amount } },
+      isCreatorPayout
+        ? { $inc: { balance: payout.amount, creatorBalance: payout.amount, totalWithdrawn: -payout.amount } }
+        : { $inc: { balance: payout.amount, viewerBalance: payout.amount, totalWithdrawn: -payout.amount } },
       { new: true }
     );
 
@@ -623,15 +629,18 @@ router.post('/payouts/:id/reject', requireAdmin, async (req: AuthRequest, res: R
       { status: 'failed', notes: `Rejected: ${reasonText}` }
     );
 
-    // Record explicit refund transaction
+    // Record explicit refund transaction with proper role
     await Transaction.create({
       userId: payout.viewerId,
+      role: refundRole,
       type: 'refund',
       amount: payout.amount,
-      balanceAfter: updatedUser?.balance || 0,
+      balanceAfter: isCreatorPayout
+        ? (updatedUser?.creatorBalance !== undefined ? updatedUser.creatorBalance : updatedUser?.balance || 0)
+        : (updatedUser?.viewerBalance !== undefined ? updatedUser.viewerBalance : updatedUser?.balance || 0),
       status: 'completed',
       referenceId: payout._id.toString(),
-      notes: `Refund for rejected payout: ${reasonText}`,
+      notes: `Refund for rejected ${isCreatorPayout ? 'Creator Budget' : 'Viewer'} payout: ${reasonText}`,
     });
 
     res.json({ success: true, data: payout, message: 'Payout rejected and funds refunded to user wallet' });

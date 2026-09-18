@@ -93,6 +93,12 @@ export const TotalStatsLogView: React.FC<{ type?: 'viewer' | 'creator' }> = () =
   const ceiling = Math.ceil(maxVal / 50) * 50 || 100;
   const ySteps = [ceiling, Math.round(ceiling * 0.75), Math.round(ceiling * 0.5), Math.round(ceiling * 0.25), 0];
 
+  const formatYAxis = (num: number) => {
+    if (num >= 1_000_000) return `$${(num / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
+    if (num >= 1_000) return `$${(num / 1_000).toFixed(1).replace(/\.0$/, '')}K`;
+    return `$${num}`;
+  };
+
   // Gateways enabled on this platform only
   const gatewayBreakdown: GatewayStat[] = (statsData?.gatewayBreakdown && statsData.gatewayBreakdown.length > 0)
     ? statsData.gatewayBreakdown
@@ -136,12 +142,24 @@ export const TotalStatsLogView: React.FC<{ type?: 'viewer' | 'creator' }> = () =
   const dayStr = statsData?.todayDayStr || ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][now.getDay()];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, width: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box' }}>
       {/* 1. AMOUNT OF PAYMENTS & DEPOSITS BY DAYS / MONTHS */}
-      <div className="glass-card" style={{ padding: '24px', borderRadius: 18, background: '#ffffff', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
+      <div
+        className="glass-card"
+        style={{
+          padding: 'clamp(14px, 3.5vw, 24px)',
+          borderRadius: 18,
+          background: '#ffffff',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.03)',
+          width: '100%',
+          maxWidth: '100%',
+          boxSizing: 'border-box',
+        }}
+      >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
           <div>
-            <h3 className="font-display" style={{ fontSize: '1.25rem', color: '#0f172a', margin: 0, textTransform: 'uppercase', letterSpacing: '0.02em', fontWeight: 800 }}>
+            <h3 className="font-display" style={{ fontSize: 'clamp(1.1rem, 3.5vw, 1.25rem)', color: '#0f172a', margin: 0, textTransform: 'uppercase', letterSpacing: '0.02em', fontWeight: 800 }}>
               AMOUNT OF PAYMENTS & DEPOSITS {timeframe === 'month' ? 'BY MONTHS' : 'BY DAYS'}
             </h3>
             <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 3 }}>
@@ -151,7 +169,7 @@ export const TotalStatsLogView: React.FC<{ type?: 'viewer' | 'creator' }> = () =
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             {/* Metric Mode Filter (All / Withdrawals / Deposits) */}
             <div
               style={{
@@ -208,7 +226,7 @@ export const TotalStatsLogView: React.FC<{ type?: 'viewer' | 'creator' }> = () =
                     key={t}
                     onClick={() => setTimeframe(t)}
                     style={{
-                      padding: '5px 16px',
+                      padding: '5px 14px',
                       fontSize: '0.78rem',
                       fontWeight: 700,
                       borderRadius: 7,
@@ -238,13 +256,13 @@ export const TotalStatsLogView: React.FC<{ type?: 'viewer' | 'creator' }> = () =
         </div>
 
         {/* Cyan Bar Chart with Y-Axis */}
-        <div style={{ position: 'relative', height: 260, width: '100%', marginTop: 20 }}>
+        <div style={{ position: 'relative', height: 260, width: '100%', maxWidth: '100%', marginTop: 20 }}>
           {/* Y-Axis Labels and Gridlines */}
           <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', pointerEvents: 'none' }}>
             {ySteps.map((val) => (
               <div key={val} style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                <span className="font-mono" style={{ width: 44, fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600, textAlign: 'right', paddingRight: 8 }}>
-                  ${val}
+                <span className="font-mono" style={{ width: 50, fontSize: '0.7rem', color: '#94a3b8', fontWeight: 600, textAlign: 'right', paddingRight: 6, flexShrink: 0 }}>
+                  {formatYAxis(val)}
                 </span>
                 <div style={{ flex: 1, borderBottom: '1px dashed #f1f5f9' }} />
               </div>
@@ -255,14 +273,14 @@ export const TotalStatsLogView: React.FC<{ type?: 'viewer' | 'creator' }> = () =
           <div
             style={{
               position: 'absolute',
-              left: 48,
-              right: 12,
+              left: 54,
+              right: 8,
               bottom: 24,
               top: 10,
               display: 'flex',
               alignItems: 'flex-end',
               justifyContent: 'space-around',
-              gap: timeframe === 'week' ? 16 : timeframe === 'month' ? 10 : 8,
+              gap: timeframe === 'week' ? 'clamp(4px, 1.8vw, 16px)' : timeframe === 'month' ? 'clamp(2px, 1vw, 10px)' : 6,
             }}
           >
             {chartValues.map((val, idx) => {
@@ -379,11 +397,14 @@ export const TotalStatsLogView: React.FC<{ type?: 'viewer' | 'creator' }> = () =
       <div
         className="glass-card"
         style={{
-          padding: '24px',
+          padding: 'clamp(14px, 3.5vw, 24px)',
           borderRadius: 18,
           background: '#ffffff',
           border: '1px solid #e2e8f0',
           boxShadow: '0 4px 20px rgba(0,0,0,0.03)',
+          width: '100%',
+          maxWidth: '100%',
+          boxSizing: 'border-box',
         }}
       >
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: 30, alignItems: 'center' }}>
@@ -516,16 +537,19 @@ export const TotalStatsLogView: React.FC<{ type?: 'viewer' | 'creator' }> = () =
       <div
         className="glass-card"
         style={{
-          padding: '24px',
+          padding: 'clamp(14px, 3.5vw, 24px)',
           borderRadius: 18,
           background: '#ffffff',
           border: '1px solid #e2e8f0',
           boxShadow: '0 4px 20px rgba(0,0,0,0.03)',
+          width: '100%',
+          maxWidth: '100%',
+          boxSizing: 'border-box',
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
           <div>
-            <h3 className="font-display" style={{ fontSize: '1.25rem', color: '#0f172a', margin: 0, textTransform: 'uppercase', letterSpacing: '0.02em', fontWeight: 800 }}>
+            <h3 className="font-display" style={{ fontSize: 'clamp(1.1rem, 3.5vw, 1.25rem)', color: '#0f172a', margin: 0, textTransform: 'uppercase', letterSpacing: '0.02em', fontWeight: 800 }}>
               PAYMENT HISTORY
             </h3>
             <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 3 }}>
@@ -593,140 +617,235 @@ export const TotalStatsLogView: React.FC<{ type?: 'viewer' | 'creator' }> = () =
           </div>
         </div>
 
-        {/* Table View */}
+        {/* Table View (Desktop) & Mobile Cards View (Phones) */}
         {!paginatedHistory.length ? (
           <div style={{ textAlign: 'center', padding: '36px', color: '#64748b', fontSize: '0.9rem' }}>
             No real {historyFilter === 'all' ? 'payment' : historyFilter} records found in database yet.
           </div>
         ) : (
-          <div className="responsive-table-wrapper" style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-              <thead>
-                <tr style={{ borderBottom: '1.5px solid #e2e8f0', color: '#64748b', textAlign: 'left' }}>
-                  <th style={{ padding: '12px 14px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 800 }}>USER ID</th>
-                  <th style={{ padding: '12px 14px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 800 }}>TYPE</th>
-                  <th style={{ padding: '12px 14px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 800 }}>WALLET / ACCOUNT</th>
-                  <th style={{ padding: '12px 14px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 800 }}>AMOUNT</th>
-                  <th style={{ padding: '12px 14px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 800 }}>DATE</th>
-                  <th style={{ padding: '12px 14px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 800 }}>STATUS</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedHistory.map((item) => {
-                  const logo = getGatewayIcon(item.gateway);
-                  const isPayout = item.type === 'payout';
+          <>
+            {/* Desktop Table View */}
+            <div className="desktop-only-table responsive-table-wrapper" style={{ overflowX: 'auto', width: '100%' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1.5px solid #e2e8f0', color: '#64748b', textAlign: 'left' }}>
+                    <th style={{ padding: '12px 14px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 800 }}>USER ID</th>
+                    <th style={{ padding: '12px 14px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 800 }}>TYPE</th>
+                    <th style={{ padding: '12px 14px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 800 }}>WALLET / ACCOUNT</th>
+                    <th style={{ padding: '12px 14px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 800 }}>AMOUNT</th>
+                    <th style={{ padding: '12px 14px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 800 }}>DATE</th>
+                    <th style={{ padding: '12px 14px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 800 }}>STATUS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedHistory.map((item) => {
+                    const logo = getGatewayIcon(item.gateway);
+                    const isPayout = item.type === 'payout';
 
-                  return (
-                    <tr key={item.id} style={{ borderBottom: '1px solid #f1f5f9', verticalAlign: 'middle' }}>
-                      {/* User ID */}
-                      <td style={{ padding: '12px 14px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
-                            <UserIcon size={14} />
+                    return (
+                      <tr key={item.id} style={{ borderBottom: '1px solid #f1f5f9', verticalAlign: 'middle' }}>
+                        {/* User ID */}
+                        <td style={{ padding: '12px 14px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
+                              <UserIcon size={14} />
+                            </div>
+                            <div>
+                              <span className="font-mono" style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.88rem', display: 'block' }}>
+                                {item.userId}
+                              </span>
+                              <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                                {item.userName}
+                              </span>
+                            </div>
                           </div>
-                          <div>
-                            <span className="font-mono" style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.88rem', display: 'block' }}>
-                              {item.userId}
-                            </span>
-                            <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
-                              {item.userName}
-                            </span>
+                        </td>
+
+                        {/* Transaction Type Badge */}
+                        <td style={{ padding: '12px 14px' }}>
+                          <span
+                            className="badge-pill"
+                            style={{
+                              padding: '3px 8px',
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              background: isPayout ? '#faf5ff' : '#ecfdf5',
+                              color: isPayout ? '#7c3aed' : '#059669',
+                              border: `1px solid ${isPayout ? 'rgba(124, 58, 237, 0.3)' : 'rgba(16, 185, 129, 0.3)'}`,
+                              textTransform: 'uppercase',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                            }}
+                          >
+                            {isPayout ? <ArrowDownLeft size={11} /> : <ArrowUpRight size={11} />}
+                            {isPayout ? 'Payout' : 'Deposit'}
+                          </span>
+                        </td>
+
+                        {/* Masked Wallet / Account */}
+                        <td style={{ padding: '12px 14px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            {logo && (
+                              <div style={{ width: 22, height: 22, borderRadius: 6, background: '#f8fafc', padding: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                <img src={logo} alt={item.gateway} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                              </div>
+                            )}
+                            <div>
+                              <span
+                                className="font-mono"
+                                style={{
+                                  fontSize: '0.82rem',
+                                  color: '#475569',
+                                  wordBreak: 'break-all',
+                                  maxWidth: 240,
+                                  display: 'inline-block',
+                                }}
+                              >
+                                {item.wallet}
+                              </span>
+                              <span style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'block', textTransform: 'uppercase' }}>
+                                {item.gateway}
+                              </span>
+                            </div>
                           </div>
+                        </td>
+
+                        {/* Amount */}
+                        <td
+                          className="font-mono"
+                          style={{
+                            padding: '12px 14px',
+                            fontWeight: 700,
+                            color: isPayout ? '#ef4444' : '#059669',
+                            fontSize: '0.92rem',
+                          }}
+                        >
+                          {isPayout ? `-$${item.amount.toFixed(2)}` : `+$${item.amount.toFixed(2)}`} USD
+                        </td>
+
+                        {/* Date */}
+                        <td style={{ padding: '12px 14px', color: '#64748b', fontSize: '0.84rem' }}>
+                          {item.date}
+                        </td>
+
+                        {/* Status Pill */}
+                        <td style={{ padding: '12px 14px' }}>
+                          <span
+                            style={{
+                              display: 'inline-block',
+                              border: `1px solid ${item.status === 'Paid' || item.status === 'Deposited' ? '#22c55e' : item.status === 'Pending' ? '#f59e0b' : '#ef4444'}`,
+                              color: item.status === 'Paid' || item.status === 'Deposited' ? '#16a34a' : item.status === 'Pending' ? '#d97706' : '#dc2626',
+                              background: item.status === 'Paid' || item.status === 'Deposited' ? '#f0fdf4' : item.status === 'Pending' ? '#fffbeb' : '#fef2f2',
+                              fontSize: '0.74rem',
+                              fontWeight: 700,
+                              padding: '2px 10px',
+                              borderRadius: 6,
+                              textTransform: 'capitalize',
+                            }}
+                          >
+                            {item.status}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Card List View */}
+            <div className="mobile-card-list">
+              {paginatedHistory.map((item) => {
+                const logo = getGatewayIcon(item.gateway);
+                const isPayout = item.type === 'payout';
+
+                return (
+                  <div key={item.id} className="mobile-data-card" style={{ width: '100%', boxSizing: 'border-box' }}>
+                    {/* Row 1: User on Left, Amount on Right */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, width: '100%' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
+                        <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', flexShrink: 0 }}>
+                          <UserIcon size={14} />
                         </div>
-                      </td>
+                        <div style={{ minWidth: 0 }}>
+                          <span className="font-mono" style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.86rem', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {item.userId}
+                          </span>
+                          <span style={{ fontSize: '0.7rem', color: '#64748b', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {item.userName}
+                          </span>
+                        </div>
+                      </div>
 
-                      {/* Transaction Type Badge */}
-                      <td style={{ padding: '12px 14px' }}>
+                      <div
+                        className="font-mono"
+                        style={{
+                          fontWeight: 800,
+                          fontSize: '0.94rem',
+                          color: isPayout ? '#ef4444' : '#059669',
+                          flexShrink: 0,
+                          textAlign: 'right',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {isPayout ? `-$${item.amount.toFixed(2)}` : `+$${item.amount.toFixed(2)}`}
+                      </div>
+                    </div>
+
+                    {/* Row 2: Gateway/Account on Left, Badges on Right */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, width: '100%', fontSize: '0.76rem', color: '#64748b', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                        {logo && (
+                          <img src={logo} alt={item.gateway} style={{ width: 16, height: 16, objectFit: 'contain', borderRadius: 3, flexShrink: 0 }} />
+                        )}
+                        <span className="font-mono" style={{ fontSize: '0.76rem', color: '#475569', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {item.wallet}
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
                         <span
                           className="badge-pill"
                           style={{
-                            padding: '3px 8px',
-                            fontSize: '0.72rem',
+                            padding: '2px 6px',
+                            fontSize: '0.68rem',
                             fontWeight: 700,
                             background: isPayout ? '#faf5ff' : '#ecfdf5',
                             color: isPayout ? '#7c3aed' : '#059669',
                             border: `1px solid ${isPayout ? 'rgba(124, 58, 237, 0.3)' : 'rgba(16, 185, 129, 0.3)'}`,
                             textTransform: 'uppercase',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 4,
                           }}
                         >
-                          {isPayout ? <ArrowDownLeft size={11} /> : <ArrowUpRight size={11} />}
                           {isPayout ? 'Payout' : 'Deposit'}
                         </span>
-                      </td>
-
-                      {/* Masked Wallet / Account */}
-                      <td style={{ padding: '12px 14px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          {logo && (
-                            <div style={{ width: 22, height: 22, borderRadius: 6, background: '#f8fafc', padding: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                              <img src={logo} alt={item.gateway} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                            </div>
-                          )}
-                          <div>
-                            <span
-                              className="font-mono"
-                              style={{
-                                fontSize: '0.82rem',
-                                color: '#475569',
-                                wordBreak: 'break-all',
-                                maxWidth: 240,
-                                display: 'inline-block',
-                              }}
-                            >
-                              {item.wallet}
-                            </span>
-                            <span style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'block', textTransform: 'uppercase' }}>
-                              {item.gateway}
-                            </span>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Amount */}
-                      <td
-                        className="font-mono"
-                        style={{
-                          padding: '12px 14px',
-                          fontWeight: 700,
-                          color: isPayout ? '#ef4444' : '#059669',
-                          fontSize: '0.92rem',
-                        }}
-                      >
-                        {isPayout ? `-$${item.amount.toFixed(2)}` : `+$${item.amount.toFixed(2)}`} USD
-                      </td>
-
-                      {/* Date */}
-                      <td style={{ padding: '12px 14px', color: '#64748b', fontSize: '0.84rem' }}>
-                        {item.date}
-                      </td>
-
-                      {/* Status Pill */}
-                      <td style={{ padding: '12px 14px' }}>
                         <span
                           style={{
                             display: 'inline-block',
                             border: `1px solid ${item.status === 'Paid' || item.status === 'Deposited' ? '#22c55e' : item.status === 'Pending' ? '#f59e0b' : '#ef4444'}`,
                             color: item.status === 'Paid' || item.status === 'Deposited' ? '#16a34a' : item.status === 'Pending' ? '#d97706' : '#dc2626',
                             background: item.status === 'Paid' || item.status === 'Deposited' ? '#f0fdf4' : item.status === 'Pending' ? '#fffbeb' : '#fef2f2',
-                            fontSize: '0.74rem',
+                            fontSize: '0.68rem',
                             fontWeight: 700,
-                            padding: '2px 10px',
+                            padding: '1px 7px',
                             borderRadius: 6,
                             textTransform: 'capitalize',
                           }}
                         >
                           {item.status}
                         </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                      </div>
+                    </div>
+
+                    {/* Row 3: Date */}
+                    <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: -4 }}>
+                      {item.date}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
 
         {/* Pagination Controls */}

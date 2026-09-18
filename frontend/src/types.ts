@@ -126,6 +126,7 @@ export interface Transaction {
     balance?: number;
     creatorBalance?: number;
   } | string;
+  role?: 'creator' | 'viewer' | 'campaigner';
   type: string;
   amount: number;
   balanceAfter: number;
