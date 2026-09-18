@@ -133,24 +133,20 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div
+          <img
+            src="/image.png"
+            alt="ytCash"
             style={{
-              width: 44,
-              height: 44,
-              borderRadius: 12,
-              background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
-              color: '#ffffff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 4px 14px rgba(14, 165, 233, 0.3)',
+              height: 36,
+              width: 'auto',
+              display: 'block',
+              objectFit: 'contain',
             }}
-          >
-            <Shield size={22} />
-          </div>
+          />
+          <div style={{ width: 1, height: 28, backgroundColor: '#e2e8f0' }} />
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <h1 className="font-display" style={{ fontSize: '1.55rem', color: '#0f172a', margin: 0 }}>
+              <h1 className="font-display" style={{ fontSize: '1.45rem', color: '#0f172a', margin: 0 }}>
                 ADMIN CONTROL DESK
               </h1>
               <span className="badge-pill badge-cyan" style={{ fontSize: '0.68rem', padding: '2px 8px' }}>

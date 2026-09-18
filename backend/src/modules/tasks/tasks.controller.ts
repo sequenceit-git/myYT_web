@@ -347,4 +347,78 @@ router.get('/history', requireAuth, async (req: AuthRequest, res: Response): Pro
   }
 });
 
+// GET /api/tasks/viewer-stats - Viewer live statistics & remaining limits
+router.get('/viewer-stats', requireAuth, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!._id;
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+
+    const [dailyLimitSettings, hourlyLimitSettings, todayTasks, hourWatchedCount, totalViewsCount, userDoc] = await Promise.all([
+      getSystemDailyLimitSettings(),
+      getSystemHourlyLimitSettings(),
+      Task.find({
+        viewerId: userId,
+        status: 'completed',
+        $or: [
+          { completedAt: { $gte: startOfDay } },
+          { createdAt: { $gte: startOfDay } },
+        ],
+      }).select('rewardAmount actualDurationSec'),
+      Task.countDocuments({
+        viewerId: userId,
+        status: 'completed',
+        $or: [
+          { completedAt: { $gte: oneHourAgo } },
+          { createdAt: { $gte: oneHourAgo } },
+        ],
+      }),
+      Task.countDocuments({
+        viewerId: userId,
+        status: 'completed',
+      }),
+      User.findById(userId).select('totalEarned balance viewerBalance'),
+    ]);
+
+    const dailyViews = todayTasks.length;
+    const dailyEarnings = todayTasks.reduce((sum, t) => sum + (t.rewardAmount || 0.0035), 0);
+    const userViewerBal = userDoc?.viewerBalance !== undefined ? userDoc.viewerBalance : (userDoc?.balance || 0);
+    const totalEarnings = Math.max(userDoc?.totalEarned || 0, userViewerBal, dailyEarnings);
+
+    const remainingDaily = dailyLimitSettings.enableDailyLimit && dailyLimitSettings.maxDailyVideos > 0
+      ? Math.max(0, dailyLimitSettings.maxDailyVideos - dailyViews)
+      : null;
+
+    const remainingHourly = hourlyLimitSettings.enableHourlyLimit && hourlyLimitSettings.maxHourlyVideos > 0
+      ? Math.max(0, hourlyLimitSettings.maxHourlyVideos - hourWatchedCount)
+      : null;
+
+    res.json({
+      success: true,
+      data: {
+        dailyEarnings: Number(dailyEarnings.toFixed(4)),
+        totalEarnings: Number(totalEarnings.toFixed(4)),
+        dailyViews,
+        totalViews: totalViewsCount,
+        dailyLimit: {
+          enabled: dailyLimitSettings.enableDailyLimit,
+          maxDailyVideos: dailyLimitSettings.maxDailyVideos,
+          todayWatched: dailyViews,
+          remaining: remainingDaily,
+        },
+        hourlyLimit: {
+          enabled: hourlyLimitSettings.enableHourlyLimit,
+          maxHourlyVideos: hourlyLimitSettings.maxHourlyVideos,
+          hourWatched: hourWatchedCount,
+          remaining: remainingHourly,
+        },
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export const tasksRouter = router;

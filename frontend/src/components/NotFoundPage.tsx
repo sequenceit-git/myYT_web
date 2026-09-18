@@ -64,6 +64,20 @@ export const NotFoundPage: React.FC<NotFoundPageProps> = ({ user }) => {
           backdropFilter: 'blur(16px)',
         }}
       >
+        <Link to="/" style={{ display: 'inline-block', marginBottom: 20 }}>
+          <img
+            src="/image.png"
+            alt="ytCash"
+            style={{
+              height: 40,
+              width: 'auto',
+              display: 'block',
+              margin: '0 auto',
+              objectFit: 'contain',
+            }}
+          />
+        </Link>
+
         {/* Futuristic 404 Badge */}
         <div
           style={{

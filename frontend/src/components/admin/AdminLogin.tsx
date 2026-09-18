@@ -30,25 +30,37 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({
           border: '1.5px solid rgba(14, 165, 233, 0.25)',
         }}
       >
+        <img
+          src="/image.png"
+          alt="ytCash"
+          style={{
+            height: 42,
+            width: 'auto',
+            display: 'block',
+            objectFit: 'contain',
+            margin: '0 auto 16px',
+          }}
+        />
+
         <div
           style={{
-            width: 60,
-            height: 60,
-            borderRadius: 18,
+            width: 52,
+            height: 52,
+            borderRadius: 16,
             background: 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)',
             color: 'var(--primary-neon)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            margin: '0 auto 18px',
+            margin: '0 auto 14px',
             border: '1.5px solid rgba(14, 165, 233, 0.35)',
             boxShadow: '0 8px 20px rgba(14, 165, 233, 0.2)',
           }}
         >
-          <Shield size={32} />
+          <Shield size={28} />
         </div>
 
-        <h2 className="font-display" style={{ fontSize: '1.75rem', color: '#0f172a', margin: 0, letterSpacing: '0.02em' }}>
+        <h2 className="font-display" style={{ fontSize: '1.65rem', color: '#0f172a', margin: 0, letterSpacing: '0.02em' }}>
           ADMIN ACCESS
         </h2>
         <p style={{ color: '#64748b', fontSize: '0.86rem', marginTop: 6, marginBottom: 22 }}>

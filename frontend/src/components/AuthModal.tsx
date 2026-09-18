@@ -301,29 +301,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
         {/* Modal Header */}
         <div style={{ padding: '24px 28px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div>
             <img
-              src="/favicon.svg"
+              src="/image.png"
               alt="ytCash"
               style={{
-                width: 42,
-                height: 42,
+                height: 38,
+                width: 'auto',
                 display: 'block',
-                borderRadius: 12,
-                boxShadow: '0 4px 14px rgba(230, 0, 38, 0.28)',
+                objectFit: 'contain',
+                marginBottom: 6,
               }}
             />
-            <div>
-              <div className="font-display" style={{ fontSize: '1.5rem', color: '#0f172a', letterSpacing: '0.04em', lineHeight: 1.1 }}>
-                YT<span style={{ color: 'var(--primary-neon)' }}>CASH</span> ACCESS
-              </div>
-              <div className="font-mono" style={{ fontSize: '0.76rem', color: 'var(--on-surface-variant)', marginTop: 2 }}>
-                {mode === 'forgot'
-                  ? 'Reset your account password'
-                  : mode === 'signup'
-                  ? 'Create your free account to watch & promote'
-                  : 'Welcome back! Sign in to access your dashboard'}
-              </div>
+            <div className="font-mono" style={{ fontSize: '0.76rem', color: 'var(--on-surface-variant)' }}>
+              {mode === 'forgot'
+                ? 'Reset your account password'
+                : mode === 'signup'
+                ? 'Create your free account to watch & promote'
+                : 'Welcome back! Sign in to access your dashboard'}
             </div>
           </div>
 
