@@ -86,9 +86,30 @@ router.get('/next', requireAuth, async (req: AuthRequest, res: Response): Promis
     const cooldownSettings = await getSystemCooldownSettings();
     const pricingTiers = await getSystemPricingTiers();
 
+    // Round-robin: find the viewer's most recent task to rotate past it
+    // so each request gives a different campaign when multiple are available
+    const lastTask = await Task.findOne({ viewerId: req.user!._id })
+      .sort({ createdAt: -1 })
+      .select('campaignId')
+      .lean();
+
+    let orderedCampaigns = activeCampaigns;
+    if (lastTask?.campaignId && activeCampaigns.length > 1) {
+      const lastIdx = activeCampaigns.findIndex(
+        (c: any) => c._id.toString() === lastTask.campaignId.toString()
+      );
+      if (lastIdx >= 0) {
+        // Start from the campaign AFTER the last-watched one, wrapping around
+        orderedCampaigns = [
+          ...activeCampaigns.slice(lastIdx + 1),
+          ...activeCampaigns.slice(0, lastIdx + 1),
+        ];
+      }
+    }
+
     // Filter by cooldown (if enabled)
     let selectedCampaign: any = null;
-    for (const camp of activeCampaigns) {
+    for (const camp of orderedCampaigns) {
       const isCooldown = cooldownSettings.enableCooldown && cooldownSettings.videoCooldownSeconds > 0
         ? await cacheService.hasCooldown(userId, camp.videoId)
         : false;
