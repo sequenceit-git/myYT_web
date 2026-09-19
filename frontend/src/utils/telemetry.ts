@@ -112,21 +112,25 @@ export const getCountryFlag = (countryName?: string, countryCode?: string): stri
 };
 
 let cachedClientModel = '';
+let cachedPlatformVersion = '';
 
 // Immediately query modern Client Hints (Chromium Android & Desktop) and check URL parameters
 if (typeof window !== 'undefined') {
   try {
+    const savedModel = localStorage.getItem('myyt_device_model');
+    if (savedModel) cachedClientModel = savedModel;
+
+    const savedVersion = localStorage.getItem('myyt_platform_version');
+    if (savedVersion) cachedPlatformVersion = savedVersion;
+
     const params = new URLSearchParams(window.location.search);
     const queryModel = params.get('deviceModel');
     if (queryModel && queryModel.trim()) {
       localStorage.setItem('myyt_device_model', queryModel.trim());
       cachedClientModel = queryModel.trim();
-    } else {
-      const saved = localStorage.getItem('myyt_device_model');
-      if (saved) cachedClientModel = saved;
     }
 
-    // Modern User-Agent Client Hints API to extract true hardware device model
+    // Modern User-Agent Client Hints API to extract true hardware device model & OS version
     const uaData = (navigator as any).userAgentData;
     if (uaData && typeof uaData.getHighEntropyValues === 'function') {
       uaData
@@ -135,6 +139,10 @@ if (typeof window !== 'undefined') {
           if (hints?.model && hints.model.trim()) {
             cachedClientModel = hints.model.trim();
             localStorage.setItem('myyt_device_model', hints.model.trim());
+          }
+          if (hints?.platformVersion && hints.platformVersion.trim()) {
+            cachedPlatformVersion = hints.platformVersion.trim();
+            localStorage.setItem('myyt_platform_version', hints.platformVersion.trim());
           }
         })
         .catch(() => {});
@@ -252,18 +260,44 @@ export const getClientTelemetry = (): TelemetryPayload => {
 
     // Platform / OS Detection
     let platform = 'Unknown OS';
+    const storedPlatformVersion =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('myyt_platform_version') || cachedPlatformVersion
+        : cachedPlatformVersion;
+
     if (ua.includes('Android')) {
-      const m = ua.match(/Android ([\d.]+)/);
-      platform = `Android ${m ? m[1] : ''}`.trim();
+      let androidVer = '';
+      if (storedPlatformVersion && storedPlatformVersion.trim()) {
+        const major = storedPlatformVersion.split('.')[0].replace(/['"]/g, '');
+        if (major && !isNaN(Number(major)) && Number(major) > 0) {
+          androidVer = major;
+        }
+      }
+      if (!androidVer) {
+        const m = ua.match(/Android ([\d.]+)/);
+        androidVer = m ? m[1] : '';
+      }
+      platform = androidVer ? `Android ${androidVer}` : 'Android';
     } else if (ua.includes('iPhone')) {
       const m = ua.match(/OS ([\d_]+)/);
       platform = `iOS ${m ? m[1].replace(/_/g, '.') : ''}`.trim();
     } else if (ua.includes('iPad')) {
       platform = 'iPadOS';
-    } else if (ua.includes('Windows NT 10.0')) {
-      platform = 'Windows 10/11';
     } else if (ua.includes('Windows')) {
-      platform = 'Windows';
+      if (storedPlatformVersion) {
+        const major = parseInt(storedPlatformVersion.split('.')[0].replace(/['"]/g, ''), 10);
+        if (major >= 13) {
+          platform = 'Windows 11';
+        } else if (major >= 1) {
+          platform = 'Windows 10';
+        } else {
+          platform = 'Windows';
+        }
+      } else if (ua.includes('Windows NT 10.0')) {
+        platform = 'Windows 10/11';
+      } else {
+        platform = 'Windows';
+      }
     } else if (ua.includes('Macintosh') || ua.includes('Mac OS X')) {
       platform = 'macOS';
     } else if (ua.includes('Linux')) {

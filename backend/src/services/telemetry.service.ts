@@ -472,6 +472,9 @@ export const extractFullClientTelemetry = async (req: any, clientData: any = {})
   const userAgent = (req.headers?.['user-agent'] as string) || clientData.userAgent || 'Unknown Client';
   const secPlatform = req.headers?.['sec-ch-ua-platform'] ? String(req.headers['sec-ch-ua-platform']) : undefined;
   const secModel = req.headers?.['sec-ch-ua-model'] ? String(req.headers['sec-ch-ua-model']) : undefined;
+  const secPlatformVersion = req.headers?.['sec-ch-ua-platform-version']
+    ? String(req.headers['sec-ch-ua-platform-version']).replace(/['"]/g, '').trim()
+    : undefined;
 
   // Real-time IP-based location resolution (Hong Kong, Bangladesh, etc.)
   const geo = await resolveCountryAndCodeFromIp(ipAddress, req);
@@ -484,7 +487,18 @@ export const extractFullClientTelemetry = async (req: any, clientData: any = {})
   }
 
   const browser = clientData.browser || parseBrowserFromUserAgent(userAgent);
-  const platform = clientData.platform || parsePlatformFromUserAgent(userAgent, secPlatform);
+  let platform = clientData.platform;
+  if (!platform || platform === 'Android 10' || platform === 'Android') {
+    if (secPlatformVersion) {
+      const major = secPlatformVersion.split('.')[0];
+      if (major && !isNaN(Number(major)) && Number(major) > 0) {
+        platform = `Android ${major}`;
+      }
+    }
+  }
+  if (!platform) {
+    platform = parsePlatformFromUserAgent(userAgent, secPlatform);
+  }
   const clientDevice = clientData.deviceName || clientData.deviceInfo;
   let deviceName = '';
   if (
