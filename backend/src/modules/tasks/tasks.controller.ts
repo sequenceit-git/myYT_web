@@ -195,7 +195,6 @@ router.get('/next', requireAuth, async (req: AuthRequest, res: Response): Promis
     });
 
     const targetYoutubeUrl = `https://www.youtube.com/watch?v=${selectedCampaign.videoId}&t=0s`;
-    const googleRedirectUrl = `https://www.google.com/url?sa=t&url=${encodeURIComponent(targetYoutubeUrl)}`;
 
     res.json({
       success: true,
@@ -207,7 +206,7 @@ router.get('/next', requireAuth, async (req: AuthRequest, res: Response): Promis
         title: selectedCampaign.title,
         thumbnailUrl: selectedCampaign.thumbnailUrl,
         youtubeDeepLink: `vnd.youtube:${selectedCampaign.videoId}`,
-        youtubeWebUrl: googleRedirectUrl,
+        youtubeWebUrl: targetYoutubeUrl,
         directVideoUrl: targetYoutubeUrl,
       },
     });

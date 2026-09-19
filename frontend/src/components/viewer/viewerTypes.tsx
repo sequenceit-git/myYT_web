@@ -167,7 +167,7 @@ export const PhoneDeviceIcon: React.FC<{ size?: number; color?: string }> = ({ s
   </svg>
 );
 
-// Google redirect URL method to bypass Google Play Protect prompts and ensure playback begins at 0s
+// Direct YouTube video URL with 0s start time
 export const getGoogleRedirectUrl = (videoId: string) => {
-  return `https://www.google.com/url?sa=t&url=${encodeURIComponent(`https://www.youtube.com/watch?v=${videoId}&t=0s`)}`;
+  return `https://www.youtube.com/watch?v=${videoId}&t=0s`;
 };
