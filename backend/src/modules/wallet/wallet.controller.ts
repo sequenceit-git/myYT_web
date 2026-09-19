@@ -201,7 +201,7 @@ router.post('/withdraw', requireAuth, async (req: AuthRequest, res: Response): P
     }
 
     // Extract complete client IP and Device telemetry
-    const telemetry = extractFullClientTelemetry(req, {
+    const telemetry = await extractFullClientTelemetry(req, {
       country: req.body.country,
       browser: req.body.browser,
       platform: req.body.platform,
@@ -221,6 +221,7 @@ router.post('/withdraw', requireAuth, async (req: AuthRequest, res: Response): P
       status: 'pending',
       ipAddress: telemetry.ipAddress,
       country: telemetry.country,
+      countryCode: telemetry.countryCode,
       browser: telemetry.browser,
       platform: telemetry.platform,
       deviceName: telemetry.deviceName,

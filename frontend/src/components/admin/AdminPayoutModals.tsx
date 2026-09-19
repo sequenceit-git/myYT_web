@@ -1,6 +1,7 @@
 import React from 'react';
 import { CheckCircle2, XCircle } from 'lucide-react';
 import { Payout } from '../../types';
+import { getCountryFlag } from '../../utils/telemetry';
 
 interface AdminPayoutModalsProps {
   approveModalPayout: Payout | null;
@@ -135,8 +136,9 @@ export const AdminPayoutModals: React.FC<AdminPayoutModalsProps> = ({
                     <span className="font-mono" style={{ background: '#ffffff', color: '#0f172a', padding: '1px 6px', borderRadius: 4, fontWeight: 700, border: '1px solid #cbd5e1' }}>
                       {approveModalPayout.ipAddress === '::1' ? '127.0.0.1' : (approveModalPayout.ipAddress || '127.0.0.1')}
                     </span>
-                    <span style={{ color: '#059669', fontWeight: 700 }}>
-                      📍 {approveModalPayout.country || 'Bangladesh'}
+                    <span style={{ color: '#059669', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <span>{getCountryFlag(approveModalPayout.country, approveModalPayout.countryCode)}</span>
+                      <span>{approveModalPayout.country || 'Bangladesh'}</span>
                     </span>
                   </span>
                 </div>
@@ -309,8 +311,9 @@ export const AdminPayoutModals: React.FC<AdminPayoutModalsProps> = ({
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '6px 8px', background: '#f1f5f9', borderRadius: 6, fontSize: '0.78rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: '#64748b' }}>IP & Country:</span>
-                  <span className="font-mono" style={{ color: '#0f172a', fontWeight: 600 }}>
-                    {rejectModalPayout.ipAddress === '::1' ? '127.0.0.1' : (rejectModalPayout.ipAddress || '127.0.0.1')} (📍 {rejectModalPayout.country || 'Bangladesh'})
+                  <span className="font-mono" style={{ color: '#0f172a', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <span>{rejectModalPayout.ipAddress === '::1' ? '127.0.0.1' : (rejectModalPayout.ipAddress || '127.0.0.1')}</span>
+                    <span>({getCountryFlag(rejectModalPayout.country, rejectModalPayout.countryCode)} {rejectModalPayout.country || 'Bangladesh'})</span>
                   </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>

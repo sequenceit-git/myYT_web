@@ -12,6 +12,7 @@ export interface IPayout extends Document {
   transactionRef?: string;
   ipAddress?: string;
   country?: string;
+  countryCode?: string;
   browser?: string;
   platform?: string;
   deviceName?: string;
@@ -47,6 +48,7 @@ const PayoutSchema = new Schema<IPayout>(
     transactionRef: { type: String },
     ipAddress: { type: String },
     country: { type: String },
+    countryCode: { type: String },
     browser: { type: String },
     platform: { type: String },
     deviceName: { type: String },

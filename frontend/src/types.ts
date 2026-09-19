@@ -84,6 +84,7 @@ export interface Payout {
   rejectionReason?: string;
   ipAddress?: string;
   country?: string;
+  countryCode?: string;
   browser?: string;
   platform?: string;
   deviceName?: string;

@@ -10,6 +10,7 @@ import {
 import { Payout } from '../../types';
 import { getPaymentLogo } from './adminTypes';
 import { AdminPagination } from './AdminPagination';
+import { getCountryFlag } from '../../utils/telemetry';
 
 interface AdminPayoutsTabProps {
   payoutsList: Payout[];
@@ -133,6 +134,7 @@ export const AdminPayoutsTab: React.FC<AdminPayoutsTabProps> = ({
                   const isBDT = p.method === 'bkash' || p.method === 'nagad' || p.method === 'rocket';
                   const logo = getPaymentLogo(p.method);
                   const countryDisplay = p.country || 'Bangladesh';
+                  const countryFlag = getCountryFlag(p.country, p.countryCode);
                   const browserDisplay = p.browser || 'Web Browser';
                   const platformDisplay = p.platform || p.clientPlatform || 'Web';
                   const deviceDisplay = p.deviceName || p.deviceInfo || 'Desktop PC';
@@ -190,8 +192,9 @@ export const AdminPayoutsTab: React.FC<AdminPayoutsTabProps> = ({
                               <span className="font-mono">{p.ipAddress === '::1' ? '127.0.0.1' : (p.ipAddress || '127.0.0.1')}</span>
                               {p.ipAddress && (copiedId === `ip-${p._id}` ? <Check size={10} color="#059669" /> : <Copy size={10} color="#94a3b8" />)}
                             </div>
-                            <span className="badge-pill" style={{ padding: '1px 6px', fontSize: '0.7rem', background: '#ecfdf5', color: '#059669', border: '1px solid rgba(16,185,129,0.3)', fontWeight: 700 }}>
-                              📍 {countryDisplay}
+                            <span className="badge-pill" style={{ padding: '1px 6px', fontSize: '0.7rem', background: '#ecfdf5', color: '#059669', border: '1px solid rgba(16,185,129,0.3)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                              <span>{countryFlag}</span>
+                              <span style={{ textTransform: 'uppercase' }}>{countryDisplay}</span>
                             </span>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap', fontSize: '0.72rem' }}>
@@ -267,6 +270,7 @@ export const AdminPayoutsTab: React.FC<AdminPayoutsTabProps> = ({
               const isRejected = p.status === 'rejected';
               const rejectionReason = p.rejectionReason || p.adminNotes;
               const countryDisplay = p.country || 'Bangladesh';
+              const countryFlag = getCountryFlag(p.country, p.countryCode);
               const deviceDisplay = p.deviceName || p.deviceInfo || 'Desktop PC';
 
               return (
@@ -310,7 +314,10 @@ export const AdminPayoutsTab: React.FC<AdminPayoutsTabProps> = ({
                       <span className="font-mono">{p.ipAddress === '::1' ? '127.0.0.1' : (p.ipAddress || '127.0.0.1')}</span>
                       {p.ipAddress && (copiedId === `ip-${p._id}` ? <Check size={9} color="#059669" /> : <Copy size={9} color="#94a3b8" />)}
                     </div>
-                    <span style={{ background: '#ecfdf5', color: '#059669', border: '1px solid rgba(16,185,129,0.3)', padding: '1px 5px', borderRadius: 4, fontWeight: 700 }}>📍 {countryDisplay}</span>
+                    <span style={{ background: '#ecfdf5', color: '#059669', border: '1px solid rgba(16,185,129,0.3)', padding: '1px 5px', borderRadius: 4, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                      <span>{countryFlag}</span>
+                      <span style={{ textTransform: 'uppercase' }}>{countryDisplay}</span>
+                    </span>
                     <span style={{ color: '#64748b' }}><Smartphone size={9} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 2 }} />{deviceDisplay}</span>
                   </div>
 

@@ -13,6 +13,13 @@ export const app = express();
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 
+// Request Client Hints (Sec-CH-UA-Model, Sec-CH-UA-Platform) for hardware device model detection
+app.use((_req, res, next) => {
+  res.setHeader('Accept-CH', 'Sec-CH-UA-Model, Sec-CH-UA-Platform, Sec-CH-UA-Platform-Version');
+  res.setHeader('Permissions-Policy', 'ch-ua-model=*, ch-ua-platform=*, ch-ua-platform-version=*');
+  next();
+});
+
 // Health check endpoints
 const healthHandler = (_req: express.Request, res: express.Response) => {
   res.json({

@@ -48,11 +48,185 @@ const TIMEZONE_TO_COUNTRY: Record<string, string> = {
   'Australia/Melbourne': 'Australia',
 };
 
+const COUNTRY_NAME_TO_CODE: Record<string, string> = {
+  'hong kong': 'HK',
+  'bangladesh': 'BD',
+  'united states': 'US',
+  'usa': 'US',
+  'india': 'IN',
+  'pakistan': 'PK',
+  'nigeria': 'NG',
+  'philippines': 'PH',
+  'united kingdom': 'GB',
+  'uk': 'GB',
+  'canada': 'CA',
+  'germany': 'DE',
+  'france': 'FR',
+  'brazil': 'BR',
+  'indonesia': 'ID',
+  'vietnam': 'VN',
+  'turkey': 'TR',
+  'egypt': 'EG',
+  'malaysia': 'MY',
+  'united arab emirates': 'AE',
+  'uae': 'AE',
+  'saudi arabia': 'SA',
+  'russia': 'RU',
+  'nepal': 'NP',
+  'sri lanka': 'LK',
+  'kenya': 'KE',
+  'ghana': 'GH',
+  'south africa': 'ZA',
+  'australia': 'AU',
+  'singapore': 'SG',
+  'italy': 'IT',
+  'spain': 'ES',
+  'netherlands': 'NL',
+  'japan': 'JP',
+  'south korea': 'KR',
+  'thailand': 'TH',
+  'china': 'CN',
+  'taiwan': 'TW',
+};
+
+export const getCountryFlag = (countryName?: string, countryCode?: string): string => {
+  if (countryCode && countryCode.length === 2) {
+    const code = countryCode.toUpperCase();
+    if (code === 'XX' || code === 'LO') return '🏠';
+    try {
+      return String.fromCodePoint(...code.split('').map((c) => 127397 + c.charCodeAt(0)));
+    } catch {}
+  }
+  if (!countryName) return '🌐';
+  if (countryName.toLowerCase() === 'localhost' || countryName.toLowerCase().includes('local')) {
+    return '🏠';
+  }
+  const cleanName = countryName.toLowerCase().trim();
+  const code = COUNTRY_NAME_TO_CODE[cleanName];
+  if (code) {
+    try {
+      return String.fromCodePoint(...code.split('').map((c) => 127397 + c.charCodeAt(0)));
+    } catch {}
+  }
+  return '📍';
+};
+
+let cachedClientModel = '';
+
+// Immediately query modern Client Hints (Chromium Android & Desktop) and check URL parameters
+if (typeof window !== 'undefined') {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const queryModel = params.get('deviceModel');
+    if (queryModel && queryModel.trim()) {
+      localStorage.setItem('myyt_device_model', queryModel.trim());
+      cachedClientModel = queryModel.trim();
+    } else {
+      const saved = localStorage.getItem('myyt_device_model');
+      if (saved) cachedClientModel = saved;
+    }
+
+    // Modern User-Agent Client Hints API to extract true hardware device model
+    const uaData = (navigator as any).userAgentData;
+    if (uaData && typeof uaData.getHighEntropyValues === 'function') {
+      uaData
+        .getHighEntropyValues(['model', 'platform', 'platformVersion'])
+        .then((hints: any) => {
+          if (hints?.model && hints.model.trim()) {
+            cachedClientModel = hints.model.trim();
+            localStorage.setItem('myyt_device_model', hints.model.trim());
+          }
+        })
+        .catch(() => {});
+    }
+  } catch {}
+}
+
+export const formatDeviceModel = (rawModel: string): string => {
+  if (!rawModel || !rawModel.trim() || rawModel === 'Unknown' || rawModel === 'Desktop Device' || rawModel === 'K') {
+    return '';
+  }
+  const clean = rawModel.replace(/['"]/g, '').trim();
+
+  // If already contains brand name
+  if (
+    clean.startsWith('Samsung') ||
+    clean.startsWith('Google') ||
+    clean.startsWith('Apple') ||
+    clean.startsWith('Xiaomi') ||
+    clean.startsWith('OnePlus') ||
+    clean.startsWith('Realme') ||
+    clean.startsWith('Vivo') ||
+    clean.startsWith('Oppo') ||
+    clean.startsWith('Tecno') ||
+    clean.startsWith('Infinix') ||
+    clean.startsWith('Motorola') ||
+    clean.startsWith('Huawei') ||
+    clean.startsWith('Honor')
+  ) {
+    return clean;
+  }
+
+  // Samsung Galaxy model codes (SM-...)
+  if (clean.startsWith('SM-')) {
+    return `Samsung Galaxy (${clean})`;
+  }
+
+  // Google Pixel
+  if (clean.startsWith('Pixel')) {
+    return `Google ${clean}`;
+  }
+
+  // Xiaomi / Redmi / Poco model numbers
+  if (
+    clean.startsWith('Redmi') ||
+    clean.startsWith('POCO') ||
+    clean.startsWith('Mi ') ||
+    /^(21|22|23|24)\d{2}/.test(clean) ||
+    clean.startsWith('M2')
+  ) {
+    return `Xiaomi Redmi (${clean})`;
+  }
+
+  // Realme / Oppo / OnePlus
+  if (clean.startsWith('CPH') || clean.startsWith('PG') || clean.startsWith('PJC')) {
+    return `OPPO / OnePlus (${clean})`;
+  }
+  if (clean.startsWith('RMX')) {
+    return `Realme (${clean})`;
+  }
+
+  // Vivo / iQOO
+  if (clean.startsWith('V2') || clean.startsWith('I2') || clean.startsWith('vivo')) {
+    return `Vivo (${clean})`;
+  }
+
+  // Tecno & Infinix
+  if (clean.startsWith('TECNO') || clean.startsWith('CK') || clean.startsWith('LH') || clean.startsWith('KJ')) {
+    return `Tecno (${clean})`;
+  }
+  if (clean.startsWith('Infinix') || clean.startsWith('X6') || clean.startsWith('X5')) {
+    return `Infinix (${clean})`;
+  }
+
+  // Motorola
+  if (clean.startsWith('moto') || clean.startsWith('XT')) {
+    return `Motorola (${clean})`;
+  }
+
+  return clean;
+};
+
 export const getClientTelemetry = (): TelemetryPayload => {
   try {
     const ua = navigator.userAgent;
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
-    const country = TIMEZONE_TO_COUNTRY[tz] || 'Bangladesh';
+
+    // Check stored hardware model from Client Hints or App redirect
+    const storedHardwareModel =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('myyt_device_model') || cachedClientModel
+        : cachedClientModel;
 
     // Browser Detection
     let browser = 'Web Browser';
@@ -98,34 +272,36 @@ export const getClientTelemetry = (): TelemetryPayload => {
 
     // Device Model / Name Detection
     let deviceName = 'Desktop PC';
-    if (ua.includes('iPhone')) {
-      deviceName = 'Apple iPhone';
+
+    if (storedHardwareModel && storedHardwareModel !== 'K' && storedHardwareModel !== 'Unknown') {
+      const formatted = formatDeviceModel(storedHardwareModel);
+      deviceName = formatted || storedHardwareModel;
+    } else if (ua.includes('iPhone')) {
+      const m = ua.match(/OS ([\d_]+)/);
+      deviceName = `Apple iPhone${m ? ` (iOS ${m[1].replace(/_/g, '.')})` : ''}`;
     } else if (ua.includes('iPad')) {
       deviceName = 'Apple iPad';
     } else if (ua.includes('Macintosh')) {
       deviceName = 'Apple Mac / MacBook';
     } else {
-      const androidModelMatch = ua.match(/Android[^;]+;\s*([^;)]+)\s*Build/i) || ua.match(/Android[^;]+;\s*([^;)]+)\)/i);
+      const androidModelMatch =
+        ua.match(/Android[^;]+;\s*([^;)]+)\s*Build/i) || ua.match(/Android[^;]+;\s*([^;)]+)\)/i);
       if (androidModelMatch && androidModelMatch[1]) {
         const m = androidModelMatch[1].trim();
         if (!m.includes('K') && !m.includes('Version') && m.length > 2 && m.length < 40) {
-          if (m.startsWith('SM-')) deviceName = `Samsung Galaxy (${m})`;
-          else if (m.startsWith('Redmi') || m.startsWith('M2') || m.startsWith('22') || m.startsWith('23')) deviceName = `Xiaomi Redmi (${m})`;
-          else if (m.startsWith('CPH') || m.startsWith('RMX')) deviceName = `Realme/Oppo (${m})`;
-          else if (m.startsWith('Pixel')) deviceName = `Google ${m}`;
-          else deviceName = m;
+          const formatted = formatDeviceModel(m);
+          deviceName = formatted || m;
         } else {
           deviceName = 'Android Smartphone';
         }
-      } else if (ua.includes('Mobile')) {
-        deviceName = 'Mobile Device';
       } else if (ua.includes('Windows')) {
-        deviceName = 'Windows PC Desktop';
+        deviceName = 'Windows 10/11 PC Desktop';
+      } else if (ua.includes('Linux')) {
+        deviceName = 'Linux Workstation';
       }
     }
 
     return {
-      country,
       browser,
       platform,
       deviceName,
@@ -134,7 +310,6 @@ export const getClientTelemetry = (): TelemetryPayload => {
     };
   } catch {
     return {
-      country: 'Bangladesh',
       browser: 'Web Browser',
       platform: 'Web',
       deviceName: 'Desktop PC',
