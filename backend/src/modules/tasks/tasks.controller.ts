@@ -69,11 +69,25 @@ router.get('/next', requireAuth, async (req: AuthRequest, res: Response): Promis
       }
     }
 
+    // 3. Clean up stale abandoned 'assigned' tasks for this viewer (older than 3 minutes)
+    try {
+      await Task.updateMany(
+        {
+          viewerId: req.user!._id,
+          status: 'assigned',
+          createdAt: { $lt: new Date(Date.now() - 3 * 60 * 1000) },
+        },
+        { status: 'expired' }
+      );
+    } catch {
+      // ignore
+    }
+
     // Find active campaigns that still have views to deliver
     const activeCampaigns = await Campaign.find({
       status: 'active',
       $expr: { $lt: ['$viewsDelivered', '$targetViews'] },
-    }).sort({ createdAt: 1 });
+    });
 
     if (!activeCampaigns.length) {
       res.status(404).json({
@@ -86,45 +100,85 @@ router.get('/next', requireAuth, async (req: AuthRequest, res: Response): Promis
     const cooldownSettings = await getSystemCooldownSettings();
     const pricingTiers = await getSystemPricingTiers();
 
-    // Round-robin: find the viewer's most recent task to rotate past it
-    // so each request gives a different campaign when multiple are available
-    const lastTask = await Task.findOne({ viewerId: req.user!._id })
-      .sort({ createdAt: -1 })
-      .select('campaignId')
-      .lean();
-
-    let orderedCampaigns = activeCampaigns;
-    if (lastTask?.campaignId && activeCampaigns.length > 1) {
-      const lastIdx = activeCampaigns.findIndex(
-        (c: any) => c._id.toString() === lastTask.campaignId.toString()
-      );
-      if (lastIdx >= 0) {
-        // Start from the campaign AFTER the last-watched one, wrapping around
-        orderedCampaigns = [
-          ...activeCampaigns.slice(lastIdx + 1),
-          ...activeCampaigns.slice(0, lastIdx + 1),
-        ];
-      }
-    }
-
     // Filter by cooldown (if enabled)
-    let selectedCampaign: any = null;
-    for (const camp of orderedCampaigns) {
-      const isCooldown = cooldownSettings.enableCooldown && cooldownSettings.videoCooldownSeconds > 0
-        ? await cacheService.hasCooldown(userId, camp.videoId)
-        : false;
+    const eligibleCampaigns: any[] = [];
+    for (const camp of activeCampaigns) {
+      const isCooldown =
+        cooldownSettings.enableCooldown && cooldownSettings.videoCooldownSeconds > 0
+          ? await cacheService.hasCooldown(userId, camp.videoId)
+          : false;
       if (!isCooldown) {
-        selectedCampaign = camp;
-        break;
+        eligibleCampaigns.push(camp);
       }
     }
 
-    if (!selectedCampaign) {
+    if (!eligibleCampaigns.length) {
       res.status(429).json({
         success: false,
         error: 'All available videos have been watched within the anti-spam cooldown window. Cooldown in progress.',
       });
       return;
+    }
+
+    let selectedCampaign: any = null;
+
+    if (eligibleCampaigns.length === 1) {
+      selectedCampaign = eligibleCampaigns[0];
+    } else {
+      // Multiple active campaigns: rotate fairly and never repeat the exact same video consecutively
+      const recentTasks = await Task.find({
+        viewerId: req.user!._id,
+        status: { $in: ['completed', 'in_progress', 'assigned'] },
+      })
+        .sort({ createdAt: -1 })
+        .limit(50)
+        .select('videoId campaignId createdAt');
+
+      const lastPlayedVideoId = recentTasks[0]?.videoId;
+      const lastPlayedCampaignId = recentTasks[0]?.campaignId?.toString();
+
+      // If other campaigns exist with a different videoId / campaignId, exclude the one just played
+      let candidates = eligibleCampaigns;
+      const alternativeCampaigns = eligibleCampaigns.filter(
+        (c) =>
+          c.videoId !== lastPlayedVideoId &&
+          c._id.toString() !== lastPlayedCampaignId
+      );
+
+      if (alternativeCampaigns.length > 0) {
+        candidates = alternativeCampaigns;
+      }
+
+      // Score candidates to prioritize unwatched / least recently watched, and campaigns with lowest delivery ratio
+      const scoredCampaigns = candidates.map((camp) => {
+        const matchingTask = recentTasks.find(
+          (t) =>
+            t.videoId === camp.videoId ||
+            t.campaignId?.toString() === camp._id.toString()
+        );
+        const lastWatchedTime = matchingTask ? matchingTask.createdAt.getTime() : 0;
+        const deliveryRatio = camp.targetViews > 0 ? camp.viewsDelivered / camp.targetViews : 0;
+        return {
+          camp,
+          lastWatchedTime,
+          deliveryRatio,
+        };
+      });
+
+      scoredCampaigns.sort((a, b) => {
+        // 1. Prioritize campaigns never watched (lastWatchedTime === 0) or watched longest ago
+        if (a.lastWatchedTime !== b.lastWatchedTime) {
+          return a.lastWatchedTime - b.lastWatchedTime;
+        }
+        // 2. Prioritize campaigns that have delivered fewer views relative to their target
+        if (a.deliveryRatio !== b.deliveryRatio) {
+          return a.deliveryRatio - b.deliveryRatio;
+        }
+        // 3. Randomize ties so viewers don't all get identical ordering
+        return Math.random() - 0.5;
+      });
+
+      selectedCampaign = scoredCampaigns[0].camp;
     }
 
     const tier = pricingTiers[selectedCampaign.watchDurationSec] || pricingTiers[300];
@@ -140,6 +194,9 @@ router.get('/next', requireAuth, async (req: AuthRequest, res: Response): Promis
       status: 'assigned',
     });
 
+    const targetYoutubeUrl = `https://www.youtube.com/watch?v=${selectedCampaign.videoId}&t=0s`;
+    const googleRedirectUrl = `https://www.google.com/url?sa=t&url=${encodeURIComponent(targetYoutubeUrl)}`;
+
     res.json({
       success: true,
       data: {
@@ -150,8 +207,8 @@ router.get('/next', requireAuth, async (req: AuthRequest, res: Response): Promis
         title: selectedCampaign.title,
         thumbnailUrl: selectedCampaign.thumbnailUrl,
         youtubeDeepLink: `vnd.youtube:${selectedCampaign.videoId}`,
-        youtubeWebUrl: `https://www.google.com/url?sa=t&url=${encodeURIComponent(`https://www.youtube.com/watch?v=${selectedCampaign.videoId}`)}`,
-        directVideoUrl: `https://www.youtube.com/watch?v=${selectedCampaign.videoId}`,
+        youtubeWebUrl: googleRedirectUrl,
+        directVideoUrl: targetYoutubeUrl,
       },
     });
   } catch (error: any) {
