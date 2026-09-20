@@ -1,7 +1,23 @@
 import { Resend } from 'resend';
-import { config } from '../config';
+import { config } from '../config/index.js';
 
-const resend = new Resend(config.resendApiKey);
+let resendClient: Resend | null = null;
+
+function getResendClient(): Resend | null {
+  const apiKey = (config.resendApiKey || process.env.RESEND_API_KEY || '').trim();
+  if (!apiKey) {
+    return null;
+  }
+  if (!resendClient) {
+    try {
+      resendClient = new Resend(apiKey);
+    } catch (err: any) {
+      console.warn('[Resend Email] Failed to instantiate Resend client:', err?.message || err);
+      return null;
+    }
+  }
+  return resendClient;
+}
 
 export interface SendEmailResult {
   success: boolean;
@@ -160,6 +176,15 @@ export async function sendPasswordResetEmail(
     `;
 
     const textContent = `ytCash Password Reset\n\nYour 6-digit verification code is: ${resetCode}\n\nThis code expires in 15 minutes. If you did not request this, please ignore this email.\n\nytCash Security`;
+
+    const resend = getResendClient();
+    if (!resend) {
+      console.warn(`[Resend Email] Cannot send reset email to ${toEmail}: RESEND_API_KEY is not set.`);
+      return {
+        success: false,
+        error: 'Email service is not configured. Please set RESEND_API_KEY.',
+      };
+    }
 
     const result = await resend.emails.send({
       from: fromAddress,
