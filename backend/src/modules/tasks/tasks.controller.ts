@@ -8,8 +8,28 @@ import { config } from '../../config/index.js';
 import { cacheService } from '../../services/cache.service.js';
 import { requireAuth, AuthRequest } from '../../middleware/auth.middleware.js';
 import { getSystemPricingTiers, getSystemCooldownSettings, getSystemDailyLimitSettings, getSystemHourlyLimitSettings } from '../admin/admin.controller.js';
+import { phoneTracker } from '../../services/phoneTracker.service.js';
 
 const router = Router();
+
+// POST /api/tasks/phone-heartbeat - Real-time heartbeat from mobile phone app
+router.post('/phone-heartbeat', async (req: any, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?._id?.toString() || req.body?.userId;
+    const deviceId = req.body?.deviceId || (req.headers['x-device-id'] as string);
+    phoneTracker.recordPhoneActivity({
+      userId,
+      deviceId,
+      ip: req.ip || req.socket.remoteAddress,
+      userAgent: req.headers['user-agent'],
+      platform: 'phone-app',
+    });
+    const activeCount = await phoneTracker.getCombinedActiveCount();
+    res.json({ success: true, activeCount });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 // GET /api/tasks/next - fetch next eligible task for viewer
 router.get('/next', requireAuth, async (req: AuthRequest, res: Response): Promise<void> => {
@@ -128,7 +148,7 @@ router.get('/next', requireAuth, async (req: AuthRequest, res: Response): Promis
       // Multiple active campaigns: rotate fairly and never repeat the exact same video consecutively
       const recentTasks = await Task.find({
         viewerId: req.user!._id,
-        status: { $in: ['completed', 'in_progress', 'assigned'] },
+        status: { $in: ['completed', 'in_progress', 'assigned', 'failed'] },
       })
         .sort({ createdAt: -1 })
         .limit(50)
@@ -240,6 +260,39 @@ router.post('/:id/start', requireAuth, async (req: AuthRequest, res: Response): 
         startedAt: task.startedAt,
         requiredDurationSec: task.requiredDurationSec,
       },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/tasks/:id/skip - viewer auto-skipped due to pause timeout or interruption
+router.post('/:id/skip', requireAuth, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { reason, deviceId } = req.body;
+    const task = await Task.findOne({
+      _id: req.params.id,
+      viewerId: req.user!._id,
+      status: { $in: ['assigned', 'in_progress'] },
+    });
+
+    if (!task) {
+      res.json({ success: true, message: 'Task already completed, skipped, or expired' });
+      return;
+    }
+
+    task.status = 'failed';
+    task.verificationMeta = {
+      ...(task.verificationMeta || {}),
+      deviceId: deviceId || task.verificationMeta?.deviceId,
+      overlayConfirmed: false,
+    };
+    await task.save();
+
+    res.json({
+      success: true,
+      message: 'Task marked as skipped',
+      data: { taskId: task._id, status: 'failed' },
     });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });

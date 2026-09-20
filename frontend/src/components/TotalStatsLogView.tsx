@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User as UserIcon, RefreshCw, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
+import { User as UserIcon, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { apiRequest } from '../api';
 
 interface GatewayStat {
@@ -47,14 +47,9 @@ interface BackendStatsResponse {
 
 export const TotalStatsLogView: React.FC<{ type?: 'viewer' | 'creator' }> = () => {
   const [timeframe, setTimeframe] = useState<'week' | 'month'>('week');
-  const [metricType, setMetricType] = useState<'all' | 'payout' | 'deposit'>('all');
-  const [historyFilter, setHistoryFilter] = useState<'all' | 'payout' | 'deposit'>('all');
-  const [historyPage, setHistoryPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [statsData, setStatsData] = useState<BackendStatsResponse | null>(null);
   const [hoveredBarIdx, setHoveredBarIdx] = useState<number | null>(null);
-
-  const PAGE_SIZE = 10;
 
   const fetchRealStats = async () => {
     setLoading(true);
@@ -74,7 +69,7 @@ export const TotalStatsLogView: React.FC<{ type?: 'viewer' | 'creator' }> = () =
     fetchRealStats();
   }, []);
 
-  // Compute active chart series
+  // Compute active chart series (Disbursed Payouts ONLY)
   const activeTimeframeData = statsData?.timeframeData?.[timeframe];
   const defaultLabels =
     timeframe === 'month'
@@ -82,12 +77,7 @@ export const TotalStatsLogView: React.FC<{ type?: 'viewer' | 'creator' }> = () =
       : ['13.09', '14.09', '15.09', '16.09', '17.09', '18.09', '19.09'];
 
   const chartLabels = activeTimeframeData?.labels || defaultLabels;
-  const chartValues =
-    metricType === 'payout'
-      ? activeTimeframeData?.payoutValues || Array(chartLabels.length).fill(0)
-      : metricType === 'deposit'
-      ? activeTimeframeData?.depositValues || Array(chartLabels.length).fill(0)
-      : activeTimeframeData?.values || Array(chartLabels.length).fill(0);
+  const chartValues = activeTimeframeData?.payoutValues || activeTimeframeData?.values || Array(chartLabels.length).fill(0);
 
   const maxVal = Math.max(...chartValues, 50);
   const ceiling = Math.ceil(maxVal / 50) * 50 || 100;
@@ -119,7 +109,7 @@ export const TotalStatsLogView: React.FC<{ type?: 'viewer' | 'creator' }> = () =
     const g = gateway.toLowerCase();
     if (g.includes('bkash')) return '/payment-methods/bkash.svg';
     if (g.includes('nagad')) return '/payment-methods/nagad.svg';
-    if (g.includes('rocket')) return '/payment-methods/rocket.png';
+    if (g.includes('rocket')) return '/payment-methods/rocket.svg';
     if (g.includes('faucet')) return '/payment-methods/faucetpay.svg';
     if (g.includes('usdt') || g.includes('crypto')) return '/payment-methods/crypto.svg';
     if (g.includes('payeer')) return '/payment-methods/payeer.png';
@@ -127,15 +117,32 @@ export const TotalStatsLogView: React.FC<{ type?: 'viewer' | 'creator' }> = () =
     return null;
   };
 
-  // Filter payment history
-  const allHistory = statsData?.paymentHistory || [];
-  const filteredHistory = allHistory.filter((item) => {
-    if (historyFilter === 'all') return true;
-    return item.type === historyFilter;
-  });
+  const getGatewayDisplayName = (gateway: string) => {
+    const g = gateway.toLowerCase();
+    if (g.includes('faucet')) return 'FaucetPay USDT';
+    if (g.includes('crypto') || g.includes('usdt')) return 'USDT (BEP-20)';
+    if (g.includes('bkash')) return 'bKash';
+    if (g.includes('nagad')) return 'Nagad';
+    if (g.includes('rocket')) return 'Rocket';
+    if (g.includes('payeer')) return 'Payeer';
+    if (g.includes('webmoney')) return 'WebMoney';
+    return gateway.toUpperCase();
+  };
 
-  const paginatedHistory = filteredHistory.slice((historyPage - 1) * PAGE_SIZE, historyPage * PAGE_SIZE);
-  const totalPages = Math.ceil(filteredHistory.length / PAGE_SIZE) || 1;
+  // Filter payment history: strictly only paid payouts, latest 20 only
+  const allHistory = (statsData?.paymentHistory || [])
+    .filter((item) => {
+      const isPayout = item.type === 'payout';
+      const st = (item.status || '').toLowerCase();
+      const isPaid = st === 'paid' || st === 'completed' || st === 'approved';
+      return isPayout && isPaid;
+    })
+    .map((item) => ({
+      ...item,
+      status: 'Paid',
+    }));
+
+  const latestPayouts = allHistory.slice(0, 20);
 
   const now = new Date();
   const dateStr = statsData?.todayDateStr || `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
@@ -160,53 +167,16 @@ export const TotalStatsLogView: React.FC<{ type?: 'viewer' | 'creator' }> = () =
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
           <div>
             <h3 className="font-display" style={{ fontSize: 'clamp(1.1rem, 3.5vw, 1.25rem)', color: '#0f172a', margin: 0, textTransform: 'uppercase', letterSpacing: '0.02em', fontWeight: 800 }}>
-              AMOUNT OF PAYMENTS & DEPOSITS {timeframe === 'month' ? 'BY MONTHS' : 'BY DAYS'}
+              AMOUNT OF PAYMENTS {timeframe === 'month' ? 'BY MONTHS' : 'BY DAYS'}
             </h3>
             <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 3 }}>
               {timeframe === 'month'
-                ? 'Live real-time monthly withdrawal disbursements and advertiser deposits (12-Month Overview).'
-                : 'Live real-time daily withdrawal disbursements and advertiser deposits (7-Day Overview).'}
+                ? 'Live real-time monthly withdrawal disbursements (12-Month Overview).'
+                : 'Live real-time daily withdrawal disbursements (7-Day Overview).'}
             </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            {/* Metric Mode Filter (All / Withdrawals / Deposits) */}
-            <div
-              style={{
-                display: 'flex',
-                background: '#f1f5f9',
-                padding: 3,
-                borderRadius: 10,
-                border: '1px solid #e2e8f0',
-                gap: 3,
-              }}
-            >
-              {[
-                { id: 'all' as const, label: 'Combined' },
-                { id: 'payout' as const, label: 'Payouts' },
-                { id: 'deposit' as const, label: 'Deposits' },
-              ].map((m) => (
-                <button
-                  key={m.id}
-                  onClick={() => setMetricType(m.id)}
-                  style={{
-                    padding: '5px 12px',
-                    fontSize: '0.78rem',
-                    fontWeight: 700,
-                    borderRadius: 7,
-                    border: 'none',
-                    cursor: 'pointer',
-                    background: metricType === m.id ? '#ffffff' : 'transparent',
-                    color: metricType === m.id ? 'var(--primary-neon)' : '#64748b',
-                    boxShadow: metricType === m.id ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  {m.label}
-                </button>
-              ))}
-            </div>
-
             {/* Timeframe Switcher: [ Week | Month ] */}
             <div
               style={{
@@ -480,7 +450,7 @@ export const TotalStatsLogView: React.FC<{ type?: 'viewer' | 'creator' }> = () =
                 }}
               >
                 <span style={{ fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>
-                  Total Volume
+                  Total Disbursed
                 </span>
                 <span className="font-mono" style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a' }}>
                   ${totalGatewayAmount.toFixed(2)}
@@ -493,8 +463,8 @@ export const TotalStatsLogView: React.FC<{ type?: 'viewer' | 'creator' }> = () =
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))',
-              gap: '10px 24px',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))',
+              gap: '10px 28px',
             }}
           >
             {gatewayBreakdown.map((item) => {
@@ -506,23 +476,38 @@ export const TotalStatsLogView: React.FC<{ type?: 'viewer' | 'creator' }> = () =
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: '7px 0',
+                    padding: '9px 0',
                     borderBottom: '1px solid #f8fafc',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: 9, height: 9, borderRadius: '50%', background: item.color, flexShrink: 0 }} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: item.color, flexShrink: 0 }} />
                     {logo && (
-                      <img src={logo} alt={item.name} style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }} />
+                      <div
+                        style={{
+                          width: 26,
+                          height: 26,
+                          borderRadius: 6,
+                          background: '#f8fafc',
+                          border: '1px solid #e2e8f0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: 2,
+                          flexShrink: 0,
+                        }}
+                      >
+                        <img src={logo} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                      </div>
                     )}
-                    <span style={{ fontSize: '0.86rem', color: '#334155', fontWeight: 600 }}>
+                    <span style={{ fontSize: '0.94rem', color: '#1e293b', fontWeight: 650 }}>
                       {item.name}
                     </span>
                   </div>
 
-                  <div className="font-mono" style={{ fontSize: '0.86rem', fontWeight: 700, color: '#0f172a' }}>
+                  <div className="font-mono" style={{ fontSize: '0.94rem', fontWeight: 750, color: '#0f172a' }}>
                     ${item.amount.toFixed(2)}{' '}
-                    <span style={{ color: '#64748b', fontWeight: 500, fontSize: '0.78rem' }}>
+                    <span style={{ color: '#64748b', fontWeight: 550, fontSize: '0.82rem' }}>
                       ({item.percentage}%)
                     </span>
                   </div>
@@ -533,7 +518,7 @@ export const TotalStatsLogView: React.FC<{ type?: 'viewer' | 'creator' }> = () =
         </div>
       </div>
 
-      {/* 3. REAL-TIME PAYMENT HISTORY TABLE (PAYOUTS & DEPOSITS) */}
+      {/* 3. REAL-TIME PAYMENT HISTORY TABLE (ONLY PAID PAYOUTS) */}
       <div
         className="glass-card"
         style={{
@@ -553,60 +538,11 @@ export const TotalStatsLogView: React.FC<{ type?: 'viewer' | 'creator' }> = () =
               PAYMENT HISTORY
             </h3>
             <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 3 }}>
-              Live real-time log of community user withdrawals and advertiser budget deposits.
+              Live real-time log of the latest 20 paid user withdrawal disbursements.
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            {/* Filter Pills */}
-            <div
-              style={{
-                display: 'flex',
-                background: '#f1f5f9',
-                padding: 3,
-                borderRadius: 10,
-                border: '1px solid #e2e8f0',
-                gap: 3,
-              }}
-            >
-              {[
-                { id: 'all' as const, label: 'All', count: allHistory.length },
-                { id: 'payout' as const, label: 'Payouts', count: allHistory.filter((h) => h.type === 'payout').length },
-                { id: 'deposit' as const, label: 'Deposits', count: allHistory.filter((h) => h.type === 'deposit').length },
-              ].map((f) => {
-                const isSelected = historyFilter === f.id;
-                return (
-                  <button
-                    key={f.id}
-                    onClick={() => {
-                      setHistoryFilter(f.id);
-                      setHistoryPage(1);
-                    }}
-                    style={{
-                      padding: '5px 12px',
-                      fontSize: '0.78rem',
-                      fontWeight: 700,
-                      borderRadius: 7,
-                      border: 'none',
-                      cursor: 'pointer',
-                      background: isSelected ? '#ffffff' : 'transparent',
-                      color: isSelected ? 'var(--primary-neon)' : '#64748b',
-                      boxShadow: isSelected ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
-                      textTransform: 'uppercase',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 4,
-                      whiteSpace: 'nowrap',
-                      transition: 'all 0.15s ease',
-                    }}
-                  >
-                    <span>{f.label}</span>
-                    <span style={{ fontSize: '0.7rem', opacity: 0.75 }}>({f.count})</span>
-                  </button>
-                );
-              })}
-            </div>
-
+          <div>
             <button
               onClick={fetchRealStats}
               className="btn btn-ghost"
@@ -618,9 +554,9 @@ export const TotalStatsLogView: React.FC<{ type?: 'viewer' | 'creator' }> = () =
         </div>
 
         {/* Table View (Desktop) & Mobile Cards View (Phones) */}
-        {!paginatedHistory.length ? (
+        {!latestPayouts.length ? (
           <div style={{ textAlign: 'center', padding: '36px', color: '#64748b', fontSize: '0.9rem' }}>
-            No real {historyFilter === 'all' ? 'payment' : historyFilter} records found in database yet.
+            No paid payout records found in database yet.
           </div>
         ) : (
           <>
@@ -630,7 +566,7 @@ export const TotalStatsLogView: React.FC<{ type?: 'viewer' | 'creator' }> = () =
                 <thead>
                   <tr style={{ borderBottom: '1.5px solid #e2e8f0', color: '#64748b', textAlign: 'left' }}>
                     <th style={{ padding: '12px 14px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 800 }}>USER ID</th>
-                    <th style={{ padding: '12px 14px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 800 }}>TYPE</th>
+                    <th style={{ padding: '12px 14px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 800 }}>PAYOUT METHOD</th>
                     <th style={{ padding: '12px 14px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 800 }}>WALLET / ACCOUNT</th>
                     <th style={{ padding: '12px 14px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 800 }}>AMOUNT</th>
                     <th style={{ padding: '12px 14px', textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 800 }}>DATE</th>
@@ -638,16 +574,16 @@ export const TotalStatsLogView: React.FC<{ type?: 'viewer' | 'creator' }> = () =
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedHistory.map((item) => {
+                  {latestPayouts.map((item) => {
                     const logo = getGatewayIcon(item.gateway);
-                    const isPayout = item.type === 'payout';
+                    const displayName = getGatewayDisplayName(item.gateway);
 
                     return (
                       <tr key={item.id} style={{ borderBottom: '1px solid #f1f5f9', verticalAlign: 'middle' }}>
                         {/* User ID */}
                         <td style={{ padding: '12px 14px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
+                            <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
                               <UserIcon size={14} />
                             </div>
                             <div>
@@ -661,54 +597,35 @@ export const TotalStatsLogView: React.FC<{ type?: 'viewer' | 'creator' }> = () =
                           </div>
                         </td>
 
-                        {/* Transaction Type Badge */}
+                        {/* Payout Method */}
                         <td style={{ padding: '12px 14px' }}>
-                          <span
-                            className="badge-pill"
-                            style={{
-                              padding: '3px 8px',
-                              fontSize: '0.72rem',
-                              fontWeight: 700,
-                              background: isPayout ? '#faf5ff' : '#ecfdf5',
-                              color: isPayout ? '#7c3aed' : '#059669',
-                              border: `1px solid ${isPayout ? 'rgba(124, 58, 237, 0.3)' : 'rgba(16, 185, 129, 0.3)'}`,
-                              textTransform: 'uppercase',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 4,
-                            }}
-                          >
-                            {isPayout ? <ArrowDownLeft size={11} /> : <ArrowUpRight size={11} />}
-                            {isPayout ? 'Payout' : 'Deposit'}
-                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            {logo && (
+                              <div style={{ width: 24, height: 24, borderRadius: 6, background: '#f8fafc', border: '1px solid #e2e8f0', padding: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                <img src={logo} alt={item.gateway} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                              </div>
+                            )}
+                            <span style={{ fontSize: '0.86rem', color: '#1e293b', fontWeight: 650 }}>
+                              {displayName}
+                            </span>
+                          </div>
                         </td>
 
                         {/* Masked Wallet / Account */}
                         <td style={{ padding: '12px 14px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            {logo && (
-                              <div style={{ width: 22, height: 22, borderRadius: 6, background: '#f8fafc', padding: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                <img src={logo} alt={item.gateway} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                              </div>
-                            )}
-                            <div>
-                              <span
-                                className="font-mono"
-                                style={{
-                                  fontSize: '0.82rem',
-                                  color: '#475569',
-                                  wordBreak: 'break-all',
-                                  maxWidth: 240,
-                                  display: 'inline-block',
-                                }}
-                              >
-                                {item.wallet}
-                              </span>
-                              <span style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'block', textTransform: 'uppercase' }}>
-                                {item.gateway}
-                              </span>
-                            </div>
-                          </div>
+                          <span
+                            className="font-mono"
+                            style={{
+                              fontSize: '0.86rem',
+                              fontWeight: 600,
+                              color: '#475569',
+                              wordBreak: 'break-all',
+                              maxWidth: 240,
+                              display: 'inline-block',
+                            }}
+                          >
+                            {item.wallet}
+                          </span>
                         </td>
 
                         {/* Amount */}
@@ -716,12 +633,12 @@ export const TotalStatsLogView: React.FC<{ type?: 'viewer' | 'creator' }> = () =
                           className="font-mono"
                           style={{
                             padding: '12px 14px',
-                            fontWeight: 700,
-                            color: isPayout ? '#ef4444' : '#059669',
-                            fontSize: '0.92rem',
+                            fontWeight: 750,
+                            color: '#0f172a',
+                            fontSize: '0.94rem',
                           }}
                         >
-                          {isPayout ? `-$${item.amount.toFixed(2)}` : `+$${item.amount.toFixed(2)}`} USD
+                          -${item.amount.toFixed(2)} USD
                         </td>
 
                         {/* Date */}
@@ -733,18 +650,20 @@ export const TotalStatsLogView: React.FC<{ type?: 'viewer' | 'creator' }> = () =
                         <td style={{ padding: '12px 14px' }}>
                           <span
                             style={{
-                              display: 'inline-block',
-                              border: `1px solid ${item.status === 'Paid' || item.status === 'Deposited' ? '#22c55e' : item.status === 'Pending' ? '#f59e0b' : '#ef4444'}`,
-                              color: item.status === 'Paid' || item.status === 'Deposited' ? '#16a34a' : item.status === 'Pending' ? '#d97706' : '#dc2626',
-                              background: item.status === 'Paid' || item.status === 'Deposited' ? '#f0fdf4' : item.status === 'Pending' ? '#fffbeb' : '#fef2f2',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              border: '1px solid #22c55e',
+                              color: '#16a34a',
+                              background: '#f0fdf4',
                               fontSize: '0.74rem',
                               fontWeight: 700,
-                              padding: '2px 10px',
+                              padding: '3px 10px',
                               borderRadius: 6,
-                              textTransform: 'capitalize',
                             }}
                           >
-                            {item.status}
+                            <CheckCircle2 size={12} />
+                            Paid
                           </span>
                         </td>
                       </tr>
@@ -756,16 +675,16 @@ export const TotalStatsLogView: React.FC<{ type?: 'viewer' | 'creator' }> = () =
 
             {/* Mobile Card List View */}
             <div className="mobile-card-list">
-              {paginatedHistory.map((item) => {
+              {latestPayouts.map((item) => {
                 const logo = getGatewayIcon(item.gateway);
-                const isPayout = item.type === 'payout';
+                const displayName = getGatewayDisplayName(item.gateway);
 
                 return (
                   <div key={item.id} className="mobile-data-card" style={{ width: '100%', boxSizing: 'border-box' }}>
                     {/* Row 1: User on Left, Amount on Right */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, width: '100%' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
-                        <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', flexShrink: 0 }}>
+                        <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', flexShrink: 0 }}>
                           <UserIcon size={14} />
                         </div>
                         <div style={{ minWidth: 0 }}>
@@ -783,13 +702,13 @@ export const TotalStatsLogView: React.FC<{ type?: 'viewer' | 'creator' }> = () =
                         style={{
                           fontWeight: 800,
                           fontSize: '0.94rem',
-                          color: isPayout ? '#ef4444' : '#059669',
+                          color: '#0f172a',
                           flexShrink: 0,
                           textAlign: 'right',
                           whiteSpace: 'nowrap',
                         }}
                       >
-                        {isPayout ? `-$${item.amount.toFixed(2)}` : `+$${item.amount.toFixed(2)}`}
+                        -${item.amount.toFixed(2)}
                       </div>
                     </div>
 
@@ -797,8 +716,13 @@ export const TotalStatsLogView: React.FC<{ type?: 'viewer' | 'creator' }> = () =
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, width: '100%', fontSize: '0.76rem', color: '#64748b', flexWrap: 'wrap' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
                         {logo && (
-                          <img src={logo} alt={item.gateway} style={{ width: 16, height: 16, objectFit: 'contain', borderRadius: 3, flexShrink: 0 }} />
+                          <div style={{ width: 22, height: 22, borderRadius: 5, background: '#f8fafc', border: '1px solid #e2e8f0', padding: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <img src={logo} alt={item.gateway} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                          </div>
                         )}
+                        <span style={{ fontSize: '0.78rem', fontWeight: 650, color: '#1e293b' }}>
+                          {displayName}:
+                        </span>
                         <span className="font-mono" style={{ fontSize: '0.76rem', color: '#475569', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {item.wallet}
                         </span>
@@ -806,33 +730,21 @@ export const TotalStatsLogView: React.FC<{ type?: 'viewer' | 'creator' }> = () =
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
                         <span
-                          className="badge-pill"
                           style={{
-                            padding: '2px 6px',
-                            fontSize: '0.68rem',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            border: '1px solid #22c55e',
+                            color: '#16a34a',
+                            background: '#f0fdf4',
+                            fontSize: '0.70rem',
                             fontWeight: 700,
-                            background: isPayout ? '#faf5ff' : '#ecfdf5',
-                            color: isPayout ? '#7c3aed' : '#059669',
-                            border: `1px solid ${isPayout ? 'rgba(124, 58, 237, 0.3)' : 'rgba(16, 185, 129, 0.3)'}`,
-                            textTransform: 'uppercase',
-                          }}
-                        >
-                          {isPayout ? 'Payout' : 'Deposit'}
-                        </span>
-                        <span
-                          style={{
-                            display: 'inline-block',
-                            border: `1px solid ${item.status === 'Paid' || item.status === 'Deposited' ? '#22c55e' : item.status === 'Pending' ? '#f59e0b' : '#ef4444'}`,
-                            color: item.status === 'Paid' || item.status === 'Deposited' ? '#16a34a' : item.status === 'Pending' ? '#d97706' : '#dc2626',
-                            background: item.status === 'Paid' || item.status === 'Deposited' ? '#f0fdf4' : item.status === 'Pending' ? '#fffbeb' : '#fef2f2',
-                            fontSize: '0.68rem',
-                            fontWeight: 700,
-                            padding: '1px 7px',
+                            padding: '2px 8px',
                             borderRadius: 6,
-                            textTransform: 'capitalize',
                           }}
                         >
-                          {item.status}
+                          <CheckCircle2 size={11} />
+                          Paid
                         </span>
                       </div>
                     </div>
@@ -846,31 +758,6 @@ export const TotalStatsLogView: React.FC<{ type?: 'viewer' | 'creator' }> = () =
               })}
             </div>
           </>
-        )}
-
-        {/* Pagination Controls */}
-        {totalPages > 1 && (
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 18 }}>
-            <button
-              disabled={historyPage === 1}
-              onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
-              className="btn btn-ghost"
-              style={{ padding: '5px 12px', fontSize: '0.8rem', borderRadius: 8, opacity: historyPage === 1 ? 0.5 : 1 }}
-            >
-              Previous
-            </button>
-            <span style={{ fontSize: '0.84rem', color: '#64748b' }}>
-              Page {historyPage} of {totalPages}
-            </span>
-            <button
-              disabled={historyPage === totalPages}
-              onClick={() => setHistoryPage((p) => Math.min(totalPages, p + 1))}
-              className="btn btn-ghost"
-              style={{ padding: '5px 12px', fontSize: '0.8rem', borderRadius: 8, opacity: historyPage === totalPages ? 0.5 : 1 }}
-            >
-              Next
-            </button>
-          </div>
         )}
       </div>
     </div>

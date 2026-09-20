@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Sparkles, CheckCircle2, AlertCircle, ShieldCheck, Zap, Clock, Minus, Plus, ArrowLeft } from 'lucide-react';
 import { User, Campaign } from '../types';
 import { apiRequest } from '../api';
+import { formatDurationLabel, formatDecimalString } from './admin/adminTypes';
 
 interface BuyViewsPageProps {
   user: User | null;
@@ -18,6 +19,11 @@ const DEFAULT_PRESET_DURATIONS = [
   { sec: 120, ratePerView: 0.0150 },
   { sec: 180, ratePerView: 0.0210 },
   { sec: 300, ratePerView: 0.0320 },
+  { sec: 600, ratePerView: 0.0600 },
+  { sec: 900, ratePerView: 0.0850 },
+  { sec: 1800, ratePerView: 0.1600 },
+  { sec: 3600, ratePerView: 0.3000 },
+  { sec: 7200, ratePerView: 0.5500 },
 ];
 
 export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser, onOpenAuth }) => {
@@ -27,8 +33,6 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
   const [presets, setPresets] = useState(DEFAULT_PRESET_DURATIONS);
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [duration, setDuration] = useState<number>(8);
-  const [isCustom, setIsCustom] = useState<boolean>(false);
-  const [customSec, setCustomSec] = useState<number>(180);
   const [views, setViews] = useState<number>(1000);
   const [title, setTitle] = useState('');
   const [loading, setLoading] = useState(false);
@@ -54,16 +58,15 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
       .catch(() => {});
   }, []);
 
-  const activeDuration = isCustom ? Math.max(8, Math.min(600, customSec || 8)) : duration;
+  const activeDuration = duration;
 
-  // Custom duration follows the last price of 300 Seconds
-  const tier300Rate = presets.find((p) => p.sec === 300)?.ratePerView || presets[presets.length - 1]?.ratePerView || 0.0320;
+  const currentTier = presets.find((p) => p.sec === duration);
+  const costPerView = currentTier
+    ? currentTier.ratePerView
+    : (presets.filter((p) => p.sec <= duration).pop()?.ratePerView || presets[presets.length - 1]?.ratePerView || 0.0040);
 
-  const costPerView = isCustom
-    ? tier300Rate
-    : (presets.find((p) => p.sec === duration)?.ratePerView || 0.0040);
-
-  const calculatedCost = Number((views * costPerView).toFixed(2));
+  const rawTotalCost = views * costPerView;
+  const calculatedCost = rawTotalCost >= 0.01 ? Number(rawTotalCost.toFixed(2)) : Number(rawTotalCost.toFixed(6));
   const totalWatchHours = ((views * activeDuration) / 3600).toFixed(1);
 
   const extractVideoId = (url: string) => {
@@ -266,28 +269,25 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
               />
             </div>
 
-            {/* 3. Duration Selector (7 Preset Cards + 1 Custom = 8 Cards) */}
+            {/* 3. Duration Selector (12 Preset Duration Options) */}
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 4 }}>
                 <label className="font-mono" style={{ fontSize: '0.75rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   Viewer Watch Duration:
                 </label>
                 <span className="font-mono" style={{ fontSize: '0.75rem', color: 'var(--primary-neon)', fontWeight: 700 }}>
-                  {activeDuration}s Selected (${costPerView.toFixed(4)}/view)
+                  {formatDurationLabel(duration)} Selected (${formatDecimalString(costPerView, 10)}/view)
                 </span>
               </div>
 
               <div className="duration-grid">
                 {presets.map((p) => {
-                  const isSelected = !isCustom && duration === p.sec;
+                  const isSelected = duration === p.sec;
                   return (
                     <button
                       key={p.sec}
                       type="button"
-                      onClick={() => {
-                        setIsCustom(false);
-                        setDuration(p.sec);
-                      }}
+                      onClick={() => setDuration(p.sec)}
                       className="duration-btn"
                       style={{
                         background: isSelected ? 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)' : '#ffffff',
@@ -296,82 +296,42 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
                         boxShadow: isSelected ? '0 3px 10px rgba(14, 165, 233, 0.35)' : 'none',
                       }}
                     >
-                      <div>{p.sec}s</div>
+                      <div>{formatDurationLabel(p.sec)}</div>
                       <div style={{ opacity: 0.92, marginTop: 2, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        ${p.ratePerView.toFixed(4)}/view
+                        ${formatDecimalString(p.ratePerView, 10)}/view
                       </div>
                     </button>
                   );
                 })}
-
-                {/* 8th Card: Custom Duration */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsCustom(true);
-                    setDuration(Math.max(8, Math.min(600, customSec || 8)));
-                  }}
-                  className="duration-btn"
-                  style={{
-                    background: isCustom ? 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)' : '#ffffff',
-                    color: isCustom ? '#ffffff' : 'var(--on-surface-variant)',
-                    border: isCustom ? '1.5px solid var(--primary-neon)' : '1px solid #cbd5e1',
-                    boxShadow: isCustom ? '0 3px 10px rgba(14, 165, 233, 0.35)' : 'none',
-                  }}
-                >
-                  <div>Custom</div>
-                  <div style={{ opacity: 0.92, marginTop: 2, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    ${tier300Rate.toFixed(4)}/view
-                  </div>
-                </button>
               </div>
-
-              {/* Custom Duration Input Field */}
-              {isCustom && (
-                <div style={{ marginTop: 10, padding: '10px 14px', borderRadius: 12, background: '#f0f9ff', border: '1.5px solid rgba(14, 165, 233, 0.35)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <Clock size={16} color="var(--primary-neon)" style={{ flexShrink: 0 }} />
-                  <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0f172a' }}>
-                    Custom Seconds:
-                  </span>
-                  <input
-                    type="number"
-                    min={8}
-                    max={600}
-                    value={customSec || ''}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value, 10);
-                      setCustomSec(isNaN(val) ? 0 : val);
-                      if (val >= 8) setDuration(Math.min(600, val));
-                    }}
-                    onBlur={() => {
-                      if (!customSec || customSec < 8) {
-                        setCustomSec(8);
-                        setDuration(8);
-                      } else if (customSec > 600) {
-                        setCustomSec(600);
-                        setDuration(600);
-                      }
-                    }}
-                    className="input-field font-mono"
-                    style={{ width: 75, padding: '6px 8px', fontSize: '0.88rem', textAlign: 'center', fontWeight: 700, borderRadius: 8 }}
-                    placeholder="180"
-                  />
-                  <span style={{ fontSize: '0.75rem', color: '#64748b' }}>(8s – 600s)</span>
-                  <span className="font-mono" style={{ marginLeft: 'auto', fontSize: '0.80rem', fontWeight: 800, color: 'var(--primary-neon)' }}>
-                    ${costPerView.toFixed(4)} USD / View
-                  </span>
-                </div>
-              )}
             </div>
 
             {/* 4. Target Views: Manual Number Input & +/- 100 Stepper Buttons */}
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 4 }}>
-                <label className="font-mono" style={{ fontSize: '0.75rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <label className="font-mono" style={{ fontSize: '0.75rem', color: views < 1000 ? '#ef4444' : 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: views < 1000 ? 700 : 500 }}>
                   Target Views (Min 1,000):
                 </label>
-                <div className="font-mono" style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--primary-neon)' }}>
-                  {views.toLocaleString()} Views
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {views < 1000 && (
+                    <span
+                      className="font-mono"
+                      style={{
+                        fontSize: '0.74rem',
+                        fontWeight: 800,
+                        background: '#fef2f2',
+                        color: '#ef4444',
+                        border: '1px solid rgba(239, 68, 68, 0.4)',
+                        padding: '2px 8px',
+                        borderRadius: 6,
+                      }}
+                    >
+                      MIN 1,000
+                    </span>
+                  )}
+                  <div className="font-mono" style={{ fontSize: '0.92rem', fontWeight: 800, color: views < 1000 ? '#ef4444' : 'var(--primary-neon)' }}>
+                    {(views || 0).toLocaleString()} Views
+                  </div>
                 </div>
               </div>
 
@@ -398,26 +358,25 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
                       const val = parseInt(e.target.value, 10);
                       setViews(isNaN(val) ? 0 : val);
                     }}
-                    onBlur={() => {
-                      if (!views || views < 1000) {
-                        setViews(1000);
-                      }
-                    }}
                     className="input-field font-mono"
                     style={{
                       height: 44,
                       fontSize: '1.15rem',
                       fontWeight: 800,
                       textAlign: 'center',
-                      color: '#0f172a',
+                      color: views < 1000 ? '#ef4444' : '#0f172a',
                       padding: '8px 45px 8px 14px',
                       borderRadius: 12,
                       width: '100%',
                       boxSizing: 'border-box',
+                      border: views < 1000 ? '2px solid #ef4444' : '1px solid #cbd5e1',
+                      background: views < 1000 ? '#fef2f2' : '#ffffff',
+                      outline: 'none',
+                      transition: 'border-color 0.15s ease, background-color 0.15s ease',
                     }}
                     placeholder="1000"
                   />
-                  <span style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', fontSize: '0.78rem', color: '#64748b', fontWeight: 600, pointerEvents: 'none' }}>
+                  <span style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', fontSize: '0.78rem', color: views < 1000 ? '#ef4444' : '#64748b', fontWeight: 600, pointerEvents: 'none' }}>
                     views
                   </span>
                 </div>
@@ -432,6 +391,24 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
                   <Plus size={20} strokeWidth={2.8} />
                 </button>
               </div>
+
+              {/* Red Minimum 1,000 Warning */}
+              {views < 1000 && (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    color: '#ef4444',
+                    fontSize: '0.80rem',
+                    fontWeight: 700,
+                    marginTop: 6,
+                  }}
+                >
+                  <AlertCircle size={15} color="#ef4444" style={{ flexShrink: 0 }} />
+                  <span>Min 1,000 views required. Please enter at least 1,000.</span>
+                </div>
+              )}
 
               {/* Quick Preset Buttons */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', gap: 6, marginTop: 8, width: '100%' }}>
@@ -465,17 +442,32 @@ export const BuyViewsPage: React.FC<BuyViewsPageProps> = ({ user, onRefreshUser,
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || views < 1000}
               className="btn btn-neon glow-neon btn-mobile-full"
               style={{
                 width: '100%',
                 padding: '14px',
                 fontSize: '0.92rem',
                 borderRadius: 14,
-                marginTop: 8,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                fontWeight: 800,
+                letterSpacing: '0.03em',
+                background: views < 1000 ? '#94a3b8' : undefined,
+                cursor: views < 1000 ? 'not-allowed' : 'pointer',
+                boxShadow: views < 1000 ? 'none' : undefined,
               }}
             >
-              {loading ? 'Creating Campaign...' : user ? `LAUNCH CAMPAIGN ($${calculatedCost.toFixed(2)} USD)` : 'SIGN IN & LAUNCH CAMPAIGN'}
+              <Zap size={18} />
+              {loading
+                ? 'Creating Campaign...'
+                : views < 1000
+                ? 'MINIMUM 1,000 VIEWS REQUIRED'
+                : user
+                ? `LAUNCH CAMPAIGN ($${calculatedCost.toFixed(2)} USD)`
+                : 'SIGN IN & LAUNCH CAMPAIGN'}
             </button>
           </form>
         </div>

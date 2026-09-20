@@ -213,7 +213,7 @@ export const DEFAULT_METHODS_META: Record<
     defaultRateText: 'Micropayment USD / Crypto',
     defaultAccountType: 'Email / Account',
     defaultInstructions: 'Send payment via FaucetPay to this email/address and enter your FaucetPay TrxID.',
-    defaultAccount: 'admin@myyt.com',
+    defaultAccount: 'admin@ytcash.com',
   },
   webmoney: {
     logoBg: '#ffffff',
@@ -281,7 +281,7 @@ export const buildDepositMethods = (methodsList: DepositMethod[], usdToBdt: numb
       id: 'faucetpay',
       name: 'FaucetPay',
       accountType: 'Email / Account',
-      accountNumber: 'admin@myyt.com',
+      accountNumber: 'admin@ytcash.com',
       instructions: 'Send payment via FaucetPay to this email/address and enter your FaucetPay TrxID.',
       logoBg: '#ffffff',
       logoMark: 'FP',

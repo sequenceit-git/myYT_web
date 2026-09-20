@@ -1,14 +1,16 @@
 const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5001/api' : '/api');
 
 export const getAuthToken = (): string | null => {
-  return localStorage.getItem('myyt_token');
+  return localStorage.getItem('ytcash_token') || localStorage.getItem('myyt_token');
 };
 
 export const setAuthToken = (token: string) => {
+  localStorage.setItem('ytcash_token', token);
   localStorage.setItem('myyt_token', token);
 };
 
 export const clearAuthToken = () => {
+  localStorage.removeItem('ytcash_token');
   localStorage.removeItem('myyt_token');
 };
 

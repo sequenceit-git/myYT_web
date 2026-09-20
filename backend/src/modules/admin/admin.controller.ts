@@ -1,17 +1,34 @@
 import { Router, Response } from 'express';
+import bcrypt from 'bcryptjs';
 import { User } from '../../models/User.js';
 import { Campaign } from '../../models/Campaign.js';
 import { Payout } from '../../models/Payout.js';
 import { Transaction } from '../../models/Transaction.js';
 import { Task } from '../../models/Task.js';
 import { Setting } from '../../models/Setting.js';
-import { requireAdmin, AuthRequest } from '../../middleware/auth.middleware.js';
+import { requireAdmin, requireMasterAdmin, requireAdminPermission, AuthRequest } from '../../middleware/auth.middleware.js';
 import { config } from '../../config/index.js';
 import {
   parseBrowserFromUserAgent,
   parsePlatformFromUserAgent,
   parseDeviceModelFromUserAgent,
 } from '../../services/telemetry.service.js';
+import { phoneTracker } from '../../services/phoneTracker.service.js';
+
+function formatSubAdmin(user: any) {
+  return {
+    id: user._id.toString(),
+    _id: user._id.toString(),
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    adminRole: user.adminRole || 'sub_admin',
+    adminPermissions: user.adminPermissions || [],
+    status: user.status || 'active',
+    createdAt: user.createdAt,
+    avatar: user.avatar || `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(user.email)}&backgroundColor=b6e3f4`,
+  };
+}
 
 export const getSystemExchangeRate = async (): Promise<number> => {
   try {
@@ -72,7 +89,7 @@ export const DEFAULT_DEPOSIT_METHODS: DepositMethodSetting[] = [
     name: 'FaucetPay',
     type: 'micropayment',
     accountType: 'Email / Account',
-    accountNumber: 'admin@myyt.com',
+    accountNumber: 'admin@ytcash.com',
     minDepositUsd: 5.0,
     instructions: 'Send payment via FaucetPay to this email/address and enter your FaucetPay TrxID.',
     enabled: true,
@@ -227,16 +244,37 @@ export const getSystemWithdrawMethods = async (): Promise<WithdrawMethodSetting[
 
 export const getSystemPricingTiers = async (): Promise<Record<number, { campaignerCost: number; viewerReward: number }>> => {
   try {
-    const setting = await Setting.findOne({ key: 'pricing_tiers' });
+    const setting = await Setting.findOne({ key: 'pricing_tiers' }).lean();
     if (setting && setting.value && typeof setting.value === 'object') {
       const val = setting.value as Record<string, any>;
-      // Check if it has real duration keys (e.g., 8, 16, 45, etc.) and not just array indices
-      const numericKeys = Object.keys(val).map((k) => parseInt(k, 10));
-      const hasRealDurations = numericKeys.some((k) => [8, 16, 45, 60, 120, 180, 300].includes(k));
-      if (hasRealDurations) {
+      const tiersMap: Record<number, { campaignerCost: number; viewerReward: number }> = {};
+
+      if (Array.isArray(val)) {
+        for (const item of val) {
+          const sec = parseInt(item.duration, 10);
+          if (!isNaN(sec) && sec > 0) {
+            tiersMap[sec] = {
+              campaignerCost: Number(item.campaignerCost || 0),
+              viewerReward: Number(item.viewerReward || 0),
+            };
+          }
+        }
+      } else {
+        for (const [secStr, item] of Object.entries(val)) {
+          const sec = parseInt(secStr, 10);
+          if (!isNaN(sec) && sec > 0 && item && typeof item === 'object') {
+            tiersMap[sec] = {
+              campaignerCost: Number(item.campaignerCost || 0),
+              viewerReward: Number(item.viewerReward || 0),
+            };
+          }
+        }
+      }
+
+      if (Object.keys(tiersMap).length > 0) {
         return {
           ...config.pricingTiers,
-          ...val,
+          ...tiersMap,
         };
       }
     }
@@ -454,6 +492,7 @@ router.get('/stats', requireAdmin, async (_req: AuthRequest, res: Response): Pro
         dailySpend,
         dailyViews,
         dayLabels,
+        phoneAppActiveUsers: await phoneTracker.getCombinedActiveCount(),
         simulatedConcurrency: Math.floor(4100 + Math.random() * 450),
         serverHealth: {
           uptime: process.uptime(),
@@ -467,18 +506,33 @@ router.get('/stats', requireAdmin, async (_req: AuthRequest, res: Response): Pro
   }
 });
 
-// GET /api/admin/users - User management list
-router.get('/users', requireAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
+// GET /api/admin/active-phone-users - Real-time active phone app concurrency count
+router.get('/active-phone-users', requireAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const users = await User.find().sort({ createdAt: -1 }).limit(100);
+    const activeCount = await phoneTracker.getCombinedActiveCount();
+    res.json({
+      success: true,
+      data: {
+        activeCount,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/admin/users - User management list (Master Admin Only, excluding sub-admins)
+router.get('/users', requireMasterAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const users = await User.find({ adminRole: { $ne: 'sub_admin' } }).sort({ createdAt: -1 }).limit(200);
     res.json({ success: true, data: users });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// POST /api/admin/users/:id/status - Ban or unban user
-router.post('/users/:id/status', requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+// POST /api/admin/users/:id/status - Ban or unban user (Master Admin Only)
+router.post('/users/:id/status', requireMasterAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { status } = req.body;
     if (!['active', 'suspended', 'banned'].includes(status)) {
@@ -498,8 +552,28 @@ router.post('/users/:id/status', requireAdmin, async (req: AuthRequest, res: Res
   }
 });
 
+// POST /api/admin/users/:id/reset-device - Reset user's mobile device binding (Master Admin Only)
+router.post('/users/:id/reset-device', requireMasterAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      res.status(404).json({ success: false, error: 'User not found' });
+      return;
+    }
+
+    user.activeMobileDeviceId = undefined;
+    user.activeMobileDeviceModel = undefined;
+    user.lastMobileActiveAt = undefined;
+    await user.save();
+
+    res.json({ success: true, message: 'User mobile device lock has been reset successfully', data: user });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // GET /api/admin/campaigns - List all campaigns
-router.get('/campaigns', requireAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
+router.get('/campaigns', requireAdminPermission('campaigns'), async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
     const campaigns = await Campaign.find()
       .populate('ownerId', 'email name')
@@ -512,7 +586,7 @@ router.get('/campaigns', requireAdmin, async (_req: AuthRequest, res: Response):
 });
 
 // POST /api/admin/campaigns/:id/status - Moderate campaign (pause/resume/cancel)
-router.post('/campaigns/:id/status', requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/campaigns/:id/status', requireAdminPermission('campaigns'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { status } = req.body;
     const updateData: any = { status };
@@ -532,8 +606,22 @@ router.post('/campaigns/:id/status', requireAdmin, async (req: AuthRequest, res:
   }
 });
 
+// DELETE /api/admin/campaigns/:id - Delete campaign
+router.delete('/campaigns/:id', requireAdminPermission('campaigns'), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const campaign = await Campaign.findByIdAndDelete(req.params.id);
+    if (!campaign) {
+      res.status(404).json({ success: false, error: 'Campaign not found' });
+      return;
+    }
+    res.json({ success: true, message: 'Campaign deleted successfully' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // GET /api/admin/payouts - List withdrawal queue
-router.get('/payouts', requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/payouts', requireAdminPermission('withdrawals'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { status } = req.query;
     const filter: any = {};
@@ -565,8 +653,8 @@ router.get('/payouts', requireAdmin, async (req: AuthRequest, res: Response): Pr
   }
 });
 
-// POST /api/admin/payouts/:id/approve - Approve payout
-router.post('/payouts/:id/approve', requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+// POST /api/admin/payouts/:id/approve - Approve withdrawal
+router.post('/payouts/:id/approve', requireAdminPermission('withdrawals'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { transactionRef, adminNotes } = req.body;
     const payout = await Payout.findById(req.params.id);
@@ -593,8 +681,8 @@ router.post('/payouts/:id/approve', requireAdmin, async (req: AuthRequest, res: 
   }
 });
 
-// POST /api/admin/payouts/:id/reject - Reject payout & refund user balance
-router.post('/payouts/:id/reject', requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+// POST /api/admin/payouts/:id/reject - Reject withdrawal and refund viewer
+router.post('/payouts/:id/reject', requireAdminPermission('withdrawals'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { adminNotes, rejectionReason } = req.body;
     const reasonText = rejectionReason || adminNotes || 'Declined by Administrator (Invalid account or policy issue)';
@@ -650,7 +738,7 @@ router.post('/payouts/:id/reject', requireAdmin, async (req: AuthRequest, res: R
 });
 
 // GET /api/admin/settings - Platform configurations
-router.get('/settings', requireAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
+router.get('/settings', requireMasterAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
     const [usdToBdt, pricingTiers, cooldownSettings, dailyLimitSettings, hourlyLimitSettings] = await Promise.all([
       getSystemExchangeRate(),
@@ -679,7 +767,7 @@ router.get('/settings', requireAdmin, async (_req: AuthRequest, res: Response): 
 });
 
 // POST /api/admin/settings/exchange-rate - Update USD to BDT dollar price
-router.post('/settings/exchange-rate', requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/settings/exchange-rate', requireMasterAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { usdToBdt, rate: rawRate } = req.body;
     const val = usdToBdt !== undefined ? usdToBdt : rawRate;
@@ -705,8 +793,8 @@ router.post('/settings/exchange-rate', requireAdmin, async (req: AuthRequest, re
   }
 });
 
-// POST /api/admin/settings/pricing - Update pricing per view for tiers
-router.post('/settings/pricing', requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+// POST /api/admin/settings/pricing - Update pricing tiers matrix
+router.post('/settings/pricing', requireMasterAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { pricingTiers } = req.body;
     if (!pricingTiers || (typeof pricingTiers !== 'object' && !Array.isArray(pricingTiers))) {
@@ -725,8 +813,8 @@ router.post('/settings/pricing', requireAdmin, async (req: AuthRequest, res: Res
         const reward = Number(item.viewerReward);
         if (!isNaN(sec) && sec > 0 && !isNaN(cost) && cost > 0 && !isNaN(reward) && reward >= 0) {
           cleanTiers[sec] = {
-            campaignerCost: Number(cost.toFixed(4)),
-            viewerReward: Number(reward.toFixed(4)),
+            campaignerCost: Number(cost.toFixed(10)),
+            viewerReward: Number(reward.toFixed(10)),
           };
         }
       }
@@ -739,8 +827,8 @@ router.post('/settings/pricing', requireAdmin, async (req: AuthRequest, res: Res
           const reward = Number(t.viewerReward);
           if (!isNaN(cost) && cost > 0 && !isNaN(reward) && reward >= 0) {
             cleanTiers[sec] = {
-              campaignerCost: Number(cost.toFixed(4)),
-              viewerReward: Number(reward.toFixed(4)),
+              campaignerCost: Number(cost.toFixed(10)),
+              viewerReward: Number(reward.toFixed(10)),
             };
           }
         }
@@ -758,7 +846,10 @@ router.post('/settings/pricing', requireAdmin, async (req: AuthRequest, res: Res
       { upsert: true, new: true }
     );
 
-    // Sync in-memory config
+    // Sync in-memory config cleanly
+    for (const key of Object.keys(config.pricingTiers)) {
+      delete config.pricingTiers[Number(key)];
+    }
     Object.assign(config.pricingTiers, cleanTiers);
 
     const pricingTiersList = formatPricingTiersList(cleanTiers);
@@ -766,7 +857,7 @@ router.post('/settings/pricing', requireAdmin, async (req: AuthRequest, res: Res
     res.json({
       success: true,
       data: {
-        pricingTiers: updated.value,
+        pricingTiers: updated?.value || cleanTiers,
         pricingTiersList,
       },
       message: 'Platform pricing tiers updated successfully!',
@@ -776,8 +867,8 @@ router.post('/settings/pricing', requireAdmin, async (req: AuthRequest, res: Res
   }
 });
 
-// POST /api/admin/settings/cooldown - Update cooldown timer & anti-spam rule
-router.post('/settings/cooldown', requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+// POST /api/admin/settings/cooldown - Update cooldown toggle & duration
+router.post('/settings/cooldown', requireMasterAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { enableCooldown, videoCooldownSeconds, enabled, durationSeconds } = req.body;
     const isEnabled = enabled !== undefined ? Boolean(enabled) : Boolean(enableCooldown);
@@ -816,8 +907,8 @@ router.post('/settings/cooldown', requireAdmin, async (req: AuthRequest, res: Re
   }
 });
 
-// POST /api/admin/settings/daily-limit - Set maximum daily videos a viewer can watch
-router.post('/settings/daily-limit', requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+// POST /api/admin/settings/daily-limit - Update daily view limits
+router.post('/settings/daily-limit', requireMasterAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { enableDailyLimit, maxDailyVideos, enabled, limit: rawLimit } = req.body;
     const isEnabled = enabled !== undefined ? Boolean(enabled) : Boolean(enableDailyLimit);
@@ -852,8 +943,8 @@ router.post('/settings/daily-limit', requireAdmin, async (req: AuthRequest, res:
   }
 });
 
-// POST /api/admin/settings/hourly-limit - Set maximum hourly videos a viewer can watch
-router.post('/settings/hourly-limit', requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+// POST /api/admin/settings/hourly-limit - Update hourly limits
+router.post('/settings/hourly-limit', requireMasterAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { enableHourlyLimit, maxHourlyVideos, enabled, limit: rawLimit } = req.body;
     const isEnabled = enabled !== undefined ? Boolean(enabled) : Boolean(enableHourlyLimit);
@@ -889,7 +980,7 @@ router.post('/settings/hourly-limit', requireAdmin, async (req: AuthRequest, res
 });
 
 // GET /api/admin/deposits - List deposit requests
-router.get('/deposits', requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/deposits', requireAdminPermission('deposits'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { status } = req.query;
     const filter: any = { type: 'deposit' };
@@ -909,7 +1000,7 @@ router.get('/deposits', requireAdmin, async (req: AuthRequest, res: Response): P
 });
 
 // POST /api/admin/deposits/:id/approve - Approve deposit and credit user's creator ad budget
-router.post('/deposits/:id/approve', requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/deposits/:id/approve', requireAdminPermission('deposits'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { adminNotes } = req.body;
     const tx = await Transaction.findOne({ _id: req.params.id, type: 'deposit' });
@@ -960,7 +1051,7 @@ router.post('/deposits/:id/approve', requireAdmin, async (req: AuthRequest, res:
 });
 
 // POST /api/admin/deposits/:id/reject - Reject deposit
-router.post('/deposits/:id/reject', requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/deposits/:id/reject', requireAdminPermission('deposits'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { adminNotes } = req.body;
     const tx = await Transaction.findOne({ _id: req.params.id, type: 'deposit' });
@@ -991,7 +1082,7 @@ router.post('/deposits/:id/reject', requireAdmin, async (req: AuthRequest, res: 
 });
 
 // GET /api/admin/settings/deposit-methods - Get deposit methods configuration
-router.get('/settings/deposit-methods', requireAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
+router.get('/settings/deposit-methods', requireMasterAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
     const methods = await getSystemDepositMethods();
     res.json({ success: true, data: methods });
@@ -1001,7 +1092,7 @@ router.get('/settings/deposit-methods', requireAdmin, async (_req: AuthRequest, 
 });
 
 // POST /api/admin/settings/deposit-methods - Update deposit payment methods and numbers
-router.post('/settings/deposit-methods', requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/settings/deposit-methods', requireMasterAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { methods } = req.body;
     if (!methods || !Array.isArray(methods)) {
@@ -1043,7 +1134,7 @@ router.post('/settings/deposit-methods', requireAdmin, async (req: AuthRequest, 
 });
 
 // GET /api/admin/settings/withdraw-methods - Get current withdrawal methods & min limit config
-router.get('/settings/withdraw-methods', requireAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
+router.get('/settings/withdraw-methods', requireMasterAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
     const methods = await getSystemWithdrawMethods();
     res.json({ success: true, data: methods });
@@ -1053,7 +1144,7 @@ router.get('/settings/withdraw-methods', requireAdmin, async (_req: AuthRequest,
 });
 
 // POST /api/admin/settings/withdraw-methods - Update withdrawal payment methods and minimum payout amounts
-router.post('/settings/withdraw-methods', requireAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+router.post('/settings/withdraw-methods', requireMasterAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { methods } = req.body;
     if (!methods || !Array.isArray(methods)) {
@@ -1087,6 +1178,152 @@ router.post('/settings/withdraw-methods', requireAdmin, async (req: AuthRequest,
       success: true,
       data: updated.value,
       message: 'Withdrawal payment methods and minimum payout amounts updated successfully!',
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ==========================================
+// SUB-ADMIN ROLE DELEGATION & MANAGEMENT
+// ==========================================
+
+// GET /api/admin/sub-admins - List all delegated sub-admins (Master Admin Only)
+router.get('/sub-admins', requireMasterAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const subAdmins = await User.find({ role: 'admin', adminRole: 'sub_admin' })
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      data: subAdmins.map(formatSubAdmin),
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/admin/sub-admins - Create new sub-admin with selected modules (Master Admin Only)
+router.post('/sub-admins', requireMasterAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { name, email, password, permissions } = req.body;
+
+    if (!name || typeof name !== 'string' || name.trim().length < 2) {
+      res.status(400).json({ success: false, error: 'Staff full name is required (min 2 characters)' });
+      return;
+    }
+
+    if (!email || typeof email !== 'string' || !email.includes('@')) {
+      res.status(400).json({ success: false, error: 'A valid email address is required' });
+      return;
+    }
+
+    if (!password || typeof password !== 'string' || password.length < 6) {
+      res.status(400).json({ success: false, error: 'Staff password must be at least 6 characters' });
+      return;
+    }
+
+    // Sanitize permissions: deposits, withdrawals, campaigns
+    const allowedModules = ['deposits', 'withdrawals', 'campaigns'];
+    const validPermissions = Array.isArray(permissions)
+      ? permissions.filter((p: string) => allowedModules.includes(p))
+      : [];
+
+    if (validPermissions.length === 0) {
+      res.status(400).json({ success: false, error: 'Please select at least one module (Deposits, Withdrawals, or Campaigns)' });
+      return;
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const existing = await User.findOne({ email: cleanEmail });
+    if (existing) {
+      res.status(400).json({ success: false, error: 'An account with this email address already exists' });
+      return;
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+
+    const newSubAdmin = await User.create({
+      name: name.trim(),
+      email: cleanEmail,
+      passwordHash,
+      role: 'admin',
+      adminRole: 'sub_admin',
+      adminPermissions: validPermissions,
+      status: 'active',
+      balance: 0,
+      avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(cleanEmail)}&backgroundColor=b6e3f4,c0aede,d1d4f9`,
+    });
+
+    res.json({
+      success: true,
+      data: formatSubAdmin(newSubAdmin),
+      message: `Sub-admin "${newSubAdmin.name}" created successfully with access to ${validPermissions.join(', ')}!`,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// PUT /api/admin/sub-admins/:id - Update sub-admin permissions or access status (Master Admin Only)
+router.put('/sub-admins/:id', requireMasterAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { name, permissions, status, password } = req.body;
+    const subAdmin = await User.findOne({ _id: req.params.id, role: 'admin', adminRole: 'sub_admin' });
+
+    if (!subAdmin) {
+      res.status(404).json({ success: false, error: 'Sub-admin not found' });
+      return;
+    }
+
+    if (name && typeof name === 'string' && name.trim().length >= 2) {
+      subAdmin.name = name.trim();
+    }
+
+    if (permissions && Array.isArray(permissions)) {
+      const allowedModules = ['deposits', 'withdrawals', 'campaigns'];
+      const validPermissions = permissions.filter((p: string) => allowedModules.includes(p));
+      if (validPermissions.length === 0) {
+        res.status(400).json({ success: false, error: 'Sub-admin must have at least one module assigned' });
+        return;
+      }
+      subAdmin.adminPermissions = validPermissions;
+    }
+
+    if (status && ['active', 'suspended'].includes(status)) {
+      subAdmin.status = status;
+    }
+
+    if (password && typeof password === 'string' && password.length >= 6) {
+      const salt = await bcrypt.genSalt(10);
+      subAdmin.passwordHash = await bcrypt.hash(password, salt);
+    }
+
+    await subAdmin.save();
+
+    res.json({
+      success: true,
+      data: formatSubAdmin(subAdmin),
+      message: `Sub-admin "${subAdmin.name}" updated successfully!`,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// DELETE /api/admin/sub-admins/:id - Remove sub-admin account (Master Admin Only)
+router.delete('/sub-admins/:id', requireMasterAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const subAdmin = await User.findOneAndDelete({ _id: req.params.id, role: 'admin', adminRole: 'sub_admin' });
+    if (!subAdmin) {
+      res.status(404).json({ success: false, error: 'Sub-admin not found' });
+      return;
+    }
+
+    res.json({
+      success: true,
+      message: `Sub-admin "${subAdmin.name}" has been deleted.`,
     });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });

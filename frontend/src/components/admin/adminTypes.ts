@@ -2,9 +2,55 @@ import { DepositMethod, WithdrawMethod } from '../../types';
 
 export interface PricingTierItem {
   duration: number;
-  campaignerCost: number;
-  viewerReward: number;
+  campaignerCost: number | string;
+  viewerReward: number | string;
 }
+
+export const formatDurationBadge = (sec: number): string => {
+  if (sec === 600) return '600s (10 MIN)';
+  if (sec === 900) return '900s (15 MIN)';
+  if (sec === 1800) return '1800s (30 MIN)';
+  if (sec === 3600) return '3600s (1 HOUR)';
+  if (sec === 7200) return '7200s (2 HOURS)';
+  if (sec < 60) return `${sec} SECONDS`;
+  if (sec < 3600) {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return s > 0 ? `${sec}s (${m}m ${s}s)` : `${sec}s (${m} MIN)`;
+  }
+  const h = (sec / 3600);
+  return `${sec}s (${h % 1 === 0 ? h : h.toFixed(1)} ${h > 1 ? 'HOURS' : 'HOUR'})`;
+};
+
+export const formatDurationLabel = (sec: number): string => {
+  if (sec === 8) return '8s';
+  if (sec === 16) return '16s';
+  if (sec === 45) return '45s';
+  if (sec === 60) return '60s';
+  if (sec === 120) return '120s';
+  if (sec === 180) return '180s';
+  if (sec === 300) return '300s';
+  if (sec === 600) return '10 min';
+  if (sec === 900) return '15 min';
+  if (sec === 1800) return '30 min';
+  if (sec === 3600) return '1 hour';
+  if (sec === 7200) return '2 hour';
+  if (sec < 60) return `${sec}s`;
+  if (sec < 3600) return `${Math.round(sec / 60)} min`;
+  const h = sec / 3600;
+  return `${h % 1 === 0 ? h : h.toFixed(1)} hour${h > 1 ? 's' : ''}`;
+};
+
+export const formatDecimalString = (val: number | string, maxDecimals = 10): string => {
+  if (val === '' || val === null || val === undefined) return '';
+  if (typeof val === 'string') {
+    if (/^[0-9]*\.?[0-9]*$/.test(val)) return val;
+  }
+  const num = typeof val === 'number' ? val : parseFloat(String(val));
+  if (isNaN(num)) return '0';
+  const fixed = num.toFixed(maxDecimals);
+  return fixed.includes('.') ? fixed.replace(/\.?0+$/, '') : fixed;
+};
 
 export interface CooldownConfig {
   enabled: boolean;
@@ -21,7 +67,7 @@ export interface HourlyLimitConfig {
   maxHourlyVideos: number;
 }
 
-export type AdminTab = 'overview' | 'payouts' | 'deposits' | 'campaigns' | 'users' | 'pricing' | 'gateways' | 'settings';
+export type AdminTab = 'overview' | 'payouts' | 'deposits' | 'campaigns' | 'users' | 'pricing' | 'gateways' | 'settings' | 'subadmins';
 
 export const DEFAULT_ADMIN_DEPOSIT_METHODS: DepositMethod[] = [
   {
@@ -29,7 +75,7 @@ export const DEFAULT_ADMIN_DEPOSIT_METHODS: DepositMethod[] = [
     name: 'FaucetPay',
     type: 'faucetpay',
     accountType: 'Email / Account',
-    accountNumber: 'admin@myyt.com',
+    accountNumber: 'admin@ytcash.com',
     minDepositUsd: 5.0,
     instructions: 'Send payment via FaucetPay to this email/address and enter your FaucetPay TrxID.',
     enabled: true,

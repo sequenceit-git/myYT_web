@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Campaign, Payout, Transaction, DepositMethod, WithdrawMethod } from '../types';
+import { User, SubAdmin, Campaign, Payout, Transaction, DepositMethod, WithdrawMethod } from '../types';
 import { apiRequest, setAuthToken, clearAuthToken } from '../api';
 import { useExchangeRate } from '../context/ExchangeRateContext';
 
@@ -13,6 +13,7 @@ import { AdminCampaignsTab } from './admin/AdminCampaignsTab';
 import { AdminUsersTab } from './admin/AdminUsersTab';
 import { AdminSettingsTab } from './admin/AdminSettingsTab';
 import { AdminPaymentMethodsTab } from './admin/AdminPaymentMethodsTab';
+import { AdminSubAdminsTab } from './admin/AdminSubAdminsTab';
 import { AdminPayoutModals } from './admin/AdminPayoutModals';
 import { AdminDepositModals } from './admin/AdminDepositModals';
 
@@ -25,6 +26,7 @@ import {
   AdminTab,
   DEFAULT_ADMIN_DEPOSIT_METHODS,
   DEFAULT_ADMIN_WITHDRAW_METHODS,
+  formatDecimalString,
 } from './admin/adminTypes';
 
 export type { PricingTierItem, CooldownConfig, DailyLimitConfig, HourlyLimitConfig, AdminTab };
@@ -36,12 +38,33 @@ interface AdminPortalProps {
 
 export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser }) => {
   // Authentication & Session
+  const [loginMode, setLoginMode] = useState<'master' | 'sub_admin'>('master');
+  const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
-  // Active Admin Tab
+  // Active Admin Tab & Sub-Admin Role State
+  const isMasterAdmin = !user?.adminRole || user.adminRole === 'master';
+  const subAdminPermissions = user?.adminPermissions || [];
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
+
+  // Sub-Admins list
+  const [subAdminsList, setSubAdminsList] = useState<SubAdmin[]>([]);
+
+  // Automatic routing for Sub-Admin staff to their first authorized module
+  useEffect(() => {
+    if (user && user.role === 'admin' && !isMasterAdmin) {
+      const allowedTabs: AdminTab[] = [];
+      if (subAdminPermissions.includes('deposits')) allowedTabs.push('deposits');
+      if (subAdminPermissions.includes('withdrawals')) allowedTabs.push('payouts');
+      if (subAdminPermissions.includes('campaigns')) allowedTabs.push('campaigns');
+
+      if (allowedTabs.length > 0 && !allowedTabs.includes(activeTab)) {
+        setActiveTab(allowedTabs[0]);
+      }
+    }
+  }, [user, isMasterAdmin, subAdminPermissions, activeTab]);
   const [payoutFilter, setPayoutFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
   const [depositFilter, setDepositFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
 
@@ -54,6 +77,11 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
     { duration: 120, campaignerCost: 0.0150, viewerReward: 0.0110 },
     { duration: 180, campaignerCost: 0.0210, viewerReward: 0.0155 },
     { duration: 300, campaignerCost: 0.0320, viewerReward: 0.0240 },
+    { duration: 600, campaignerCost: 0.0600, viewerReward: 0.0450 },
+    { duration: 900, campaignerCost: 0.0850, viewerReward: 0.0640 },
+    { duration: 1800, campaignerCost: 0.1600, viewerReward: 0.1200 },
+    { duration: 3600, campaignerCost: 0.3000, viewerReward: 0.2250 },
+    { duration: 7200, campaignerCost: 0.5500, viewerReward: 0.4100 },
   ]);
   const [pricingSaving, setPricingSaving] = useState(false);
 
@@ -87,6 +115,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
 
   // Telemetry & Data lists
   const [stats, setStats] = useState<any>(null);
+  const [phoneAppUsersCount, setPhoneAppUsersCount] = useState<number>(0);
   const [usersList, setUsersList] = useState<User[]>([]);
   const [campaignsList, setCampaignsList] = useState<Campaign[]>([]);
   const [payoutsList, setPayoutsList] = useState<Payout[]>([]);
@@ -155,82 +184,119 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
   const fetchAdminData = async () => {
     setDataLoading(true);
     try {
-      const [statsRes, usersRes, campRes, payRes, depRes, depMethodsRes, withdrawMethodsRes, settingsRes] = await Promise.all([
-        apiRequest<any>('/admin/stats'),
-        apiRequest<User[]>('/admin/users'),
-        apiRequest<Campaign[]>('/admin/campaigns'),
-        apiRequest<Payout[]>('/admin/payouts'),
-        apiRequest<Transaction[]>('/admin/deposits'),
-        apiRequest<DepositMethod[]>('/admin/settings/deposit-methods'),
-        apiRequest<WithdrawMethod[]>('/admin/settings/withdraw-methods'),
-        apiRequest<{
-          usdToBdt: number;
-          pricingTiers: any;
-          pricingTiersList?: PricingTierItem[];
-          cooldownSettings: any;
-          dailyLimitSettings?: any;
-          hourlyLimitSettings?: any;
-        }>('/admin/settings'),
-      ]);
+      const isMaster = !user?.adminRole || user.adminRole === 'master';
+      const perms = user?.adminPermissions || [];
 
-      if (statsRes.success) setStats(statsRes.data);
-      if (usersRes.success) setUsersList(usersRes.data || []);
-      if (campRes.success) setCampaignsList(campRes.data || []);
-      if (payRes.success) setPayoutsList(payRes.data || []);
-      if (depRes.success) setDepositsList(depRes.data || []);
-      if (depMethodsRes.success && depMethodsRes.data && Array.isArray(depMethodsRes.data) && depMethodsRes.data.length > 0) {
-        setDepositMethodsConfig(depMethodsRes.data);
+      // 1. Stats and telemetry (accessible to all administrative staff)
+      const statsRes = await apiRequest<any>('/admin/stats');
+      if (statsRes.success && statsRes.data) {
+        setStats(statsRes.data);
+        if (typeof statsRes.data?.phoneAppActiveUsers === 'number') {
+          setPhoneAppUsersCount(statsRes.data.phoneAppActiveUsers);
+        }
       }
-      if (withdrawMethodsRes.success && withdrawMethodsRes.data && Array.isArray(withdrawMethodsRes.data) && withdrawMethodsRes.data.length > 0) {
-        setWithdrawMethodsConfig(withdrawMethodsRes.data);
+
+      // 2. Module: Campaigns
+      if (isMaster || perms.includes('campaigns')) {
+        const campRes = await apiRequest<Campaign[]>('/admin/campaigns');
+        if (campRes.success) setCampaignsList(campRes.data || []);
       }
-      if (settingsRes.success && settingsRes.data) {
-        // 1. Pricing Tiers: handle array or object
-        if (settingsRes.data.pricingTiersList && Array.isArray(settingsRes.data.pricingTiersList)) {
-          setPricingTiers(settingsRes.data.pricingTiersList);
-        } else if (settingsRes.data.pricingTiers) {
-          if (Array.isArray(settingsRes.data.pricingTiers)) {
-            setPricingTiers(settingsRes.data.pricingTiers);
-          } else if (typeof settingsRes.data.pricingTiers === 'object') {
-            const list: PricingTierItem[] = Object.entries(settingsRes.data.pricingTiers).map(([sec, t]: [string, any]) => ({
-              duration: parseInt(sec, 10),
-              campaignerCost: Number(t?.campaignerCost || 0),
-              viewerReward: Number(t?.viewerReward || 0),
-            })).filter((item) => !isNaN(item.duration) && item.duration > 0).sort((a, b) => a.duration - b.duration);
-            if (list.length > 0) setPricingTiers(list);
+
+      // 3. Module: Withdrawals
+      if (isMaster || perms.includes('withdrawals')) {
+        const payRes = await apiRequest<Payout[]>('/admin/payouts');
+        if (payRes.success) setPayoutsList(payRes.data || []);
+      }
+
+      // 4. Module: Deposits
+      if (isMaster || perms.includes('deposits')) {
+        const depRes = await apiRequest<Transaction[]>('/admin/deposits');
+        if (depRes.success) setDepositsList(depRes.data || []);
+      }
+
+      // 5. Master Administrator Only modules
+      if (isMaster) {
+        const [usersRes, depMethodsRes, withdrawMethodsRes, settingsRes, subAdminsRes] = await Promise.all([
+          apiRequest<User[]>('/admin/users'),
+          apiRequest<DepositMethod[]>('/admin/settings/deposit-methods'),
+          apiRequest<WithdrawMethod[]>('/admin/settings/withdraw-methods'),
+          apiRequest<{
+            usdToBdt: number;
+            pricingTiers: any;
+            pricingTiersList?: PricingTierItem[];
+            cooldownSettings: any;
+            dailyLimitSettings?: any;
+            hourlyLimitSettings?: any;
+          }>('/admin/settings'),
+          apiRequest<SubAdmin[]>('/admin/sub-admins'),
+        ]);
+
+        if (usersRes.success) setUsersList(usersRes.data || []);
+        if (subAdminsRes.success) setSubAdminsList(subAdminsRes.data || []);
+        if (depMethodsRes.success && depMethodsRes.data && Array.isArray(depMethodsRes.data) && depMethodsRes.data.length > 0) {
+          setDepositMethodsConfig(depMethodsRes.data);
+        }
+        if (withdrawMethodsRes.success && withdrawMethodsRes.data && Array.isArray(withdrawMethodsRes.data) && withdrawMethodsRes.data.length > 0) {
+          setWithdrawMethodsConfig(withdrawMethodsRes.data);
+        }
+        if (settingsRes.success && settingsRes.data) {
+          // Pricing Tiers
+          if (settingsRes.data.pricingTiersList && Array.isArray(settingsRes.data.pricingTiersList)) {
+            const list: PricingTierItem[] = settingsRes.data.pricingTiersList.map((t: any) => ({
+              duration: Number(t.duration),
+              campaignerCost: formatDecimalString(t.campaignerCost, 10),
+              viewerReward: formatDecimalString(t.viewerReward, 10),
+            }));
+            setPricingTiers(list);
+          } else if (settingsRes.data.pricingTiers) {
+            if (Array.isArray(settingsRes.data.pricingTiers)) {
+              const list: PricingTierItem[] = settingsRes.data.pricingTiers.map((t: any) => ({
+                duration: Number(t.duration),
+                campaignerCost: formatDecimalString(t.campaignerCost, 10),
+                viewerReward: formatDecimalString(t.viewerReward, 10),
+              }));
+              setPricingTiers(list);
+            } else if (typeof settingsRes.data.pricingTiers === 'object') {
+              const list: PricingTierItem[] = Object.entries(settingsRes.data.pricingTiers).map(([sec, t]: [string, any]) => ({
+                duration: parseInt(sec, 10),
+                campaignerCost: formatDecimalString(t?.campaignerCost || 0, 10),
+                viewerReward: formatDecimalString(t?.viewerReward || 0, 10),
+              })).filter((item) => !isNaN(item.duration) && item.duration > 0).sort((a, b) => a.duration - b.duration);
+              if (list.length > 0) setPricingTiers(list);
+            }
           }
-        }
 
-        // 2. Cooldown Settings: normalize properties
-        if (settingsRes.data.cooldownSettings) {
-          const cd = settingsRes.data.cooldownSettings as any;
-          setCooldownConfig({
-            enabled: Boolean(cd.enabled ?? cd.enableCooldown),
-            durationSeconds: Number(cd.durationSeconds ?? cd.videoCooldownSeconds ?? 3600),
-          });
-        }
+          // Cooldown Settings
+          if (settingsRes.data.cooldownSettings) {
+            const cd = settingsRes.data.cooldownSettings as any;
+            setCooldownConfig({
+              enabled: Boolean(cd.enabled ?? cd.enableCooldown),
+              durationSeconds: Number(cd.durationSeconds ?? cd.videoCooldownSeconds ?? 3600),
+            });
+          }
 
-        // 3. Daily Limit Settings: normalize properties
-        if (settingsRes.data.dailyLimitSettings) {
-          const dl = settingsRes.data.dailyLimitSettings as any;
-          setDailyLimitConfig({
-            enableDailyLimit: Boolean(dl.enableDailyLimit ?? dl.enabled),
-            maxDailyVideos: Number(dl.maxDailyVideos ?? dl.limit ?? 50),
-          });
-        }
+          // Daily Limit
+          if (settingsRes.data.dailyLimitSettings) {
+            const dl = settingsRes.data.dailyLimitSettings as any;
+            setDailyLimitConfig({
+              enableDailyLimit: Boolean(dl.enableDailyLimit ?? dl.enabled),
+              maxDailyVideos: Number(dl.maxDailyVideos ?? dl.limit ?? 50),
+            });
+          }
 
-        // 4. Hourly Limit Settings: normalize properties
-        if (settingsRes.data.hourlyLimitSettings) {
-          const hl = settingsRes.data.hourlyLimitSettings as any;
-          setHourlyLimitConfig({
-            enableHourlyLimit: Boolean(hl.enableHourlyLimit ?? hl.enabled),
-            maxHourlyVideos: Number(hl.maxHourlyVideos ?? hl.limit ?? 20),
-          });
-        }
+          // Hourly Limit
+          if (settingsRes.data.hourlyLimitSettings) {
+            const hl = settingsRes.data.hourlyLimitSettings as any;
+            setHourlyLimitConfig({
+              enableHourlyLimit: Boolean(hl.enableHourlyLimit ?? hl.enabled),
+              maxHourlyVideos: Number(hl.maxHourlyVideos ?? hl.limit ?? 20),
+            });
+          }
 
-        // 5. USD to BDT Currency Rate
-        if (settingsRes.data.usdToBdt) {
-          setDollarRateInput(String(settingsRes.data.usdToBdt));
+          // Dollar Rate
+          if (settingsRes.data.usdToBdt) {
+            setDollarRateInput(String(settingsRes.data.usdToBdt));
+          }
         }
       }
     } catch {
@@ -244,22 +310,41 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
   const handleSavePricing = async () => {
     setPricingSaving(true);
     try {
+      const sanitizedTiers = pricingTiers
+        .map((t) => ({
+          duration: Number(t.duration),
+          campaignerCost: Math.max(0, parseFloat(String(t.campaignerCost)) || 0),
+          viewerReward: Math.max(0, parseFloat(String(t.viewerReward)) || 0),
+        }))
+        .filter((t) => !isNaN(t.duration) && t.duration > 0)
+        .sort((a, b) => a.duration - b.duration);
+
       const res = await apiRequest<{ message?: string; pricingTiers: any; pricingTiersList?: PricingTierItem[] }>('/admin/settings/pricing', {
         method: 'POST',
-        body: JSON.stringify({ pricingTiers }),
+        body: JSON.stringify({ pricingTiers: sanitizedTiers }),
       });
       if (res.success) {
         setActionNotice({ type: 'success', message: (res as any).message || 'Pricing tiers per view saved successfully!' });
         if (res.data?.pricingTiersList && Array.isArray(res.data.pricingTiersList)) {
-          setPricingTiers(res.data.pricingTiersList);
+          const list: PricingTierItem[] = res.data.pricingTiersList.map((t: any) => ({
+            duration: Number(t.duration),
+            campaignerCost: formatDecimalString(t.campaignerCost, 10),
+            viewerReward: formatDecimalString(t.viewerReward, 10),
+          }));
+          setPricingTiers(list);
         } else if (res.data?.pricingTiers) {
           if (Array.isArray(res.data.pricingTiers)) {
-            setPricingTiers(res.data.pricingTiers);
+            const list: PricingTierItem[] = res.data.pricingTiers.map((t: any) => ({
+              duration: Number(t.duration),
+              campaignerCost: formatDecimalString(t.campaignerCost, 10),
+              viewerReward: formatDecimalString(t.viewerReward, 10),
+            }));
+            setPricingTiers(list);
           } else if (typeof res.data.pricingTiers === 'object') {
             const list: PricingTierItem[] = Object.entries(res.data.pricingTiers).map(([sec, t]: [string, any]) => ({
               duration: parseInt(sec, 10),
-              campaignerCost: Number(t?.campaignerCost || 0),
-              viewerReward: Number(t?.viewerReward || 0),
+              campaignerCost: formatDecimalString(t?.campaignerCost || 0, 10),
+              viewerReward: formatDecimalString(t?.viewerReward || 0, 10),
             })).filter((item) => !isNaN(item.duration) && item.duration > 0).sort((a, b) => a.duration - b.duration);
             if (list.length > 0) setPricingTiers(list);
           }
@@ -283,17 +368,39 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
       { duration: 120, campaignerCost: 0.0150, viewerReward: 0.0110 },
       { duration: 180, campaignerCost: 0.0210, viewerReward: 0.0155 },
       { duration: 300, campaignerCost: 0.0320, viewerReward: 0.0240 },
+      { duration: 600, campaignerCost: 0.0600, viewerReward: 0.0450 },
+      { duration: 900, campaignerCost: 0.0850, viewerReward: 0.0640 },
+      { duration: 1800, campaignerCost: 0.1600, viewerReward: 0.1200 },
+      { duration: 3600, campaignerCost: 0.3000, viewerReward: 0.2250 },
+      { duration: 7200, campaignerCost: 0.5500, viewerReward: 0.4100 },
     ];
     setPricingTiers(defaultTiers);
     setActionNotice({ type: 'success', message: 'Reset to standard defaults. Click Save Pricing Rules to apply.' });
   };
 
-  const handleUpdateTier = (index: number, field: 'campaignerCost' | 'viewerReward', value: number) => {
+  const handleUpdateTier = (index: number, field: 'campaignerCost' | 'viewerReward', value: number | string) => {
     setPricingTiers((prev) => {
       const updated = [...prev];
-      updated[index] = { ...updated[index], [field]: Math.max(0, value) };
+      updated[index] = { ...updated[index], [field]: value };
       return updated;
     });
+  };
+
+  const handleAddTier = (duration: number, campaignerCost: number | string, viewerReward: number | string) => {
+    if (!duration || duration <= 0) return;
+    setPricingTiers((prev) => {
+      const existingIdx = prev.findIndex((t) => t.duration === duration);
+      if (existingIdx >= 0) {
+        const updated = [...prev];
+        updated[existingIdx] = { duration, campaignerCost, viewerReward };
+        return updated;
+      }
+      return [...prev, { duration, campaignerCost, viewerReward }].sort((a, b) => a.duration - b.duration);
+    });
+  };
+
+  const handleDeleteTier = (index: number) => {
+    setPricingTiers((prev) => prev.filter((_, i) => i !== index));
   };
 
   // Cooldown Settings Handlers
@@ -398,16 +505,104 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
     }
   }, [user]);
 
-  // Handle password-only login
+  // Real-time phone app active users poller (every 8 seconds)
+  useEffect(() => {
+    if (!user || user.role !== 'admin') return;
+
+    let isMounted = true;
+    const pollPhoneUsers = async () => {
+      try {
+        const res = await apiRequest<{ activeCount: number }>('/admin/active-phone-users');
+        if (isMounted && res.success && res.data && typeof res.data.activeCount === 'number') {
+          setPhoneAppUsersCount(res.data.activeCount);
+        }
+      } catch {
+        // Background real-time poll fallback
+      }
+    };
+
+    const interval = setInterval(pollPhoneUsers, 8000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [user]);
+
+  // Sub-Admin Staff Management Handlers
+  const handleCreateSubAdmin = async (data: {
+    name: string;
+    email: string;
+    password: string;
+    permissions: ('deposits' | 'withdrawals' | 'campaigns')[];
+  }) => {
+    try {
+      const res = await apiRequest<SubAdmin>('/admin/sub-admins', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      if (res.success && res.data) {
+        setSubAdminsList((prev) => [res.data!, ...prev]);
+        return { success: true, message: (res as any).message || 'Sub-admin created successfully!' };
+      }
+      return { success: false, message: res.error || 'Failed to create sub-admin' };
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Error creating sub-admin' };
+    }
+  };
+
+  const handleUpdateSubAdmin = async (
+    id: string,
+    data: {
+      name?: string;
+      permissions?: ('deposits' | 'withdrawals' | 'campaigns')[];
+      status?: 'active' | 'suspended';
+      password?: string;
+    }
+  ) => {
+    try {
+      const res = await apiRequest<SubAdmin>(`/admin/sub-admins/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      });
+      if (res.success && res.data) {
+        setSubAdminsList((prev) => prev.map((s) => ((s.id === id || (s as any)._id === id) ? res.data! : s)));
+        return { success: true, message: (res as any).message || 'Sub-admin updated successfully!' };
+      }
+      return { success: false, message: res.error || 'Failed to update sub-admin' };
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Error updating sub-admin' };
+    }
+  };
+
+  const handleDeleteSubAdmin = async (id: string) => {
+    try {
+      const res = await apiRequest<{ message?: string }>(`/admin/sub-admins/${id}`, {
+        method: 'DELETE',
+      });
+      if (res.success) {
+        setSubAdminsList((prev) => prev.filter((s) => s.id !== id && (s as any)._id !== id));
+        return { success: true, message: res.data?.message || (res as any).message || 'Sub-admin deleted' };
+      }
+      return { success: false, message: res.error || 'Failed to delete sub-admin' };
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Error deleting sub-admin' };
+    }
+  };
+
+  // Handle Admin & Sub-Admin login
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginLoading(true);
     setLoginError(null);
 
+    const payload = loginMode === 'sub_admin'
+      ? { email: emailInput.trim(), password: passwordInput }
+      : { password: passwordInput };
+
     try {
       const res = await apiRequest<{ user: User; token: string }>('/auth/admin-login', {
         method: 'POST',
-        body: JSON.stringify({ password: passwordInput }),
+        body: JSON.stringify(payload),
       });
 
       if (res.success && res.data) {
@@ -418,9 +613,19 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
           await onRefreshUser();
         }
         setPasswordInput('');
+        setEmailInput('');
+
+        // If sub-admin, route to their first allowed module tab
+        if (res.data.user.adminRole === 'sub_admin') {
+          const perms = res.data.user.adminPermissions || [];
+          if (perms.includes('deposits')) setActiveTab('deposits');
+          else if (perms.includes('withdrawals')) setActiveTab('payouts');
+          else if (perms.includes('campaigns')) setActiveTab('campaigns');
+        }
+
         fetchAdminData();
       } else {
-        setLoginError(res.error || 'Invalid administrator password. Access denied.');
+        setLoginError(res.error || 'Invalid administrator password or staff credentials. Access denied.');
       }
     } catch (err: any) {
       setLoginError(err.message || 'Connection error. Please try again.');
@@ -645,6 +850,19 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
     }
   };
 
+  // Reset User Mobile Device Lock
+  const handleResetUserDevice = async (u: User) => {
+    const res = await apiRequest(`/admin/users/${u.id || (u as any)._id}/reset-device`, {
+      method: 'POST',
+    });
+    if (res.success) {
+      setActionNotice({ type: 'success', message: `Mobile device lock for "${u.email}" has been reset.` });
+      fetchAdminData();
+    } else {
+      setActionNotice({ type: 'error', message: res.error || 'Failed to reset device lock' });
+    }
+  };
+
   // Check role authorization
   const isAdmin = user && user.role === 'admin';
 
@@ -652,10 +870,14 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
   const pendingPayoutsCount = payoutsList.filter((p) => p.status === 'pending').length;
   const pendingDepositsCount = depositsList.filter((d) => d.status === 'pending').length;
 
-  // 1. Password-only Login Screen Gate
+  // 1. Dual-mode Login Screen Gate
   if (!isAdmin) {
     return (
       <AdminLogin
+        loginMode={loginMode}
+        setLoginMode={setLoginMode}
+        emailInput={emailInput}
+        setEmailInput={setEmailInput}
         passwordInput={passwordInput}
         setPasswordInput={setPasswordInput}
         loginLoading={loginLoading}
@@ -680,6 +902,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
         pendingDepositsCount={pendingDepositsCount}
         campaignsCount={campaignsList.length}
         usersCount={usersList.length}
+        subAdminsCount={subAdminsList.length}
+        phoneAppUsersCount={phoneAppUsersCount}
+        currentUser={user}
         onRefresh={fetchAdminData}
         onLogout={handleAdminLogout}
       />
@@ -757,6 +982,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
           setUserPage={setUserPage}
           pageSize={PAGE_SIZE}
           onToggleUserBan={handleToggleUserBan}
+          onResetUserDevice={handleResetUserDevice}
+          isMasterAdmin={isMasterAdmin}
         />
       )}
 
@@ -768,6 +995,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
           handleResetPricing={handleResetPricing}
           handleSavePricing={handleSavePricing}
           handleUpdateTier={handleUpdateTier}
+          handleAddTier={handleAddTier}
+          handleDeleteTier={handleDeleteTier}
           cooldownConfig={cooldownConfig}
           setCooldownConfig={setCooldownConfig}
           cooldownSaving={cooldownSaving}
@@ -789,7 +1018,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
       )}
 
       {/* TAB 7: PAYMENT GATEWAYS, MANUAL DEPOSIT NUMBERS & MINIMUM WITHDRAWAL LIMITS */}
-      {activeTab === 'gateways' && (
+      {activeTab === 'gateways' && isMasterAdmin && (
         <AdminPaymentMethodsTab
           depositMethodsConfig={depositMethodsConfig}
           setDepositMethodsConfig={setDepositMethodsConfig}
@@ -799,6 +1028,18 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
           setWithdrawMethodsConfig={setWithdrawMethodsConfig}
           withdrawMethodsSaving={withdrawMethodsSaving}
           handleSaveWithdrawMethods={handleSaveWithdrawMethods}
+        />
+      )}
+
+      {/* TAB 8: SUB-ADMIN MANAGEMENT (MASTER ADMIN ONLY) */}
+      {activeTab === 'subadmins' && isMasterAdmin && (
+        <AdminSubAdminsTab
+          subAdminsList={subAdminsList}
+          onCreateSubAdmin={handleCreateSubAdmin}
+          onUpdateSubAdmin={handleUpdateSubAdmin}
+          onDeleteSubAdmin={handleDeleteSubAdmin}
+          actionNotice={actionNotice}
+          setActionNotice={setActionNotice}
         />
       )}
 

@@ -101,11 +101,11 @@ export const Header: React.FC<HeaderProps> = ({
         <Link
           to="/"
           onClick={closeMenu}
-          style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}
         >
           <img
             src="/image.png"
-            alt="ytCash"
+            alt="ytCash PRO"
             style={{
               height: 38,
               width: 'auto',
@@ -113,6 +113,9 @@ export const Header: React.FC<HeaderProps> = ({
               objectFit: 'contain',
             }}
           />
+          <span className="badge-pill badge-cyan" style={{ fontSize: '0.52rem', padding: '1px 5px' }}>
+            PRO
+          </span>
         </Link>
 
         {/* 3 Clean Navigation Options (Desktop) */}

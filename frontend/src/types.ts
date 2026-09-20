@@ -10,6 +10,8 @@ export interface User {
   email: string;
   name: string;
   role: 'campaigner' | 'viewer' | 'admin';
+  adminRole?: 'master' | 'sub_admin';
+  adminPermissions?: ('deposits' | 'withdrawals' | 'campaigns')[];
   balance: number; // USD Cash Balance
   viewerBalance?: number; // In USD Watch Earnings available for cashout
   creatorBalance?: number; // In USD Ad Budget deposited for buying views
@@ -28,6 +30,22 @@ export interface User {
   referralEarnings?: number;
   referralCount?: number;
   referredBy?: string;
+  activeMobileDeviceId?: string;
+  activeMobileDeviceModel?: string;
+  lastMobileActiveAt?: string;
+}
+
+export interface SubAdmin {
+  id: string;
+  _id?: string;
+  name: string;
+  email: string;
+  role: 'admin';
+  adminRole: 'sub_admin';
+  adminPermissions: ('deposits' | 'withdrawals' | 'campaigns')[];
+  status: 'active' | 'suspended';
+  createdAt: string;
+  avatar?: string;
 }
 
 export interface Campaign {

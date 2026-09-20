@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, useLocation, Navigate, Link } from 'react-router-dom';
+import { ShieldCheck, CheckCircle2, Lock } from 'lucide-react';
 import { Header } from './components/Header';
 import { LivePayoutsTicker } from './components/LivePayoutsTicker';
 import { LandingPage } from './components/LandingPage';
@@ -29,7 +30,7 @@ export function App() {
 
   // Check auth on load
   const fetchMe = async () => {
-    const token = localStorage.getItem('myyt_token');
+    const token = localStorage.getItem('ytcash_token') || localStorage.getItem('myyt_token');
     if (!token) return;
     const res = await apiRequest<User>('/auth/me');
     if (res.success && res.data) {
@@ -59,6 +60,7 @@ export function App() {
     const params = new URLSearchParams(window.location.search);
     const refCode = params.get('ref');
     if (refCode) {
+      localStorage.setItem('ytcash_ref', refCode.trim().toUpperCase());
       localStorage.setItem('myyt_ref', refCode.trim().toUpperCase());
     }
     fetchMe();
@@ -287,31 +289,142 @@ export function App() {
 
       {/* Footer - Rendered on Landing Page */}
       {isLandingPage && (
-        <footer style={{ borderTop: '1px solid var(--glass-stroke)', background: '#ffffff', padding: '50px 30px 30px', marginTop: 50 }}>
-          <div style={{ maxWidth: 1240, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 32, marginBottom: 36 }}>
-            <div>
-              <div className="font-display" style={{ fontSize: '1.5rem', color: '#0f172a', marginBottom: 8 }}>
-                MY<span style={{ color: 'var(--primary-neon)' }}>YT</span>
-              </div>
-              <p className="font-body" style={{ color: 'var(--on-surface-variant)', fontSize: '0.8rem', lineHeight: 1.55, maxWidth: 260 }}>
-                The high-velocity watch-to-earn & view exchange ecosystem for digital creators and active viewers.
+        <footer
+          style={{
+            borderTop: '1px solid #e2e8f0',
+            background: '#ffffff',
+            padding: '56px 24px 32px',
+            marginTop: 64,
+            position: 'relative',
+          }}
+        >
+          {/* Subtle Top Gradient Accent Line */}
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: '5%',
+              right: '5%',
+              height: 2,
+              background: 'linear-gradient(90deg, transparent 0%, rgba(14, 165, 233, 0.4) 50%, transparent 100%)',
+            }}
+          />
+
+          <div
+            style={{
+              maxWidth: 1240,
+              margin: '0 auto',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+              gap: 36,
+              marginBottom: 44,
+            }}
+          >
+            {/* Column 1: Brand & Identity */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}>
+                <img
+                  src="/image.png"
+                  alt="ytCash PRO"
+                  style={{
+                    height: 40,
+                    width: 'auto',
+                    display: 'block',
+                    objectFit: 'contain',
+                  }}
+                />
+                <span className="badge-pill badge-cyan" style={{ fontSize: '0.52rem', padding: '1px 5px' }}>
+                  PRO
+                </span>
+              </Link>
+
+              <p className="font-body" style={{ color: '#64748b', fontSize: '0.82rem', lineHeight: 1.6, maxWidth: 280, margin: 0 }}>
+                The high-velocity YouTube view exchange & watch-to-earn ecosystem for digital creators and active viewers worldwide.
               </p>
+
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    fontSize: '0.72rem',
+                    color: '#059669',
+                    background: 'rgba(16, 185, 129, 0.08)',
+                    padding: '4px 10px',
+                    borderRadius: 9999,
+                    border: '1px solid rgba(16, 185, 129, 0.25)',
+                    fontWeight: 600,
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 7,
+                      height: 7,
+                      borderRadius: '50%',
+                      background: '#10b981',
+                      boxShadow: '0 0 8px rgba(16, 185, 129, 0.6)',
+                      display: 'inline-block',
+                    }}
+                  />
+                  Network Online • Instant Payouts
+                </span>
+              </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <span className="font-mono" style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#0f172a', letterSpacing: '0.05em', fontWeight: 700 }}>Platform</span>
-              <Link to="/buy-views" style={{ color: 'var(--on-surface-variant)', fontSize: '0.78rem', textDecoration: 'none' }}>Buy YouTube Views</Link>
-              <Link to="/simulator" style={{ color: 'var(--on-surface-variant)', fontSize: '0.78rem', textDecoration: 'none' }}>Watch & Earn App</Link>
-              <Link to="/viewer" style={{ color: 'var(--on-surface-variant)', fontSize: '0.78rem', textDecoration: 'none' }}>Instant Wallet</Link>
+            {/* Column 2: Platform Solutions */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <span
+                className="font-mono"
+                style={{
+                  fontSize: '0.72rem',
+                  textTransform: 'uppercase',
+                  color: '#0f172a',
+                  letterSpacing: '0.06em',
+                  fontWeight: 800,
+                  marginBottom: 4,
+                }}
+              >
+                Platform
+              </span>
+              <Link to="/buy-views" style={{ color: '#475569', fontSize: '0.82rem', textDecoration: 'none' }}>
+                Buy YouTube Views
+              </Link>
+              <Link to="/simulator" style={{ color: '#475569', fontSize: '0.82rem', textDecoration: 'none' }}>
+                Watch & Earn App
+              </Link>
+              <Link to="/download" style={{ color: '#475569', fontSize: '0.82rem', textDecoration: 'none' }}>
+                Download Android APK
+              </Link>
+              <Link to="/creator" style={{ color: '#475569', fontSize: '0.82rem', textDecoration: 'none' }}>
+                Creator Studio
+              </Link>
+              <Link to="/viewer" style={{ color: '#475569', fontSize: '0.82rem', textDecoration: 'none' }}>
+                Instant Wallet & Cashout
+              </Link>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <span className="font-mono" style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#0f172a', letterSpacing: '0.05em', fontWeight: 700 }}>Payout & Deposit Rails</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '2px 0' }}>
+            {/* Column 3: Payout & Deposit Rails */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <span
+                className="font-mono"
+                style={{
+                  fontSize: '0.72rem',
+                  textTransform: 'uppercase',
+                  color: '#0f172a',
+                  letterSpacing: '0.06em',
+                  fontWeight: 800,
+                  marginBottom: 4,
+                }}
+              >
+                Payout & Deposit Rails
+              </span>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', margin: '2px 0' }}>
                 {[
                   { name: 'bKash', src: '/payment-methods/bkash.svg' },
                   { name: 'Nagad', src: '/payment-methods/nagad.svg' },
-                  { name: 'Payeer', src: '/payment-methods/payeer.png' },
+                  { name: 'Payeer', src: '/payment-methods/payeer.svg' },
                   { name: 'FaucetPay', src: '/payment-methods/faucetpay.svg' },
                   { name: 'Crypto (USDT)', src: '/payment-methods/crypto.svg' },
                   { name: 'WebMoney', src: '/payment-methods/webmoney.svg' },
@@ -320,38 +433,76 @@ export function App() {
                     key={pm.name}
                     title={pm.name}
                     style={{
-                      width: 26,
-                      height: 26,
-                      borderRadius: 6,
+                      width: 50,
+                      height: 38,
+                      borderRadius: 9,
                       background: '#ffffff',
-                      border: '1px solid #e2e8f0',
+                      border: '1.5px solid #cbd5e1',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      padding: 3,
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                      padding: '4px 6px',
+                      boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
                     }}
                   >
                     <img src={pm.src} alt={pm.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
                   </div>
                 ))}
               </div>
-              <span style={{ color: 'var(--on-surface-variant)', fontSize: '0.76rem' }}>bKash, Nagad, Payeer, FaucetPay, USDT, WebMoney</span>
+
+              <span style={{ color: '#64748b', fontSize: '0.78rem', lineHeight: 1.5, maxWidth: 260 }}>
+                Instant automated withdrawals from $0.20 threshold via bKash, Nagad, Payeer, FaucetPay, USDT, and WebMoney.
+              </span>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <span className="font-mono" style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#0f172a', letterSpacing: '0.05em', fontWeight: 700 }}>Infrastructure</span>
-              <span className="font-mono" style={{ color: 'var(--primary-neon)', fontSize: '0.75rem', fontWeight: 700 }}>4k–5k Concurrency Target</span>
-              <span className="font-mono" style={{ color: 'var(--on-surface-variant)', fontSize: '0.75rem' }}>Server-Authoritative Timing</span>
-              <span className="font-mono" style={{ color: 'var(--on-surface-variant)', fontSize: '0.75rem' }}>Redis BullMQ In-Memory</span>
+            {/* Column 4: Infrastructure & Security */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <span
+                className="font-mono"
+                style={{
+                  fontSize: '0.72rem',
+                  textTransform: 'uppercase',
+                  color: '#0f172a',
+                  letterSpacing: '0.06em',
+                  fontWeight: 800,
+                  marginBottom: 4,
+                }}
+              >
+                Infrastructure & Trust
+              </span>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <span className="font-mono" style={{ color: '#475569', fontSize: '0.76rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <CheckCircle2 size={13} color="#10b981" /> 100% Real Human Views
+                </span>
+                <span className="font-mono" style={{ color: '#475569', fontSize: '0.76rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <ShieldCheck size={13} color="#0284c7" /> Server-Authoritative Anti-Cheat
+                </span>
+                <span className="font-mono" style={{ color: '#475569', fontSize: '0.76rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Lock size={13} color="#64748b" /> 256-Bit SSL Encrypted Endpoints
+                </span>
+              </div>
             </div>
           </div>
 
-          <div style={{ maxWidth: 1240, margin: '0 auto', borderTop: '1px solid var(--glass-stroke)', paddingTop: 18, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-            <span className="font-mono" style={{ fontSize: '0.68rem', color: 'var(--on-surface-variant)' }}>
-              © 2026 YTCASH. ALL RIGHTS RESERVED.
+          {/* Bottom Copyright and Status Bar */}
+          <div
+            style={{
+              maxWidth: 1240,
+              margin: '0 auto',
+              borderTop: '1px solid #e2e8f0',
+              paddingTop: 20,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 12,
+            }}
+          >
+            <span className="font-mono" style={{ fontSize: '0.72rem', color: '#64748b' }}>
+              © 2026 <strong style={{ color: '#0f172a' }}>ytCash</strong>. All rights reserved. • High-Retention YouTube View Exchange Network.
             </span>
-            <span className="font-mono" style={{ fontSize: '0.68rem', color: 'var(--primary-neon)', fontWeight: 700 }}>
+            <span className="font-mono" style={{ fontSize: '0.72rem', color: '#0284c7', fontWeight: 700 }}>
               BUILT FOR HIGH CONCURRENCY & ZERO BANDWIDTH WASTE.
             </span>
           </div>

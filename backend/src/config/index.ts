@@ -14,7 +14,7 @@ export const config = {
   googleClientId: process.env.GOOGLE_CLIENT_ID || '',
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
   
-  // Platform Pricing Tiers (Durations: 8, 16, 45, 60, 120, 180, 300s)
+  // Platform Pricing Tiers (Durations: 8s, 16s, 45s, 60s, 120s, 180s, 300s, 600s, 900s, 1800s, 3600s, 7200s)
   pricingTiers: {
     8: { campaignerCost: 0.0040, viewerReward: 0.0028 },
     16: { campaignerCost: 0.0055, viewerReward: 0.0039 },
@@ -23,6 +23,11 @@ export const config = {
     120: { campaignerCost: 0.0150, viewerReward: 0.0110 },
     180: { campaignerCost: 0.0210, viewerReward: 0.0155 },
     300: { campaignerCost: 0.0320, viewerReward: 0.0240 },
+    600: { campaignerCost: 0.0600, viewerReward: 0.0450 }, // 10 min
+    900: { campaignerCost: 0.0850, viewerReward: 0.0640 }, // 15 min
+    1800: { campaignerCost: 0.1600, viewerReward: 0.1200 }, // 30 min
+    3600: { campaignerCost: 0.3000, viewerReward: 0.2250 }, // 1 hour
+    7200: { campaignerCost: 0.5500, viewerReward: 0.4100 }, // 2 hours
   } as Record<number, { campaignerCost: number; viewerReward: number }>,
 
   // Cooldown in seconds before a viewer can watch the same video again (Controlled dynamically from Admin Panel)
@@ -31,4 +36,8 @@ export const config = {
   
   // Timing tolerance for server watch verification (in seconds)
   timeToleranceSeconds: 2,
+
+  // Resend Email Service Configuration
+  resendApiKey: process.env.RESEND_API_KEY || '',
+  resendFromEmail: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
 };

@@ -604,17 +604,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </span>
           <h2 className="font-display" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.3rem)', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
             <span>HOW</span>
-            <img
-              src="/image.png"
-              alt="ytCash"
-              style={{
-                height: 'clamp(28px, 4vw, 38px)',
-                width: 'auto',
-                display: 'inline-block',
-                objectFit: 'contain',
-                verticalAlign: 'middle',
-              }}
-            />
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <img
+                src="/image.png"
+                alt="ytCash PRO"
+                style={{
+                  height: 'clamp(28px, 4vw, 38px)',
+                  width: 'auto',
+                  display: 'inline-block',
+                  objectFit: 'contain',
+                  verticalAlign: 'middle',
+                }}
+              />
+              <span className="badge-pill badge-cyan" style={{ fontSize: '0.52rem', padding: '1px 5px' }}>
+                PRO
+              </span>
+            </span>
             <span>WORKS</span>
           </h2>
           <p style={{ color: 'var(--on-surface-variant)', maxWidth: 520, margin: '8px auto 0', fontSize: '0.88rem' }}>

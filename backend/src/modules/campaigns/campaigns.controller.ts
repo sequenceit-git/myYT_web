@@ -48,11 +48,9 @@ router.get('/calculate-price', async (req, res) => {
     return;
   }
 
-  const pricingTiers = await getSystemPricingTiers();
-  const tier300 = pricingTiers[300] || { campaignerCost: 0.0320, viewerReward: 0.0230 };
-  const tier = pricingTiers[duration] || tier300;
+  const tier = await getPricingTier(duration);
   const rate = tier.campaignerCost;
-  const totalCost = Number((rate * views).toFixed(4));
+  const totalCost = Number((rate * views).toFixed(2));
 
   res.json({
     success: true,
@@ -71,9 +69,14 @@ export const getPricingTier = async (sec: number) => {
   if (pricingTiers[sec]) {
     return pricingTiers[sec];
   }
-  // Custom duration follows the last price of 300 Seconds
-  const tier300 = pricingTiers[300] || { campaignerCost: 0.0320, viewerReward: 0.0230 };
-  return tier300;
+  const tierList = formatPricingTiersList(pricingTiers);
+  if (tierList.length > 0) {
+    const matching = tierList.filter((t) => t.duration <= sec).pop() || tierList[tierList.length - 1];
+    if (matching) {
+      return { campaignerCost: matching.campaignerCost, viewerReward: matching.viewerReward };
+    }
+  }
+  return pricingTiers[300] || { campaignerCost: 0.0320, viewerReward: 0.0240 };
 };
 
 // Create campaign & deduct balance atomically
@@ -93,7 +96,7 @@ router.post('/', requireAuth, async (req: AuthRequest, res: Response): Promise<v
     }
 
     const tier = await getPricingTier(watchDurationSec);
-    const totalCost = Number((tier.campaignerCost * targetViews).toFixed(4));
+    const totalCost = Number((tier.campaignerCost * targetViews).toFixed(2));
 
     // Atomic balance deduction (Creator Ad Budget)
     const updatedUser = await User.findOneAndUpdate(

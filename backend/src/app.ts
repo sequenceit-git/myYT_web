@@ -6,6 +6,7 @@ import { campaignsRouter } from './modules/campaigns/campaigns.controller.js';
 import { tasksRouter } from './modules/tasks/tasks.controller.js';
 import { walletRouter } from './modules/wallet/wallet.controller.js';
 import { adminRouter, getSystemExchangeRate } from './modules/admin/admin.controller.js';
+import { phoneTracker } from './services/phoneTracker.service.js';
 
 export const app = express();
 
@@ -17,6 +18,29 @@ app.use(express.json());
 app.use((_req, res, next) => {
   res.setHeader('Accept-CH', 'Sec-CH-UA-Model, Sec-CH-UA-Platform, Sec-CH-UA-Platform-Version');
   res.setHeader('Permissions-Policy', 'ch-ua-model=*, ch-ua-platform=*, ch-ua-platform-version=*');
+  next();
+});
+
+// Auto-detect & record active phone app sessions in real-time
+app.use((req, _res, next) => {
+  const clientPlatform = (req.headers['x-client-platform'] || req.headers['x-app-platform'] || '') as string;
+  const ua = (req.headers['user-agent'] || '') as string;
+  const isPhone =
+    clientPlatform.toLowerCase().includes('phone') ||
+    clientPlatform.toLowerCase().includes('mobile') ||
+    /okhttp|Expo|CFNetwork|Mobile\/\w+|myyt-mobile|Dalvik/i.test(ua);
+
+  if (isPhone) {
+    const userId = (req as any).user?._id?.toString() || (req as any).user?.id?.toString();
+    const deviceId = (req.headers['x-device-id'] as string) || undefined;
+    phoneTracker.recordPhoneActivity({
+      userId,
+      deviceId,
+      ip: req.ip || req.socket.remoteAddress,
+      userAgent: ua,
+      platform: 'phone-app',
+    });
+  }
   next();
 });
 

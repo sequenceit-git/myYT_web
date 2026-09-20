@@ -25,6 +25,46 @@ interface AuthModalProps {
   onAuthSuccess?: (user: User, token: string) => void;
 }
 
+const PasswordRequirementsChecklist: React.FC<{ value: string }> = ({ value }) => {
+  const hasMinLen = value.length >= 8;
+  const hasLetter = /[A-Za-z]/.test(value);
+  const hasNumber = /[0-9]/.test(value);
+
+  const criteria = [
+    { label: '8+ chars', met: hasMinLen },
+    { label: 'Letters (a-z)', met: hasLetter },
+    { label: 'Numbers (0-9)', met: hasNumber },
+  ];
+
+  return (
+    <div style={{ marginTop: 7, display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {criteria.map((c, i) => (
+          <div
+            key={i}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              fontSize: '0.72rem',
+              fontWeight: 600,
+              padding: '2px 8px',
+              borderRadius: 6,
+              background: c.met ? 'rgba(16, 185, 129, 0.12)' : 'rgba(100, 116, 139, 0.08)',
+              color: c.met ? '#059669' : '#64748b',
+              border: `1px solid ${c.met ? 'rgba(16, 185, 129, 0.35)' : 'rgba(100, 116, 139, 0.18)'}`,
+              transition: 'all 0.2s ease',
+            }}
+          >
+            {c.met ? <Check size={11} strokeWidth={3} color="#059669" /> : <span style={{ display: 'inline-block', width: 11, textAlign: 'center', fontSize: '0.65rem' }}>•</span>}
+            <span>{c.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 export const AuthModal: React.FC<AuthModalProps> = ({
   isOpen,
   onClose,
@@ -145,9 +185,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
     setSuccessMsg(null);
+
+    if (mode === 'signup') {
+      if (password.length < 8) {
+        setError('Password must be at least 8 characters long.');
+        return;
+      }
+      if (!/[A-Za-z]/.test(password)) {
+        setError('Password must contain at least one letter (a-z or A-Z).');
+        return;
+      }
+      if (!/[0-9]/.test(password)) {
+        setError('Password must contain at least one number (0-9).');
+        return;
+      }
+    }
+
+    setLoading(true);
 
     const endpoint = mode === 'signup' ? '/auth/register' : '/auth/login';
     const payload =
@@ -191,16 +247,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setSuccessMsg(null);
 
     try {
-      const res = await apiRequest<{ message: string; resetCode?: string }>('/auth/forgot-password', {
+      const res = await apiRequest<{ message: string; resetCode?: string; emailSent?: boolean }>('/auth/forgot-password', {
         method: 'POST',
         body: JSON.stringify({ email: email.trim() }),
       });
 
       if (res.success && res.data) {
         setSuccessMsg(
-          res.data.resetCode
-            ? `Verification code generated: ${res.data.resetCode}`
-            : 'Verification code sent to your email address.'
+          res.data.emailSent
+            ? `Verification code sent to ${email.trim()}! Please check your email inbox.`
+            : res.data.message || 'Verification code generated.'
         );
         if (res.data.resetCode) {
           setResetCode(res.data.resetCode);
@@ -222,8 +278,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setError(null);
     setSuccessMsg(null);
 
-    if (newPassword.length < 6) {
-      setError('New password must be at least 6 characters.');
+    if (newPassword.length < 8 || !/[A-Za-z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+      setError('New password must be at least 8 characters and contain both letters and numbers.');
       return;
     }
 
@@ -302,17 +358,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {/* Modal Header */}
         <div style={{ padding: '24px 28px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <img
-              src="/image.png"
-              alt="ytCash"
-              style={{
-                height: 38,
-                width: 'auto',
-                display: 'block',
-                objectFit: 'contain',
-                marginBottom: 6,
-              }}
-            />
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+              <img
+                src="/image.png"
+                alt="ytCash PRO"
+                style={{
+                  height: 38,
+                  width: 'auto',
+                  display: 'block',
+                  objectFit: 'contain',
+                }}
+              />
+              <span className="badge-pill badge-cyan" style={{ fontSize: '0.52rem', padding: '1px 5px' }}>
+                PRO
+              </span>
+            </div>
             <div className="font-mono" style={{ fontSize: '0.76rem', color: 'var(--on-surface-variant)' }}>
               {mode === 'forgot'
                 ? 'Reset your account password'
@@ -587,7 +647,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         required
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="At least 6 characters"
+                        placeholder="At least 8 characters (letters & numbers)"
                         className="input-field"
                         style={{ padding: '11px 40px 11px 40px', fontSize: '0.85rem', borderRadius: 12 }}
                       />
@@ -609,6 +669,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
+                    <PasswordRequirementsChecklist value={newPassword} />
                   </div>
 
                   <div>
@@ -870,6 +931,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
+                  {mode === 'signup' && (
+                    <PasswordRequirementsChecklist value={password} />
+                  )}
                 </div>
 
                 {mode === 'signup' && (

@@ -471,7 +471,7 @@ router.get('/platform-stats', async (_req, res: Response): Promise<void> => {
     const totalMembers = await User.countDocuments();
     const activeEarnersCount = totalMembers;
 
-    // 4. Helper to compute real daily metrics for N days
+    // 4. Helper to compute real daily metrics for N days (Disbursed Payouts ONLY)
     const computeDaysMetrics = async (numDays: number) => {
       const now = new Date();
       const labels: string[] = [];
@@ -492,7 +492,7 @@ router.get('/platform-stats', async (_req, res: Response): Promise<void> => {
         const dayWithdrawals = await Payout.aggregate([
           {
             $match: {
-              status: { $ne: 'rejected' },
+              status: 'approved',
               createdAt: { $gte: dayStart, $lte: dayEnd },
             },
           },
@@ -502,7 +502,7 @@ router.get('/platform-stats', async (_req, res: Response): Promise<void> => {
           {
             $match: {
               type: 'payout',
-              status: { $ne: 'rejected' },
+              status: { $in: ['completed', 'approved', 'paid'] },
               createdAt: { $gte: dayStart, $lte: dayEnd },
             },
           },
@@ -510,27 +510,14 @@ router.get('/platform-stats', async (_req, res: Response): Promise<void> => {
         ]);
         const dayP = Number(Math.max(dayWithdrawals[0]?.total || 0, dayWithdrawalsTx[0]?.total || 0).toFixed(2));
         payoutValues.push(dayP);
-
-        const dayDeps = await Transaction.aggregate([
-          {
-            $match: {
-              type: 'deposit',
-              status: { $ne: 'rejected' },
-              createdAt: { $gte: dayStart, $lte: dayEnd },
-            },
-          },
-          { $group: { _id: null, total: { $sum: { $abs: '$amount' } } } },
-        ]);
-        const dayD = Number((dayDeps[0]?.total || 0).toFixed(2));
-        depositValues.push(dayD);
-
-        totalValues.push(Number((dayP + dayD).toFixed(2)));
+        depositValues.push(0);
+        totalValues.push(dayP);
       }
 
-      return { labels, payoutValues, depositValues, totalValues };
+      return { labels, payoutValues, depositValues, totalValues, values: payoutValues };
     };
 
-    // Helper to compute real monthly metrics for 12 months (Jan..Dec rolling)
+    // Helper to compute real monthly metrics for 12 months (Jan..Dec rolling) (Disbursed Payouts ONLY)
     const computeMonthlyMetrics = async () => {
       const now = new Date();
       const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -549,7 +536,7 @@ router.get('/platform-stats', async (_req, res: Response): Promise<void> => {
         const mWithdrawals = await Payout.aggregate([
           {
             $match: {
-              status: { $ne: 'rejected' },
+              status: 'approved',
               createdAt: { $gte: mStart, $lte: mEnd },
             },
           },
@@ -559,7 +546,7 @@ router.get('/platform-stats', async (_req, res: Response): Promise<void> => {
           {
             $match: {
               type: 'payout',
-              status: { $ne: 'rejected' },
+              status: { $in: ['completed', 'approved', 'paid'] },
               createdAt: { $gte: mStart, $lte: mEnd },
             },
           },
@@ -567,24 +554,11 @@ router.get('/platform-stats', async (_req, res: Response): Promise<void> => {
         ]);
         const mP = Number(Math.max(mWithdrawals[0]?.total || 0, mWithdrawalsTx[0]?.total || 0).toFixed(2));
         payoutValues.push(mP);
-
-        const mDeps = await Transaction.aggregate([
-          {
-            $match: {
-              type: 'deposit',
-              status: { $ne: 'rejected' },
-              createdAt: { $gte: mStart, $lte: mEnd },
-            },
-          },
-          { $group: { _id: null, total: { $sum: { $abs: '$amount' } } } },
-        ]);
-        const mD = Number((mDeps[0]?.total || 0).toFixed(2));
-        depositValues.push(mD);
-
-        totalValues.push(Number((mP + mD).toFixed(2)));
+        depositValues.push(0);
+        totalValues.push(mP);
       }
 
-      return { labels, payoutValues, depositValues, totalValues };
+      return { labels, payoutValues, depositValues, totalValues, values: payoutValues };
     };
 
     const weekData = await computeDaysMetrics(7);
@@ -602,12 +576,12 @@ router.get('/platform-stats', async (_req, res: Response): Promise<void> => {
       webmoney: { name: 'WebMoney', color: '#0369a1' },
     };
 
-    // Query real volume by gateway across all payout and deposit transactions
+    // Query real volume by gateway across all PAID PAYOUTS ONLY (Strictly No Deposits)
     const gatewayVolumeAgg = await Transaction.aggregate([
       {
         $match: {
-          type: { $in: ['payout', 'deposit'] },
-          status: { $ne: 'rejected' },
+          type: 'payout',
+          status: { $in: ['completed', 'approved', 'paid'] },
         },
       },
       {
@@ -619,14 +593,41 @@ router.get('/platform-stats', async (_req, res: Response): Promise<void> => {
       },
     ]);
 
+    const payoutModelAgg = await Payout.aggregate([
+      {
+        $match: {
+          status: 'approved',
+        },
+      },
+      {
+        $group: {
+          _id: '$method',
+          totalAmount: { $sum: '$amount' },
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
     const gatewayMap: { [key: string]: number } = {};
-    let totalAllGateways = 0;
     gatewayVolumeAgg.forEach((g) => {
       const gKey = (g._id || 'faucetpay').toLowerCase();
       const amt = Number((g.totalAmount || 0).toFixed(2));
       gatewayMap[gKey] = (gatewayMap[gKey] || 0) + amt;
+    });
+
+    payoutModelAgg.forEach((p) => {
+      const pKey = (p._id || 'faucetpay').toLowerCase();
+      const pAmt = Number((p.totalAmount || 0).toFixed(2));
+      if ((gatewayMap[pKey] || 0) < pAmt) {
+        gatewayMap[pKey] = pAmt;
+      }
+    });
+
+    let totalAllGateways = 0;
+    Object.values(gatewayMap).forEach((amt) => {
       totalAllGateways += amt;
     });
+    totalAllGateways = Number(totalAllGateways.toFixed(2));
 
     const gatewayBreakdown = Object.keys(supportedGateways).map((key) => {
       const info = supportedGateways[key];
@@ -641,15 +642,16 @@ router.get('/platform-stats', async (_req, res: Response): Promise<void> => {
       };
     });
 
-    // 6. Real-Time Payment History (Payouts & Deposits from Database)
-    const recentTx = await Transaction.find({
-      type: { $in: ['payout', 'deposit'] },
+    // 6. Real-Time Payment History (Payouts ONLY with status "Paid")
+    const recentPayoutsTx = await Transaction.find({
+      type: 'payout',
+      status: { $in: ['completed', 'approved'] },
     })
       .populate('userId', 'name email _id')
       .sort({ createdAt: -1 })
-      .limit(50);
+      .limit(60);
 
-    const paymentHistory = recentTx.map((tx: any, idx: number) => {
+    const paymentHistory: any[] = recentPayoutsTx.map((tx: any, idx: number) => {
       const user = tx.userId;
       const email = user?.email || 'user@example.com';
       const name = user?.name || email.split('@')[0] || `User_${idx + 1}`;
@@ -661,29 +663,55 @@ router.get('/platform-stats', async (_req, res: Response): Promise<void> => {
         ? `*****${rawAcc.slice(-6)}`
         : `*****${rawAcc}`;
 
-      const isPayout = tx.type === 'payout';
-      const statusLabel = tx.status === 'completed' || tx.status === 'approved'
-        ? (isPayout ? 'Paid' : 'Deposited')
-        : tx.status === 'pending'
-        ? 'Pending'
-        : 'Rejected';
-
       const d = new Date(tx.createdAt);
       const formattedDate = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}, ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 
       return {
         id: tx._id,
-        type: tx.type,
+        type: 'payout',
         userId: shortId,
         userName: name,
         wallet: maskedAcc,
         gateway: (tx.gateway || 'faucetpay').toLowerCase(),
         amount: Number(Math.abs(tx.amount).toFixed(2)),
         date: formattedDate,
-        status: statusLabel,
+        status: 'Paid',
         rawStatus: tx.status,
       };
     });
+
+    // Also include any approved Payouts from Payout model that may not have matched by referenceId
+    const txRefIds = new Set(recentPayoutsTx.map((t: any) => t.referenceId).filter(Boolean));
+    const approvedPayouts = await Payout.find({ status: 'approved' })
+      .populate('viewerId', 'name email _id')
+      .sort({ processedAt: -1, createdAt: -1 })
+      .limit(30);
+
+    for (const p of approvedPayouts) {
+      if (!txRefIds.has(p._id.toString())) {
+        const u = p.viewerId as any;
+        const email = u?.email || 'user@example.com';
+        const name = u?.name || email.split('@')[0] || 'Earner';
+        const shortId = u?._id ? String(u._id).slice(-6) : 'Payout';
+        const rawAcc = p.accountDetails || email;
+        const maskedAcc = rawAcc.length > 8 ? `*****${rawAcc.slice(-6)}` : `*****${rawAcc}`;
+        const d = new Date(p.processedAt || p.createdAt);
+        const formattedDate = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}, ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+
+        paymentHistory.push({
+          id: p._id.toString(),
+          type: 'payout',
+          userId: shortId,
+          userName: name,
+          wallet: maskedAcc,
+          gateway: (p.method || 'faucetpay').toLowerCase(),
+          amount: Number(p.amount.toFixed(2)),
+          date: formattedDate,
+          status: 'Paid',
+          rawStatus: p.status,
+        });
+      }
+    }
 
     const now = new Date();
     const daysArr = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];

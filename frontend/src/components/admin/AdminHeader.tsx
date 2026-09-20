@@ -12,8 +12,11 @@ import {
   Users,
   Sliders,
   Wallet,
+  Smartphone,
+  UserCheck,
 } from 'lucide-react';
 import { AdminTab } from './adminTypes';
+import { User } from '../../types';
 
 interface AdminHeaderProps {
   stats: any;
@@ -26,6 +29,9 @@ interface AdminHeaderProps {
   pendingDepositsCount: number;
   campaignsCount: number;
   usersCount: number;
+  subAdminsCount?: number;
+  phoneAppUsersCount?: number;
+  currentUser?: User | null;
   onRefresh: () => void;
   onLogout: () => void;
 }
@@ -41,10 +47,16 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   pendingDepositsCount,
   campaignsCount,
   usersCount,
+  subAdminsCount = 0,
+  phoneAppUsersCount = 0,
+  currentUser,
   onRefresh,
   onLogout,
 }) => {
-  const tabs: {
+  const isMasterAdmin = !currentUser?.adminRole || currentUser.adminRole === 'master';
+  const subAdminPermissions = currentUser?.adminPermissions || [];
+
+  const masterTabs: {
     id: AdminTab;
     label: string;
     icon: React.ReactNode;
@@ -113,7 +125,22 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
       label: 'Payment Gateways',
       icon: <Wallet size={15} />,
     },
+    {
+      id: 'subadmins',
+      label: subAdminsCount > 0 ? `Sub Admins (${subAdminsCount})` : 'Sub Admins',
+      icon: <UserCheck size={15} />,
+    },
   ];
+
+  // Sub-admins only see the modules they have been granted permissions for
+  const tabs = isMasterAdmin
+    ? masterTabs
+    : masterTabs.filter((tab) => {
+        if (tab.id === 'deposits') return subAdminPermissions.includes('deposits');
+        if (tab.id === 'payouts') return subAdminPermissions.includes('withdrawals');
+        if (tab.id === 'campaigns') return subAdminPermissions.includes('campaigns');
+        return false;
+      });
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 20 }}>
@@ -133,34 +160,114 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <img
-            src="/image.png"
-            alt="ytCash"
-            style={{
-              height: 36,
-              width: 'auto',
-              display: 'block',
-              objectFit: 'contain',
-            }}
-          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <img
+              src="/image.png"
+              alt="ytCash PRO"
+              style={{
+                height: 36,
+                width: 'auto',
+                display: 'block',
+                objectFit: 'contain',
+              }}
+            />
+            <span className="badge-pill badge-cyan" style={{ fontSize: '0.52rem', padding: '1px 5px' }}>
+              PRO
+            </span>
+          </div>
           <div style={{ width: 1, height: 28, backgroundColor: '#e2e8f0' }} />
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <h1 className="font-display" style={{ fontSize: 'clamp(1.1rem, 4vw, 1.45rem)', color: '#0f172a', margin: 0 }}>
-                ADMIN CONTROL DESK
+                {isMasterAdmin ? 'ADMIN CONTROL DESK' : 'STAFF CONTROL DESK'}
               </h1>
-              <span className="badge-pill badge-cyan" style={{ fontSize: '0.68rem', padding: '2px 8px' }}>
-                MASTER PANEL
+              <span className={`badge-pill ${isMasterAdmin ? 'badge-cyan' : 'badge-green'}`} style={{ fontSize: '0.68rem', padding: '2px 8px' }}>
+                {isMasterAdmin ? 'MASTER PANEL' : 'SUB-ADMIN'}
               </span>
             </div>
             <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 2 }}>
-              Payouts, deposits, campaigns, users &amp; system configurations.
+              {isMasterAdmin
+                ? 'Payouts, deposits, campaigns, users & system configurations.'
+                : `Operator: ${currentUser?.name || currentUser?.email || 'Staff'} — Delegated Operational Desks`}
             </div>
           </div>
         </div>
 
         {/* Header Right Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* Phone App Real-Time Active Users Badge (Left of Refresh) */}
+          <div
+            id="admin-realtime-phone-users"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '6px 12px',
+              borderRadius: 10,
+              background: phoneAppUsersCount > 0 ? '#f0fdf4' : '#f8fafc',
+              border: phoneAppUsersCount > 0 ? '1.5px solid rgba(16, 185, 129, 0.45)' : '1px solid #e2e8f0',
+              boxShadow: phoneAppUsersCount > 0 ? '0 2px 8px rgba(16, 185, 129, 0.15)' : 'none',
+              transition: 'all 0.25s ease',
+            }}
+            title="Live active users currently using the mobile phone app (real-time telemetry)"
+          >
+            <span style={{ position: 'relative', display: 'flex', width: 8, height: 8, alignItems: 'center', justifyContent: 'center' }}>
+              {phoneAppUsersCount > 0 && (
+                <span
+                  className="live-dot-ping"
+                  style={{
+                    position: 'absolute',
+                    width: '100%',
+                    height: '100%',
+                    borderRadius: '50%',
+                    backgroundColor: '#10b981',
+                  }}
+                />
+              )}
+              <span
+                style={{
+                  position: 'relative',
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  backgroundColor: phoneAppUsersCount > 0 ? '#10b981' : '#94a3b8',
+                }}
+              />
+            </span>
+
+            <Smartphone
+              size={15}
+              style={{
+                color: phoneAppUsersCount > 0 ? '#059669' : '#64748b',
+                flexShrink: 0,
+              }}
+            />
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, lineHeight: 1 }}>
+              <span
+                className="font-mono"
+                style={{
+                  fontSize: '0.88rem',
+                  fontWeight: 800,
+                  color: phoneAppUsersCount > 0 ? '#065f46' : '#1e293b',
+                  letterSpacing: '-0.02em',
+                }}
+              >
+                {phoneAppUsersCount}
+              </span>
+              <span
+                style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 650,
+                  color: phoneAppUsersCount > 0 ? '#047857' : '#64748b',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Phone App Online
+              </span>
+            </div>
+          </div>
+
           <button
             onClick={onRefresh}
             className="btn btn-ghost"
@@ -212,18 +319,18 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
         </div>
       )}
 
-      {/* Unified Single-Interface Navigator Bar */}
+      {/* Unified Single-Interface Navigator Bar - 2x4 Grid */}
       <div
         className="glass-card admin-tab-nav-grid"
         style={{
           background: '#ffffff',
           borderRadius: 16,
-          padding: '6px',
+          padding: '8px',
           border: '1.5px solid #e2e8f0',
           boxShadow: '0 4px 16px rgba(0,0,0,0.03)',
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))',
-          gap: 5,
+          gridTemplateColumns: isMasterAdmin ? 'repeat(4, 1fr)' : 'repeat(auto-fit, minmax(140px, 1fr))',
+          gap: 8,
           alignItems: 'stretch',
         }}
       >
@@ -241,20 +348,20 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
               }}
               className="btn"
               style={{
-                padding: '8px 6px',
+                padding: '11px 12px',
                 borderRadius: 10,
-                fontSize: 'clamp(0.72rem, 2vw, 0.8rem)',
-                fontWeight: isSelected ? 800 : 600,
+                fontSize: '0.84rem',
+                fontWeight: isSelected ? 800 : 650,
                 background: isSelected
                   ? 'linear-gradient(135deg, var(--primary-neon) 0%, #0284c7 100%)'
                   : '#f8fafc',
-                color: isSelected ? '#ffffff' : '#475569',
-                border: isSelected ? 'none' : '1px solid #e2e8f0',
+                color: isSelected ? '#ffffff' : '#334155',
+                border: isSelected ? 'none' : '1.5px solid #e2e8f0',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 4,
-                boxShadow: isSelected ? '0 3px 10px rgba(14, 165, 233, 0.3)' : 'none',
+                gap: 7,
+                boxShadow: isSelected ? '0 4px 12px rgba(14, 165, 233, 0.3)' : 'none',
                 transition: 'all 0.15s ease',
                 whiteSpace: 'nowrap',
                 cursor: 'pointer',

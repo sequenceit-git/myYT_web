@@ -6,6 +6,7 @@ import { User } from '../../models/User.js';
 import { Transaction } from '../../models/Transaction.js';
 import { config } from '../../config/index.js';
 import { requireAuth, AuthRequest } from '../../middleware/auth.middleware.js';
+import { sendPasswordResetEmail } from '../../services/email.service.js';
 
 const router = Router();
 
@@ -49,6 +50,8 @@ export function formatUserResponse(u: any, dailySpend: number = 0, dailyEarnings
     name: u.name,
     phoneNumber: u.phoneNumber || '',
     role: u.role,
+    adminRole: u.adminRole || (u.role === 'admin' ? 'master' : undefined),
+    adminPermissions: u.adminPermissions || (u.role === 'admin' && (!u.adminRole || u.adminRole === 'master') ? ['deposits', 'withdrawals', 'campaigns'] : []),
     balance: u.balance ?? 0,
     viewerBalance: viewerBal,
     creatorBalance: creatorBal,
@@ -64,8 +67,80 @@ export function formatUserResponse(u: any, dailySpend: number = 0, dailyEarnings
     dailyEarnings,
     status: u.status || 'active',
     savedPaymentMethods: u.savedPaymentMethods || [],
+    activeMobileDeviceId: u.activeMobileDeviceId,
+    activeMobileDeviceModel: u.activeMobileDeviceModel,
+    lastMobileActiveAt: u.lastMobileActiveAt,
     avatar: (u.avatar && !u.avatar.includes('7.x/adventurer/png') ? u.avatar : `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(u.email || u.name || 'user')}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`),
   };
+}
+
+interface MobileDeviceCheckResult {
+  allowed: boolean;
+  error?: string;
+  code?: string;
+  activeDeviceId?: string;
+  activeDeviceModel?: string;
+}
+
+export async function verifyAndBindMobileDevice(
+  user: any,
+  req: Request
+): Promise<MobileDeviceCheckResult> {
+  const isMobileApp =
+    req.headers['x-client-platform'] === 'phone-app' ||
+    req.headers['x-app-platform'] === 'phone-app' ||
+    req.headers['x-device-type'] === 'phone' ||
+    req.body?.platform === 'phone-app' ||
+    req.body?.isMobile === true;
+
+  if (!isMobileApp) {
+    return { allowed: true };
+  }
+
+  const incomingDeviceId =
+    (req.headers['x-device-id'] as string)?.trim() ||
+    (req.body?.deviceId ? String(req.body.deviceId).trim() : '');
+
+  const incomingDeviceModel =
+    (req.headers['x-device-model'] as string)?.trim() ||
+    (req.body?.deviceModel ? String(req.body.deviceModel).trim() : 'Android Phone');
+
+  if (!incomingDeviceId) {
+    return { allowed: true };
+  }
+
+  const forceLogoutOther = req.body?.forceLogoutOtherDevice === true;
+
+  // Check if user is already logged in on a different mobile phone
+  if (
+    user.activeMobileDeviceId &&
+    user.activeMobileDeviceId !== incomingDeviceId
+  ) {
+    if (forceLogoutOther) {
+      user.activeMobileDeviceId = incomingDeviceId;
+      user.activeMobileDeviceModel = incomingDeviceModel;
+      user.lastMobileActiveAt = new Date();
+      await user.save();
+      return { allowed: true };
+    }
+
+    const otherModel = user.activeMobileDeviceModel || 'another phone';
+    return {
+      allowed: false,
+      error: `This account is already logged in on another mobile device (${otherModel}). You can only be logged in on one mobile device at a time.`,
+      code: 'ALREADY_LOGGED_IN_ON_ANOTHER_DEVICE',
+      activeDeviceId: user.activeMobileDeviceId,
+      activeDeviceModel: otherModel,
+    };
+  }
+
+  // Same device or first device: bind device and timestamp
+  user.activeMobileDeviceId = incomingDeviceId;
+  user.activeMobileDeviceModel = incomingDeviceModel;
+  user.lastMobileActiveAt = new Date();
+  await user.save();
+
+  return { allowed: true };
 }
 
 const generateReferralCode = (): string => {
@@ -78,9 +153,13 @@ const generateReferralCode = (): string => {
 };
 
 const registerSchema = z.object({
-  email: z.string().email(),
-  name: z.string().min(2),
-  password: z.string().min(6),
+  email: z.string().email('Please enter a valid email address'),
+  name: z.string().min(2, 'Name must be at least 2 characters'),
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters long')
+    .regex(/[A-Za-z]/, 'Password must contain at least one letter')
+    .regex(/[0-9]/, 'Password must contain at least one number'),
   role: z.enum(['campaigner', 'viewer']).optional().default('viewer'),
   referralCode: z.string().optional(),
 });
@@ -184,6 +263,18 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
 
     if (user.status === 'banned') {
       res.status(403).json({ success: false, error: 'Account suspended' });
+      return;
+    }
+
+    // Enforce single mobile device login policy
+    const mobileCheck = await verifyAndBindMobileDevice(user, req);
+    if (!mobileCheck.allowed) {
+      res.status(403).json({
+        success: false,
+        error: mobileCheck.error,
+        code: mobileCheck.code,
+        activeDeviceModel: mobileCheck.activeDeviceModel,
+      });
       return;
     }
 
@@ -333,6 +424,18 @@ router.post('/google', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // Enforce single mobile device login policy
+    const mobileCheck = await verifyAndBindMobileDevice(user, req);
+    if (!mobileCheck.allowed) {
+      res.status(403).json({
+        success: false,
+        error: mobileCheck.error,
+        code: mobileCheck.code,
+        activeDeviceModel: mobileCheck.activeDeviceModel,
+      });
+      return;
+    }
+
     const tokens = generateTokens(user._id.toString(), user.role);
     const { dailySpend, dailyEarnings } = await getDailyStats(user._id);
 
@@ -435,19 +538,56 @@ router.post('/switch-profile', requireAuth, async (req: AuthRequest, res: Respon
   }
 });
 
-// Admin Password-Only Login (Route: /admin)
+// Admin & Sub-Admin Login (Route: /admin)
 router.post('/admin-login', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { password } = req.body;
+    const { password, email } = req.body;
     const adminSecret = process.env.ADMIN_PASSWORD || process.env.ADMIN_SECRET_KEY || 'myyt@2026';
 
+    // 1. If email is provided -> Sub-Admin Staff authentication
+    if (email && typeof email === 'string' && email.trim().length > 0) {
+      const cleanEmail = email.trim().toLowerCase();
+      if (!password) {
+        res.status(400).json({ success: false, error: 'Password is required' });
+        return;
+      }
+
+      const subAdmin = await User.findOne({ email: cleanEmail, role: 'admin', adminRole: 'sub_admin' });
+      if (!subAdmin || !subAdmin.passwordHash) {
+        res.status(401).json({ success: false, error: 'Invalid staff email or password' });
+        return;
+      }
+
+      const valid = await bcrypt.compare(password, subAdmin.passwordHash);
+      if (!valid) {
+        res.status(401).json({ success: false, error: 'Invalid staff email or password' });
+        return;
+      }
+
+      if (subAdmin.status === 'suspended' || subAdmin.status === 'banned') {
+        res.status(403).json({ success: false, error: 'Access revoked: Your sub-admin account is currently suspended by the Master Admin.' });
+        return;
+      }
+
+      const tokens = generateTokens(subAdmin._id.toString(), 'admin');
+      res.json({
+        success: true,
+        data: {
+          user: formatUserResponse(subAdmin, 0, 0),
+          ...tokens,
+        },
+      });
+      return;
+    }
+
+    // 2. Otherwise -> Master Administrator Security Password authentication
     if (!password || password !== adminSecret) {
-      res.status(401).json({ success: false, error: 'Invalid admin password. Access denied.' });
+      res.status(401).json({ success: false, error: 'Invalid master admin password. Access denied.' });
       return;
     }
 
     // Find or automatically create the preset system administrator account
-    let adminUser = await User.findOne({ role: 'admin' });
+    let adminUser = await User.findOne({ role: 'admin', adminRole: { $ne: 'sub_admin' } });
     if (!adminUser) {
       adminUser = await User.findOne({ email: 'admin@myyt.io' });
     }
@@ -460,13 +600,19 @@ router.post('/admin-login', async (req: Request, res: Response): Promise<void> =
         name: 'System Administrator',
         passwordHash,
         role: 'admin',
+        adminRole: 'master',
+        adminPermissions: ['deposits', 'withdrawals', 'campaigns'],
         balance: 1000.0,
         creatorBalance: 1000.0,
         viewerBalance: 0,
         avatar: 'https://api.dicebear.com/7.x/adventurer/png?seed=myyt-admin&backgroundColor=b6e3f4',
       });
-    } else if (adminUser.role !== 'admin') {
+    } else if (adminUser.role !== 'admin' || adminUser.adminRole !== 'master') {
       adminUser.role = 'admin';
+      adminUser.adminRole = 'master';
+      if (!adminUser.adminPermissions || adminUser.adminPermissions.length === 0) {
+        adminUser.adminPermissions = ['deposits', 'withdrawals', 'campaigns'];
+      }
       await adminUser.save();
     }
 
@@ -632,8 +778,17 @@ router.put('/change-password', requireAuth, async (req: AuthRequest, res: Respon
     const { currentPassword, newPassword } = req.body;
     const user = req.user!;
 
-    if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 6) {
-      res.status(400).json({ success: false, error: 'New password must be at least 6 characters long' });
+    if (
+      !newPassword ||
+      typeof newPassword !== 'string' ||
+      newPassword.length < 8 ||
+      !/[A-Za-z]/.test(newPassword) ||
+      !/[0-9]/.test(newPassword)
+    ) {
+      res.status(400).json({
+        success: false,
+        error: 'New password must be at least 8 characters long and contain both letters and numbers',
+      });
       return;
     }
 
@@ -686,10 +841,16 @@ router.post('/forgot-password', async (req: Request, res: Response): Promise<voi
     user.resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000);
     await user.save();
 
+    // Send verification code via Resend
+    const emailResult = await sendPasswordResetEmail(normalizedEmail, resetCode, user.name);
+
     res.json({
       success: true,
-      message: 'Password reset verification code generated.',
+      message: emailResult.success
+        ? 'A 6-digit verification code has been sent to your email address.'
+        : 'Password reset code generated. If email delivery is delayed, use the provided code.',
       resetCode, // Returned for seamless testing & instant entry
+      emailSent: emailResult.success,
     });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message || 'Error processing request' });
@@ -705,8 +866,16 @@ router.post('/reset-password', async (req: Request, res: Response): Promise<void
       return;
     }
 
-    if (typeof newPassword !== 'string' || newPassword.length < 6) {
-      res.status(400).json({ success: false, error: 'New password must be at least 6 characters long' });
+    if (
+      typeof newPassword !== 'string' ||
+      newPassword.length < 8 ||
+      !/[A-Za-z]/.test(newPassword) ||
+      !/[0-9]/.test(newPassword)
+    ) {
+      res.status(400).json({
+        success: false,
+        error: 'New password must be at least 8 characters long and contain both letters and numbers',
+      });
       return;
     }
 
@@ -734,6 +903,35 @@ router.post('/reset-password', async (req: Request, res: Response): Promise<void
     });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message || 'Error resetting password' });
+  }
+});
+
+// Logout - Disconnects mobile device session if requested
+router.post('/logout', requireAuth, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const user = req.user!;
+    const isMobile =
+      req.headers['x-client-platform'] === 'phone-app' ||
+      req.headers['x-device-type'] === 'phone' ||
+      req.body?.platform === 'phone-app';
+
+    const incomingDeviceId =
+      (req.headers['x-device-id'] as string)?.trim() ||
+      req.body?.deviceId?.trim();
+
+    if (
+      !user.activeMobileDeviceId ||
+      !incomingDeviceId ||
+      user.activeMobileDeviceId === incomingDeviceId
+    ) {
+      user.activeMobileDeviceId = undefined;
+      user.activeMobileDeviceModel = undefined;
+      await user.save();
+    }
+
+    res.json({ success: true, message: 'Logged out successfully' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

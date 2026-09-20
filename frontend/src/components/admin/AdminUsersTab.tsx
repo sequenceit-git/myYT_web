@@ -15,6 +15,8 @@ interface AdminUsersTabProps {
   setUserPage: (page: number) => void;
   pageSize: number;
   onToggleUserBan: (user: User) => void;
+  onResetUserDevice?: (user: User) => void;
+  isMasterAdmin?: boolean;
 }
 
 export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
@@ -27,6 +29,8 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
   setUserPage,
   pageSize,
   onToggleUserBan,
+  onResetUserDevice,
+  isMasterAdmin = true,
 }) => {
   const [internalFilter, setInternalFilter] = React.useState<UserFilterType>('all');
   const activeFilter = setUserFilter ? userFilter : internalFilter;
@@ -57,7 +61,6 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
 
   const filterTabs: { id: UserFilterType; label: string }[] = [
     { id: 'all', label: 'ALL' },
-    { id: 'active', label: 'ACTIVE' },
     { id: 'banned', label: 'BANNED' },
     { id: 'viewer', label: 'VIEWERS' },
     { id: 'campaigner', label: 'CREATORS' },
@@ -149,6 +152,24 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                       <td style={{ padding: '10px 12px' }}>
                         <div style={{ fontWeight: 600, color: '#0f172a' }}>{u.name}</div>
                         <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{u.email}</div>
+                        {u.activeMobileDeviceId && (
+                          <div style={{ marginTop: 4 }}>
+                            <span
+                              className="badge-pill"
+                              style={{
+                                background: '#f0fdf4',
+                                color: '#15803d',
+                                border: '1px solid #bbf7d0',
+                                fontSize: '0.68rem',
+                                padding: '1px 6px',
+                                fontWeight: 600,
+                              }}
+                              title={`Device ID: ${u.activeMobileDeviceId}`}
+                            >
+                              📱 {u.activeMobileDeviceModel || 'Mobile Device'}
+                            </span>
+                          </div>
+                        )}
                       </td>
                       <td style={{ padding: '10px 12px' }}>
                         <span
@@ -185,19 +206,37 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                         </span>
                       </td>
                       <td style={{ padding: '10px 12px', textAlign: 'right' }}>
-                        <button
-                          onClick={() => onToggleUserBan(u)}
-                          className="btn btn-ghost"
-                          style={{
-                            padding: '4px 10px', fontSize: '0.76rem', borderRadius: 6,
-                            color: isBanned ? '#059669' : '#ef4444',
-                            background: isBanned ? '#ecfdf5' : '#fef2f2',
-                            border: `1px solid ${isBanned ? '#a7f3d0' : '#fecaca'}`,
-                            fontWeight: 600,
-                          }}
-                        >
-                          {isBanned ? 'Unban' : 'Ban'}
-                        </button>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                          {onResetUserDevice && isMasterAdmin && u.activeMobileDeviceId && (
+                            <button
+                              onClick={() => onResetUserDevice(u)}
+                              className="btn btn-ghost"
+                              title="Unlock mobile session so user can log in on another phone"
+                              style={{
+                                padding: '4px 8px', fontSize: '0.74rem', borderRadius: 6,
+                                color: '#b45309',
+                                background: '#fef3c7',
+                                border: '1px solid #fde68a',
+                                fontWeight: 600,
+                              }}
+                            >
+                              🔓 Reset Device
+                            </button>
+                          )}
+                          <button
+                            onClick={() => onToggleUserBan(u)}
+                            className="btn btn-ghost"
+                            style={{
+                              padding: '4px 10px', fontSize: '0.76rem', borderRadius: 6,
+                              color: isBanned ? '#059669' : '#ef4444',
+                              background: isBanned ? '#ecfdf5' : '#fef2f2',
+                              border: `1px solid ${isBanned ? '#a7f3d0' : '#fecaca'}`,
+                              fontWeight: 600,
+                            }}
+                          >
+                            {isBanned ? 'Unban' : 'Ban'}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -217,6 +256,23 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                     <div>
                       <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.92rem' }}>{u.name}</div>
                       <div style={{ fontSize: '0.74rem', color: '#64748b' }}>{u.email}</div>
+                      {u.activeMobileDeviceId && (
+                        <div style={{ marginTop: 4 }}>
+                          <span
+                            className="badge-pill"
+                            style={{
+                              background: '#f0fdf4',
+                              color: '#15803d',
+                              border: '1px solid #bbf7d0',
+                              fontSize: '0.68rem',
+                              padding: '1px 6px',
+                              fontWeight: 600,
+                            }}
+                          >
+                            📱 {u.activeMobileDeviceModel || 'Mobile Device'}
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
                       <span
@@ -258,20 +314,37 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                     </div>
                   </div>
 
-                  {/* Row 3: Ban button */}
-                  <button
-                    onClick={() => onToggleUserBan(u)}
-                    className="btn btn-ghost"
-                    style={{
-                      width: '100%', padding: '7px', fontSize: '0.8rem', borderRadius: 8, textAlign: 'center',
-                      color: isBanned ? '#059669' : '#ef4444',
-                      background: isBanned ? '#ecfdf5' : '#fef2f2',
-                      border: `1px solid ${isBanned ? '#a7f3d0' : '#fecaca'}`,
-                      fontWeight: 700,
-                    }}
-                  >
-                    {isBanned ? '✅ Unban User' : '🚫 Ban User'}
-                  </button>
+                  {/* Row 3: Actions */}
+                  <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                    {onResetUserDevice && isMasterAdmin && u.activeMobileDeviceId && (
+                      <button
+                        onClick={() => onResetUserDevice(u)}
+                        className="btn btn-ghost"
+                        style={{
+                          flex: 1, padding: '7px', fontSize: '0.8rem', borderRadius: 8, textAlign: 'center',
+                          color: '#b45309',
+                          background: '#fef3c7',
+                          border: '1px solid #fde68a',
+                          fontWeight: 700,
+                        }}
+                      >
+                        🔓 Reset Device
+                      </button>
+                    )}
+                    <button
+                      onClick={() => onToggleUserBan(u)}
+                      className="btn btn-ghost"
+                      style={{
+                        flex: 1, padding: '7px', fontSize: '0.8rem', borderRadius: 8, textAlign: 'center',
+                        color: isBanned ? '#059669' : '#ef4444',
+                        background: isBanned ? '#ecfdf5' : '#fef2f2',
+                        border: `1px solid ${isBanned ? '#a7f3d0' : '#fecaca'}`,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {isBanned ? '✅ Unban User' : '🚫 Ban User'}
+                    </button>
+                  </div>
                 </div>
               );
             })}

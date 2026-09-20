@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Sliders,
   RotateCcw,
@@ -7,6 +7,8 @@ import {
   Timer,
   DollarSign,
   Eye,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 import {
   PricingTierItem,
@@ -14,6 +16,8 @@ import {
   DailyLimitConfig,
   HourlyLimitConfig,
   formatSecondsHuman,
+  formatDurationBadge,
+  formatDecimalString,
 } from './adminTypes';
 
 interface AdminSettingsTabProps {
@@ -21,7 +25,9 @@ interface AdminSettingsTabProps {
   pricingSaving: boolean;
   handleResetPricing: () => void;
   handleSavePricing: () => void;
-  handleUpdateTier: (index: number, field: 'campaignerCost' | 'viewerReward', value: number) => void;
+  handleUpdateTier: (index: number, field: 'campaignerCost' | 'viewerReward', value: number | string) => void;
+  handleAddTier?: (duration: number, campaignerCost: number | string, viewerReward: number | string) => void;
+  handleDeleteTier?: (index: number) => void;
 
   cooldownConfig: CooldownConfig;
   setCooldownConfig: React.Dispatch<React.SetStateAction<CooldownConfig>>;
@@ -51,6 +57,8 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
   handleResetPricing,
   handleSavePricing,
   handleUpdateTier,
+  handleAddTier,
+  handleDeleteTier,
   cooldownConfig,
   setCooldownConfig,
   cooldownSaving,
@@ -69,6 +77,18 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
   hourlyLimitSaving,
   handleSaveHourlyLimit,
 }) => {
+  const [newTierDuration, setNewTierDuration] = useState('');
+  const [newTierCost, setNewTierCost] = useState('');
+  const [newTierReward, setNewTierReward] = useState('');
+
+  const [cooldownInput, setCooldownInput] = useState<string>(() =>
+    cooldownConfig.durationSeconds !== undefined ? String(cooldownConfig.durationSeconds) : ''
+  );
+
+  useEffect(() => {
+    setCooldownInput(cooldownConfig.durationSeconds !== undefined ? String(cooldownConfig.durationSeconds) : '');
+  }, [cooldownConfig.durationSeconds]);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {/* =========================================================================
@@ -168,12 +188,15 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
                 <th style={{ padding: '14px 18px', fontWeight: 800 }}>SYSTEM MARGIN (%)</th>
                 <th style={{ padding: '14px 18px', fontWeight: 800 }}>1,000 VIEWS REVENUE</th>
                 <th style={{ padding: '14px 18px', fontWeight: 800 }}>1,000 VIEWS PAYOUT</th>
+                <th style={{ padding: '14px 18px', fontWeight: 800, textAlign: 'center' }}>ACTION</th>
               </tr>
             </thead>
             <tbody style={{ fontSize: '0.88rem' }}>
               {pricingTiers.map((tier, idx) => {
-                const margin = tier.campaignerCost > 0
-                  ? (((tier.campaignerCost - tier.viewerReward) / tier.campaignerCost) * 100)
+                const costNum = parseFloat(String(tier.campaignerCost)) || 0;
+                const rewardNum = parseFloat(String(tier.viewerReward)) || 0;
+                const margin = costNum > 0
+                  ? (((costNum - rewardNum) / costNum) * 100)
                   : 0;
                 const marginColor = margin >= 30 ? '#059669' : margin >= 15 ? '#0284c7' : margin >= 0 ? '#d97706' : '#ef4444';
                 const marginBg = margin >= 30 ? '#f0fdf4' : margin >= 15 ? '#f0f9ff' : margin >= 0 ? '#fffbeb' : '#fef2f2';
@@ -201,7 +224,7 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
                           display: 'inline-block',
                         }}
                       >
-                        {tier.duration} SECONDS
+                        {formatDurationBadge(tier.duration)}
                       </span>
                     </td>
 
@@ -220,15 +243,23 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
                       >
                         <span style={{ color: '#64748b', fontWeight: 700, fontSize: '0.88rem', marginRight: 4 }}>$</span>
                         <input
-                          type="number"
-                          step="0.0001"
-                          min="0"
-                          value={tier.campaignerCost}
-                          onChange={(e) => handleUpdateTier(idx, 'campaignerCost', parseFloat(e.target.value) || 0)}
+                          type="text"
+                          inputMode="decimal"
+                          value={tier.campaignerCost !== undefined ? tier.campaignerCost : ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === '' || /^[0-9]*\.?[0-9]*$/.test(val)) {
+                              handleUpdateTier(idx, 'campaignerCost', val);
+                            }
+                          }}
+                          onBlur={() => {
+                            const formatted = formatDecimalString(tier.campaignerCost, 10);
+                            handleUpdateTier(idx, 'campaignerCost', formatted);
+                          }}
                           style={{
-                            width: 85,
+                            width: 135,
                             padding: '4px 2px',
-                            fontSize: '0.9rem',
+                            fontSize: '0.88rem',
                             fontWeight: 700,
                             border: 'none',
                             outline: 'none',
@@ -254,15 +285,23 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
                       >
                         <span style={{ color: '#059669', fontWeight: 700, fontSize: '0.88rem', marginRight: 4 }}>$</span>
                         <input
-                          type="number"
-                          step="0.0001"
-                          min="0"
-                          value={tier.viewerReward}
-                          onChange={(e) => handleUpdateTier(idx, 'viewerReward', parseFloat(e.target.value) || 0)}
+                          type="text"
+                          inputMode="decimal"
+                          value={tier.viewerReward !== undefined ? tier.viewerReward : ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === '' || /^[0-9]*\.?[0-9]*$/.test(val)) {
+                              handleUpdateTier(idx, 'viewerReward', val);
+                            }
+                          }}
+                          onBlur={() => {
+                            const formatted = formatDecimalString(tier.viewerReward, 10);
+                            handleUpdateTier(idx, 'viewerReward', formatted);
+                          }}
                           style={{
-                            width: 85,
+                            width: 135,
                             padding: '4px 2px',
-                            fontSize: '0.9rem',
+                            fontSize: '0.88rem',
                             fontWeight: 700,
                             border: 'none',
                             outline: 'none',
@@ -295,15 +334,42 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
                     {/* 1,000 Views Campaign Revenue */}
                     <td style={{ padding: '14px 18px', verticalAlign: 'middle' }}>
                       <strong className="font-mono" style={{ color: '#0f172a', fontSize: '0.92rem' }}>
-                        ${(tier.campaignerCost * 1000).toFixed(2)}
+                        ${costNum * 1000 >= 0.01 ? (costNum * 1000).toFixed(2) : (costNum * 1000).toFixed(6).replace(/\.?0+$/, '')}
                       </strong>
                     </td>
 
                     {/* 1,000 Views Viewer Payout */}
                     <td style={{ padding: '14px 18px', verticalAlign: 'middle' }}>
                       <strong className="font-mono" style={{ color: '#059669', fontSize: '0.92rem' }}>
-                        ${(tier.viewerReward * 1000).toFixed(2)}
+                        ${rewardNum * 1000 >= 0.01 ? (rewardNum * 1000).toFixed(2) : (rewardNum * 1000).toFixed(6).replace(/\.?0+$/, '')}
                       </strong>
+                    </td>
+
+                    {/* Action Column */}
+                    <td style={{ padding: '14px 18px', verticalAlign: 'middle', textAlign: 'center' }}>
+                      {handleDeleteTier && pricingTiers.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteTier(idx)}
+                          title={`Delete ${tier.duration}s tier`}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: '#94a3b8',
+                            padding: '6px',
+                            borderRadius: '6px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            transition: 'color 0.15s ease',
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.color = '#ef4444')}
+                          onMouseLeave={(e) => (e.currentTarget.style.color = '#94a3b8')}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );
@@ -311,6 +377,118 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
             </tbody>
           </table>
         </div>
+
+        {/* Add Tier Section */}
+        {handleAddTier && (
+          <div
+            style={{
+              marginTop: 16,
+              padding: '14px 18px',
+              borderRadius: 14,
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              display: 'flex',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 12,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, fontSize: '0.85rem', color: '#0f172a' }}>
+              <Plus size={16} color="var(--primary-neon)" />
+              <span>Add / Update Tier:</span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>Duration:</span>
+                <input
+                  type="number"
+                  min="8"
+                  placeholder="Seconds (e.g. 600)"
+                  value={newTierDuration}
+                  onChange={(e) => setNewTierDuration(e.target.value)}
+                  style={{
+                    width: 140,
+                    padding: '6px 10px',
+                    borderRadius: 8,
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.82rem',
+                    fontWeight: 600,
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>Cost ($):</span>
+                <input
+                  type="text"
+                  placeholder="0.0600"
+                  value={newTierCost}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === '' || /^[0-9]*\.?[0-9]*$/.test(val)) setNewTierCost(val);
+                  }}
+                  style={{
+                    width: 125,
+                    padding: '6px 10px',
+                    borderRadius: 8,
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.82rem',
+                    fontWeight: 600,
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>Reward ($):</span>
+                <input
+                  type="text"
+                  placeholder="0.0450"
+                  value={newTierReward}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === '' || /^[0-9]*\.?[0-9]*$/.test(val)) setNewTierReward(val);
+                  }}
+                  style={{
+                    width: 125,
+                    padding: '6px 10px',
+                    borderRadius: 8,
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.82rem',
+                    fontWeight: 600,
+                  }}
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const d = parseInt(newTierDuration, 10);
+                  const c = parseFloat(newTierCost) || 0;
+                  const r = parseFloat(newTierReward) || 0;
+                  if (d && d >= 8 && c >= 0 && r >= 0) {
+                    handleAddTier(d, c, r);
+                    setNewTierDuration('');
+                    setNewTierCost('');
+                    setNewTierReward('');
+                  }
+                }}
+                className="btn btn-secondary"
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: 8,
+                  fontSize: '0.80rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                }}
+              >
+                <Plus size={14} /> Add Tier
+              </button>
+            </div>
+          </div>
+        )}
 
         <div
           style={{
@@ -342,7 +520,7 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
               borderRadius: 8,
             }}
           >
-            {pricingSaving ? 'Saving...' : 'Save Pricing'}
+            {pricingSaving ? 'Saving...' : 'Save Pricing Rules'}
           </button>
         </div>
       </div>
@@ -510,17 +688,28 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
               </label>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                 <input
-                  type="number"
-                  min="0"
-                  max="604800"
-                  value={cooldownConfig.durationSeconds}
-                  onChange={(e) =>
-                    setCooldownConfig((prev) => ({
-                      ...prev,
-                      durationSeconds: Math.max(0, parseInt(e.target.value, 10) || 0),
-                    }))
-                  }
-                  className="input-field"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="e.g. 3600"
+                  value={cooldownInput}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === '' || /^[0-9]+$/.test(val)) {
+                      setCooldownInput(val);
+                      const parsed = parseInt(val, 10);
+                      setCooldownConfig((prev) => ({
+                        ...prev,
+                        durationSeconds: isNaN(parsed) ? 0 : Math.min(604800, parsed),
+                      }));
+                    }
+                  }}
+                  onBlur={() => {
+                    if (cooldownInput.trim() === '') {
+                      setCooldownInput('0');
+                      setCooldownConfig((prev) => ({ ...prev, durationSeconds: 0 }));
+                    }
+                  }}
+                  className="input-field font-mono"
                   style={{
                     width: 160,
                     padding: '10px 14px',
@@ -553,7 +742,6 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {[
-                  { label: '0s (No Delay)', sec: 0 },
                   { label: '5 Min (300s)', sec: 300 },
                   { label: '15 Min (900s)', sec: 900 },
                   { label: '30 Min (1,800s)', sec: 1800 },
@@ -566,13 +754,14 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
                     <button
                       key={preset.sec}
                       type="button"
-                      onClick={() =>
+                      onClick={() => {
                         setCooldownConfig((prev) => ({
                           ...prev,
                           durationSeconds: preset.sec,
                           enabled: preset.sec > 0 ? true : prev.enabled,
-                        }))
-                      }
+                        }));
+                        setCooldownInput(String(preset.sec));
+                      }}
                       className="btn"
                       style={{
                         padding: '6px 12px',

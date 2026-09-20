@@ -14,6 +14,8 @@ export interface IUser extends Document {
   googleId?: string;
   avatar?: string;
   role: 'campaigner' | 'viewer' | 'admin';
+  adminRole?: 'master' | 'sub_admin';
+  adminPermissions?: string[]; // e.g. ['deposits', 'withdrawals', 'campaigns']
   status: 'active' | 'suspended' | 'banned';
   balance: number; // In USD Cash Funds
   viewerBalance: number; // In USD Watch Earnings available for cashout
@@ -32,6 +34,9 @@ export interface IUser extends Document {
   referralCount: number;
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
+  activeMobileDeviceId?: string;
+  activeMobileDeviceModel?: string;
+  lastMobileActiveAt?: Date;
   trustScore: number;
   createdAt: Date;
   updatedAt: Date;
@@ -60,6 +65,8 @@ const UserSchema = new Schema<IUser>(
     googleId: { type: String, sparse: true, index: true },
     avatar: { type: String },
     role: { type: String, enum: ['campaigner', 'viewer', 'admin'], default: 'viewer' },
+    adminRole: { type: String, enum: ['master', 'sub_admin'], default: 'master' },
+    adminPermissions: [{ type: String }],
     status: { type: String, enum: ['active', 'suspended', 'banned'], default: 'active' },
     balance: { type: Number, default: 0, min: 0 },
     viewerBalance: { type: Number, default: 0, min: 0 },
@@ -70,6 +77,9 @@ const UserSchema = new Schema<IUser>(
     totalSpent: { type: Number, default: 0 },
     totalWithdrawn: { type: Number, default: 0 },
     kycStatus: { type: String, enum: ['none', 'pending', 'verified', 'rejected'], default: 'none' },
+    activeMobileDeviceId: { type: String, index: true },
+    activeMobileDeviceModel: { type: String },
+    lastMobileActiveAt: { type: Date },
     trustScore: { type: Number, default: 100 },
   },
   { timestamps: true }
