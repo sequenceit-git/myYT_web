@@ -1,5 +1,21 @@
 services:
-  # 1. Redis Task Queue & Caching
+  # 1. MongoDB Database (Production Persistent Storage)
+  mongo:
+    image: mongo:7-jammy
+    container_name: myyt_mongo
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - myyt_internal
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # 2. Redis Task Queue & Caching
   redis:
     image: redis:7-alpine
     container_name: myyt_redis
@@ -15,7 +31,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # 2. Backend API Service
+  # 3. Backend API Service
   backend:
     build:
       context: ./backend
@@ -25,7 +41,7 @@ services:
     environment:
       - PORT=5000
       - NODE_ENV=production
-      - MONGODB_URI=${MONGODB_URI}
+      - MONGODB_URI=${MONGODB_URI:-mongodb://mongo:27017/ytcash}
       - REDIS_URL=redis://:${REDIS_PASSWORD:-redis_myyt_secret}@redis:6379
       - JWT_SECRET=${JWT_SECRET}
       - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
@@ -44,6 +60,8 @@ services:
       start_period: 20s
     depends_on:
       redis:
+        condition: service_healthy
+      mongo:
         condition: service_healthy
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -93,6 +111,8 @@ services:
 
 volumes:
   redis_data:
+    driver: local
+  mongo_data:
     driver: local
 
 networks:
