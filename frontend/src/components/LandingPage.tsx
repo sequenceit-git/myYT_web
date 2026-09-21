@@ -429,7 +429,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     }}
                   >
                     <Smartphone size={12} color="#38bdf8" />
-                    <span>Watch in Simulator</span>
                   </div>
                 </Link>
 
