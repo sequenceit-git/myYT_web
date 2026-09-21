@@ -171,3 +171,26 @@ export const PhoneDeviceIcon: React.FC<{ size?: number; color?: string }> = ({ s
 export const getGoogleRedirectUrl = (videoId: string) => {
   return `https://www.youtube.com/watch?v=${videoId}&t=0s`;
 };
+
+/**
+ * Formats reward USD values dynamically:
+ * - Supports micro-rewards with up to 7 decimal places (e.g. $0.000035)
+ * - Automatically trims redundant trailing zeros while maintaining minimum 4 decimals (e.g. $0.0028)
+ */
+export const formatRewardAmount = (val: number | string | undefined | null, maxDecimals = 7, minDecimals = 4): string => {
+  if (val === undefined || val === null) return '0.0000';
+  const num = typeof val === 'number' ? val : parseFloat(String(val));
+  if (isNaN(num)) return '0.0000';
+
+  const str = num.toFixed(maxDecimals);
+  const [intPart, decPart] = str.split('.');
+  if (!decPart) return `${intPart}.0000`;
+
+  let trimmedDec = decPart.replace(/0+$/, '');
+  while (trimmedDec.length < minDecimals) {
+    trimmedDec += '0';
+  }
+
+  return `${intPart}.${trimmedDec}`;
+};
+

@@ -12,6 +12,23 @@ import { phoneTracker } from '../../services/phoneTracker.service.js';
 
 const router = Router();
 
+const formatRewardAmount = (val: number | string | undefined | null, maxDecimals = 7, minDecimals = 4): string => {
+  if (val === undefined || val === null) return '0.0000';
+  const num = typeof val === 'number' ? val : parseFloat(String(val));
+  if (isNaN(num)) return '0.0000';
+
+  const str = num.toFixed(maxDecimals);
+  const [intPart, decPart] = str.split('.');
+  if (!decPart) return `${intPart}.0000`;
+
+  let trimmedDec = decPart.replace(/0+$/, '');
+  while (trimmedDec.length < minDecimals) {
+    trimmedDec += '0';
+  }
+
+  return `${intPart}.${trimmedDec}`;
+};
+
 // POST /api/tasks/phone-heartbeat - Real-time heartbeat from mobile phone app
 router.post('/phone-heartbeat', async (req: any, res: Response): Promise<void> => {
   try {
@@ -202,7 +219,7 @@ router.get('/next', requireAuth, async (req: AuthRequest, res: Response): Promis
     }
 
     const tier = pricingTiers[selectedCampaign.watchDurationSec] || pricingTiers[300];
-    const rewardAmount = tier ? tier.viewerReward : Number(((selectedCampaign.pricePerView || 0.0320) * 0.72).toFixed(4));
+    const rewardAmount = tier ? tier.viewerReward : Number(((selectedCampaign.pricePerView || 0.0320) * 0.72).toFixed(7));
 
     // Create assigned task
     const task = await Task.create({
@@ -374,7 +391,7 @@ router.post('/:id/complete', requireAuth, async (req: AuthRequest, res: Response
       balanceAfter: updatedUser?.viewerBalance !== undefined ? updatedUser.viewerBalance : (updatedUser?.balance || 0),
       status: 'completed',
       referenceId: task._id.toString(),
-      notes: `+$${rewardAmount.toFixed(4)} USD earned from ${task.requiredDurationSec}s video view (${task.videoId})`,
+      notes: `+$${formatRewardAmount(rewardAmount)} USD earned from ${task.requiredDurationSec}s video view (${task.videoId})`,
     });
 
     // 10% Referral Commission credited to referrer in real-time
@@ -445,7 +462,7 @@ router.post('/:id/complete', requireAuth, async (req: AuthRequest, res: Response
         creatorBalance: updatedUser?.creatorBalance || 0,
         totalEarned: updatedUser?.totalEarned || 0,
         actualDurationSec: task.actualDurationSec,
-        message: `Task successfully verified! +$${rewardAmount.toFixed(4)} USD credited directly to your wallet.`,
+        message: `Task successfully verified! +$${formatRewardAmount(rewardAmount)} USD credited directly to your wallet.`,
       },
     });
   } catch (error: any) {

@@ -1,5 +1,6 @@
 import React from 'react';
 import { CheckCircle2, Clock } from 'lucide-react';
+import { formatRewardAmount } from './viewerTypes';
 
 // Helper to render smooth SVG curve for platform withdrawal volume
 export const renderWithdrawalCurve = (data: number[], labels: string[]) => {
@@ -156,16 +157,17 @@ export const renderWatchStatusBadge = (status: string) => {
 export const renderWatchReward = (item: any, fontSize = '0.94rem') => {
   const isCompleted = item.status === 'completed';
   const reward = item.rewardAmount || 0.0035;
+  const formatted = formatRewardAmount(reward);
   if (isCompleted) {
     return (
       <span className="font-mono" style={{ fontWeight: 800, fontSize, color: '#059669' }}>
-        +${reward.toFixed(4)}
+        +${formatted}
       </span>
     );
   }
   return (
     <span className="font-mono" style={{ fontWeight: 800, fontSize, color: '#ea580c' }}>
-      ${reward.toFixed(4)}
+      ${formatted}
     </span>
   );
 };

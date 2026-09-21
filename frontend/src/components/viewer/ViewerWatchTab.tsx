@@ -1,7 +1,7 @@
 import React from 'react';
 import { RefreshCw, Download, Clock } from 'lucide-react';
 import { ViewerPagination } from './ViewerPagination';
-import { getGoogleRedirectUrl } from './viewerTypes';
+import { getGoogleRedirectUrl, formatRewardAmount } from './viewerTypes';
 import { renderWatchReward, renderWatchStatusBadge } from './viewerCharts';
 
 interface ViewerWatchTabProps {
@@ -163,7 +163,7 @@ export const ViewerWatchTab: React.FC<ViewerWatchTabProps> = ({
           <div className="viewer-stats-card viewer-stats-featured" style={{ background: '#f0fdf4', padding: '14px 18px', borderRadius: 14, border: '1px solid rgba(16, 185, 129, 0.25)' }}>
             <div style={{ fontSize: '0.78rem', color: '#059669', textTransform: 'uppercase', fontWeight: 700 }}>Total Watch Rewards</div>
             <div className="font-mono kpi-number" style={{ fontSize: '1.75rem', fontWeight: 800, color: '#059669', marginTop: 3 }}>
-              +${watchHistory.filter((t) => t.status === 'completed').reduce((sum, t) => sum + (t.rewardAmount || 0.0035), 0).toFixed(4)} USD
+              +${formatRewardAmount(watchHistory.filter((t) => t.status === 'completed').reduce((sum, t) => sum + (t.rewardAmount || 0.0035), 0))} USD
             </div>
           </div>
 
