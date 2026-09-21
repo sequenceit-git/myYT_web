@@ -12,6 +12,8 @@ import { AdminPortal } from './components/AdminPortal';
 import { NotFoundPage } from './components/NotFoundPage';
 import { DownloadPage } from './components/DownloadPage';
 import { AuthModal } from './components/AuthModal';
+import { TelegramSupportWidget } from './components/TelegramSupportWidget';
+import { TermsPage } from './components/TermsPage';
 import { User } from './types';
 import { apiRequest, clearAuthToken, setAuthToken } from './api';
 
@@ -132,6 +134,11 @@ export function App() {
   };
 
   const isLandingPage = location.pathname === '/';
+  const showFooter =
+    isLandingPage ||
+    location.pathname === '/terms' ||
+    location.pathname === '/terms-and-conditions' ||
+    location.pathname === '/terms-of-service';
 
   if (mobileAuthUrl) {
     return (
@@ -273,6 +280,11 @@ export function App() {
           <Route path="/download/*" element={<DownloadPage />} />
           <Route path="/downloads/*" element={<DownloadPage />} />
 
+          {/* Terms, Conditions & Platform Awareness */}
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/terms-and-conditions" element={<TermsPage />} />
+          <Route path="/terms-of-service" element={<TermsPage />} />
+
           {/* Catch-all 404 Not Found fallback */}
           <Route path="*" element={<NotFoundPage user={user} />} />
         </Routes>
@@ -287,8 +299,8 @@ export function App() {
         onAuthSuccess={handleAuthSuccess}
       />
 
-      {/* Footer - Rendered on Landing Page */}
-      {isLandingPage && (
+      {/* Footer - Rendered on Landing Page & Legal Pages */}
+      {showFooter && (
         <footer
           style={{
             borderTop: '1px solid #e2e8f0',
@@ -402,6 +414,9 @@ export function App() {
               <Link to="/viewer" style={{ color: '#475569', fontSize: '0.82rem', textDecoration: 'none' }}>
                 Instant Wallet & Cashout
               </Link>
+              <Link to="/terms" style={{ color: '#475569', fontSize: '0.82rem', textDecoration: 'none' }}>
+                Terms & Conditions
+              </Link>
             </div>
 
             {/* Column 3: Payout & Deposit Rails */}
@@ -499,15 +514,38 @@ export function App() {
               gap: 12,
             }}
           >
-            <span className="font-mono" style={{ fontSize: '0.72rem', color: '#64748b' }}>
-              © 2026 <strong style={{ color: '#0f172a' }}>ytCash</strong>. All rights reserved. • High-Retention YouTube View Exchange Network.
-            </span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span className="font-mono" style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                © 2026 <strong style={{ color: '#0f172a' }}>ytCash</strong>. All rights reserved. • High-Retention YouTube View Exchange Network.
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <Link to="/terms" style={{ fontSize: '0.72rem', color: '#0284c7', textDecoration: 'none', fontWeight: 700 }}>
+                  Terms & Conditions
+                </Link>
+                <span style={{ color: '#cbd5e1', fontSize: '0.7rem' }}>•</span>
+                <Link to="/terms#awareness" style={{ fontSize: '0.72rem', color: '#64748b', textDecoration: 'none' }}>
+                  Platform Awareness & Rules
+                </Link>
+                <span style={{ color: '#cbd5e1', fontSize: '0.7rem' }}>•</span>
+                <Link to="/terms#security" style={{ fontSize: '0.72rem', color: '#64748b', textDecoration: 'none' }}>
+                  Anti-Fraud Policy
+                </Link>
+                <span style={{ color: '#cbd5e1', fontSize: '0.7rem' }}>•</span>
+                <Link to="/terms#disclaimer" style={{ fontSize: '0.72rem', color: '#64748b', textDecoration: 'none' }}>
+                  YouTube Disclaimer
+                </Link>
+              </div>
+            </div>
+
             <span className="font-mono" style={{ fontSize: '0.72rem', color: '#0284c7', fontWeight: 700 }}>
               BUILT FOR HIGH CONCURRENCY & ZERO BANDWIDTH WASTE.
             </span>
           </div>
         </footer>
       )}
+
+      {/* Floating Telegram Support Popup & Quick Inquiry Widget */}
+      <TelegramSupportWidget />
     </div>
   );
 }

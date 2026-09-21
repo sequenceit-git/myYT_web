@@ -9,8 +9,8 @@ This guide walks you through deploying the **myYT Web Platform** (Backend API, F
 ```mermaid
 graph TD
     Client["Client / Mobile App"] -->|HTTPS 443| Traefik["Traefik Reverse Proxy"]
-    Traefik -->|Host: yourdomain.com| Frontend["myyt_frontend (Nginx SPA: Port 80)"]
-    Traefik -->|Host: yourdomain.com/api or api.yourdomain.com| Backend["myyt_backend (Express API: Port 5000)"]
+    Traefik -->|Host: ytcash.pro| Frontend["myyt_frontend (Nginx SPA: Port 80)"]
+    Traefik -->|Host: ytcash.pro/api| Backend["myyt_backend (Express API: Port 5000)"]
     Backend --> Redis["myyt_redis (BullMQ Queue: Port 6379)"]
     Backend --> MongoDB["MongoDB Atlas Cloud"]
 ```
@@ -41,10 +41,15 @@ nano .env
 ```
 
 Set your configuration values:
-- `DOMAIN`: Your domain name (e.g. `myyt.com` or `app.yourdomain.com`)
+- `DOMAIN`: Your domain name (`ytcash.pro`)
 - `TRAEFIK_NETWORK`: The Docker network name Traefik uses (e.g. `traefik_web` or `proxy`)
 - `CERT_RESOLVER`: Your Traefik ACME resolver name (e.g. `letsencrypt` or `myresolver`)
-- `MONGODB_URI`: Your MongoDB connection string
+- `MONGODB_URI`:
+  - **Option 1: Server Local MongoDB (running on host VPS)**:
+    `MONGODB_URI=mongodb://host.docker.internal:27017/ytcash`
+    *(Note: Ensure `/etc/mongod.conf` has `bindIp: 0.0.0.0` or `127.0.0.1,172.17.0.1` so Docker can reach it)*
+  - **Option 2: Cloud MongoDB Atlas**:
+    `MONGODB_URI=mongodb+srv://...`
 
 ---
 
@@ -72,17 +77,17 @@ docker compose up -d --build
 
 3. Test backend health check endpoint:
    ```bash
-   curl https://yourdomain.com/api/health
+   curl https://ytcash.pro/api/health
    ```
 
 ---
 
 ## 📱 Connecting the Mobile App to Production
 
-Once deployed, update `myYT_mobile/.env` with your VPS production domain:
+Once deployed, update `myyt_mobile/.env` with your VPS production domain:
 
 ```env
-EXPO_PUBLIC_API_URL=https://yourdomain.com/api
+EXPO_PUBLIC_API_URL=https://ytcash.pro/api
 ```
 
 Both the web platform and mobile app will now be synced in real-time on your live production server!

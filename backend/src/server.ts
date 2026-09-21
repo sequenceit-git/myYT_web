@@ -14,7 +14,7 @@ try {
 
 async function connectDatabase() {
   const primaryUri = config.mongoUri;
-  const localFallbackUri = 'mongodb://127.0.0.1:27017/myyt';
+  const localFallbackUri = process.env.LOCAL_MONGODB_URI || 'mongodb://127.0.0.1:27017/ytcash';
 
   try {
     console.log(`[Database] Connecting to MongoDB at ${primaryUri}...`);

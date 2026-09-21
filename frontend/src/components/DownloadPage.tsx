@@ -24,7 +24,7 @@ export const DownloadPage: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  const fullUrl = typeof window !== 'undefined' ? window.location.href : 'https://ytcash.sequenceit.software/download';
+  const fullUrl = typeof window !== 'undefined' ? window.location.href : 'https://ytcash.pro/download';
 
   return (
     <div

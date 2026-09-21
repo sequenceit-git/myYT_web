@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Play,
   Wallet,
@@ -278,7 +279,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Clock size={15} color="var(--primary-neon)" />
                 <span style={{ fontSize: '0.75rem', color: 'var(--on-surface-variant)' }}>
-                  8s–300s Retention
+                  8s–2Hour Retention
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -368,39 +369,69 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   </span>
                 </div>
 
-                {/* Video Image Overlay with YouTube Play Button */}
-                <div
+                {/* Video Image Overlay - Navigates directly to /simulator */}
+                <Link
+                  to="/simulator"
+                  title="Open Watch Simulator"
                   style={{
                     width: '100%',
-                    height: 140,
-                    borderRadius: 10,
-                    background: 'url(https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&q=80) center/cover no-repeat',
+                    height: 154,
+                    borderRadius: 12,
+                    background: 'url(/video-preview.png) center/cover no-repeat',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     position: 'relative',
+                    cursor: 'pointer',
+                    textDecoration: 'none',
+                    overflow: 'hidden',
+                    border: '1px solid rgba(14, 165, 233, 0.25)',
+                    boxShadow: '0 6px 18px rgba(0, 0, 0, 0.12)',
+                    transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'scale(1.02)';
+                    e.currentTarget.style.boxShadow = '0 10px 24px rgba(14, 165, 233, 0.28)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                    e.currentTarget.style.boxShadow = '0 6px 18px rgba(0, 0, 0, 0.12)';
                   }}
                 >
-                  <div style={{ position: 'absolute', inset: 0, background: 'rgba(15, 23, 42, 0.35)', borderRadius: 10 }} />
+                  {/* Subtle Dark Vignette Border */}
                   <div
                     style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: '50%',
-                      background: 'var(--primary-neon)',
+                      position: 'absolute',
+                      inset: 0,
+                      background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.1) 0%, rgba(15, 23, 42, 0.4) 100%)',
+                      pointerEvents: 'none',
+                    }}
+                  />
+
+                  {/* Floating Simulator Pill Badge */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: 8,
+                      right: 8,
+                      background: 'rgba(15, 23, 42, 0.85)',
+                      backdropFilter: 'blur(6px)',
+                      color: '#ffffff',
+                      fontSize: '0.68rem',
+                      fontWeight: 700,
+                      padding: '4px 10px',
+                      borderRadius: 8,
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#ffffff',
-                      zIndex: 5,
-                      boxShadow: '0 0 20px rgba(14, 165, 233, 0.5)',
-                      cursor: 'pointer',
+                      gap: 5,
+                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
                     }}
-                    onClick={onStartEarning}
                   >
-                    <Play size={20} fill="currentColor" />
+                    <Smartphone size={12} color="#38bdf8" />
+                    <span>Watch in Simulator</span>
                   </div>
-                </div>
+                </Link>
 
                 {/* Simulated Real-Time Progress Bar */}
                 <div>
@@ -494,7 +525,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 TOTAL PAID OUT
               </div>
               <div className="font-display" style={{ fontSize: '1.75rem', color: 'var(--primary-neon)', fontWeight: 800, lineHeight: 1.1, marginTop: 2 }}>
-                $184,350+
+                $184,357+
               </div>
               <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 3 }}>
                 bKash, Nagad & Crypto
@@ -524,7 +555,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 ACTIVE REAL WATCHERS
               </div>
               <div className="font-display" style={{ fontSize: '1.75rem', color: 'var(--primary-neon)', fontWeight: 800, lineHeight: 1.1, marginTop: 2 }}>
-                4,850+
+                4,853+
               </div>
               <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 3 }}>
                 Concurrent viewers online
@@ -554,7 +585,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 COMPLETED VIDEO TASKS
               </div>
               <div className="font-display" style={{ fontSize: '1.75rem', color: 'var(--primary-neon)', fontWeight: 800, lineHeight: 1.1, marginTop: 2 }}>
-                2.45M+
+                2.47M+
               </div>
               <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 3 }}>
                 Verified YouTube views

@@ -4,7 +4,7 @@ dotenv.config();
 export const config = {
   port: parseInt(process.env.PORT || '5001', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
-  mongoUri: process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/myyt',
+  mongoUri: process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/ytcash',
   redisUrl: process.env.REDIS_URL || 'redis://127.0.0.1:6379',
   jwtSecret: process.env.JWT_SECRET || 'myyt-jwt-secret-key-2026',
   jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || 'myyt-jwt-refresh-secret-2026',

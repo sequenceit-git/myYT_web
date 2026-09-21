@@ -31,7 +31,7 @@ services:
       - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
       - ADMIN_SECRET_KEY=${ADMIN_SECRET_KEY:-admin123}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-myyt@2026}
-      - CORS_ORIGIN=https://${DOMAIN}
+      - CORS_ORIGIN=https://${DOMAIN},https://www.${DOMAIN}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - RESEND_API_KEY=${RESEND_API_KEY:-}
@@ -45,6 +45,8 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - myyt_internal
       - traefik_network
@@ -52,12 +54,12 @@ services:
       - "traefik.enable=true"
       - "traefik.docker.network=${TRAEFIK_NETWORK:-traefik_web}"
       # Route /api to Backend (HTTPS)
-      - "traefik.http.routers.myyt-backend.rule=Host(`${DOMAIN}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.myyt-backend.rule=(Host(`${DOMAIN}`) || Host(`www.${DOMAIN}`)) && PathPrefix(`/api`)"
       - "traefik.http.routers.myyt-backend.entrypoints=websecure"
       - "traefik.http.routers.myyt-backend.tls=true"
       - "traefik.http.routers.myyt-backend.tls.certresolver=${CERT_RESOLVER:-letsencrypt}"
       # Route /api to Backend (HTTP fallback)
-      - "traefik.http.routers.myyt-backend-http.rule=Host(`${DOMAIN}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.myyt-backend-http.rule=(Host(`${DOMAIN}`) || Host(`www.${DOMAIN}`)) && PathPrefix(`/api`)"
       - "traefik.http.routers.myyt-backend-http.entrypoints=web"
       - "traefik.http.services.myyt-backend.loadbalancer.server.port=5000"
 
@@ -80,12 +82,12 @@ services:
       - "traefik.enable=true"
       - "traefik.docker.network=${TRAEFIK_NETWORK:-traefik_web}"
       # Main Domain / Subdomain Routing (HTTPS)
-      - "traefik.http.routers.myyt-frontend.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.myyt-frontend.rule=Host(`${DOMAIN}`) || Host(`www.${DOMAIN}`)"
       - "traefik.http.routers.myyt-frontend.entrypoints=websecure"
       - "traefik.http.routers.myyt-frontend.tls=true"
       - "traefik.http.routers.myyt-frontend.tls.certresolver=${CERT_RESOLVER:-letsencrypt}"
       # Main Domain / Subdomain Routing (HTTP fallback)
-      - "traefik.http.routers.myyt-frontend-http.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.myyt-frontend-http.rule=Host(`${DOMAIN}`) || Host(`www.${DOMAIN}`)"
       - "traefik.http.routers.myyt-frontend-http.entrypoints=web"
       - "traefik.http.services.myyt-frontend.loadbalancer.server.port=80"
 

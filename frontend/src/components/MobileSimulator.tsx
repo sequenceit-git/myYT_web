@@ -13,7 +13,7 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = () => {
   const downloadUrl =
     typeof window !== 'undefined'
       ? `${window.location.origin}/downloads/ytcash.apk`
-      : 'https://ytcash.sequenceit.software/downloads/ytcash.apk';
+      : 'https://ytcash.pro/downloads/ytcash.apk';
 
   return (
     <div
