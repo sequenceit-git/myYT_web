@@ -8,6 +8,7 @@ import { Campaign } from '../../models/Campaign.js';
 import { requireAuth, AuthRequest } from '../../middleware/auth.middleware.js';
 import { getSystemDepositMethods, getSystemWithdrawMethods } from '../admin/admin.controller.js';
 import { extractFullClientTelemetry } from '../../services/telemetry.service.js';
+import { config } from '../../config/index.js';
 
 const router = Router();
 
@@ -97,6 +98,200 @@ router.post('/deposit', requireAuth, async (req: AuthRequest, res: Response): Pr
       data: {
         transaction,
         message: 'Deposit request submitted successfully! Funds will be credited once verified by admin.',
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// =============================================================================
+// FAUCETPAY AUTOMATED CRYPTO DEPOSIT SYSTEM
+// =============================================================================
+
+// POST /api/wallet/faucetpay-create-order - Create pending crypto order & get checkout params
+router.post('/faucetpay-create-order', requireAuth, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { amount } = req.body;
+    const numAmount = Number(amount);
+
+    if (isNaN(numAmount) || numAmount < 1.0) {
+      res.status(400).json({ success: false, error: 'Minimum crypto deposit amount is $1.00 USD' });
+      return;
+    }
+
+    const user = req.user!;
+    const merchantUsername = (config.faucetpayMerchantUsername || process.env.FAUCETPAY_MERCHANT_USERNAME || '').trim();
+    const hasApiKey = Boolean((config.faucetpayApiKey || process.env.FAUCETPAY_API_KEY || '').trim());
+
+    // Generate unique internal order reference ID
+    const referenceId = `FP_${Date.now()}_${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+    // Create pending deposit transaction in DB
+    const transaction = await Transaction.create({
+      userId: user._id,
+      role: 'creator',
+      type: 'deposit',
+      amount: numAmount,
+      balanceAfter: user.creatorBalance !== undefined ? user.creatorBalance : user.balance,
+      status: 'pending',
+      gateway: 'crypto',
+      referenceId,
+      notes: 'Automated Crypto Deposit via FaucetPay (Awaiting Payment)',
+    });
+
+    const publicOrigin = (config.corsOrigin || 'https://ytcash.pro').split(',')[0].trim().replace(/\/$/, '');
+
+    // Prepare parameters for FaucetPay Merchant Checkout
+    const formParams = {
+      action: 'https://faucetpay.io/merchant/webscr',
+      merchant_username: merchantUsername,
+      item_description: `ytCash Crypto Deposit ($${numAmount.toFixed(2)} USD)`,
+      amount1: numAmount.toFixed(2),
+      currency1: 'USD',
+      currency2: '', // Empty allows buyer to choose Bitcoin, Ethereum, USDT, Litecoin, Dogecoin, Tron, etc.
+      custom: transaction._id.toString(),
+      callback_url: `${publicOrigin}/api/wallet/faucetpay-callback`,
+      success_url: `${publicOrigin}/creator?tab=deposit&status=success&orderId=${transaction._id}`,
+      cancel_url: `${publicOrigin}/creator?tab=deposit&status=cancelled`,
+    };
+
+    res.json({
+      success: true,
+      data: {
+        transactionId: transaction._id,
+        referenceId,
+        amount: numAmount,
+        formParams,
+        isConfigured: Boolean(merchantUsername || hasApiKey),
+      },
+    });
+  } catch (error: any) {
+    console.error('[FaucetPay Create Order] Error:', error);
+    res.status(500).json({ success: false, error: error.message || 'Error generating crypto deposit order' });
+  }
+});
+
+// POST /api/wallet/faucetpay-callback - IPN Webhook callback from FaucetPay
+router.post('/faucetpay-callback', async (req, res: Response): Promise<void> => {
+  try {
+    const token = req.body?.token;
+    if (!token) {
+      console.warn('[FaucetPay IPN] Received callback without token parameter');
+      res.status(400).send('Missing token');
+      return;
+    }
+
+    console.log(`[FaucetPay IPN] Received payment token: ${token}. Verifying with FaucetPay...`);
+
+    // Verify token with FaucetPay Merchant API
+    const verifyUrl = `https://faucetpay.io/merchant/get-payment/${encodeURIComponent(token)}`;
+    const verifyRes = await fetch(verifyUrl, {
+      method: 'GET',
+      headers: { 'User-Agent': 'ytCash-Merchant/1.0' },
+    });
+
+    if (!verifyRes.ok) {
+      console.warn(`[FaucetPay IPN] FaucetPay returned HTTP ${verifyRes.status}`);
+      res.status(502).send('Error communicating with FaucetPay');
+      return;
+    }
+
+    const data: any = await verifyRes.json();
+    console.log('[FaucetPay IPN] Verification response:', data);
+
+    if (!data || !data.valid) {
+      console.warn('[FaucetPay IPN] Payment verification failed or invalid:', data);
+      res.status(400).send('Invalid payment token');
+      return;
+    }
+
+    // Match transaction by custom ID (our Transaction._id)
+    const customTxId = data.custom;
+    let transaction = null;
+
+    if (customTxId) {
+      transaction = await Transaction.findById(customTxId);
+    }
+
+    // Fallback: search by referenceId if custom was not ObjectId
+    if (!transaction && customTxId) {
+      transaction = await Transaction.findOne({ referenceId: customTxId, status: 'pending' });
+    }
+
+    if (!transaction) {
+      console.warn(`[FaucetPay IPN] No pending transaction found matching custom: ${customTxId}`);
+      res.status(404).send('Transaction not found');
+      return;
+    }
+
+    if (transaction.status === 'completed') {
+      console.log(`[FaucetPay IPN] Transaction ${transaction._id} already marked completed. Idempotent skip.`);
+      res.status(200).send('*ok*');
+      return;
+    }
+
+    // Credit user's balance
+    const user = await User.findById(transaction.userId);
+    if (!user) {
+      console.warn(`[FaucetPay IPN] User ${transaction.userId} not found`);
+      res.status(404).send('User not found');
+      return;
+    }
+
+    const creditedAmount = Number(data.amount1) || transaction.amount;
+    const cryptoCoin = data.currency2 || 'Crypto';
+
+    user.creatorBalance = (user.creatorBalance || 0) + creditedAmount;
+    user.balance = (user.balance || 0) + creditedAmount;
+    await user.save();
+
+    transaction.status = 'completed';
+    transaction.amount = creditedAmount;
+    transaction.balanceAfter = user.creatorBalance;
+    transaction.senderAccount = data.merchant_username || 'FaucetPay Merchant';
+    transaction.referenceId = String(data.transaction_id || token);
+    transaction.notes = `Automated Crypto Deposit Confirmed via FaucetPay (${cryptoCoin})`;
+    transaction.processedAt = new Date();
+    await transaction.save();
+
+    console.log(`[FaucetPay IPN] Successfully credited $${creditedAmount} USD to user ${user.email} (New Balance: $${user.creatorBalance})`);
+    res.status(200).send('*ok*');
+  } catch (error: any) {
+    console.error('[FaucetPay IPN] Exception:', error);
+    res.status(500).send('Internal Server Error');
+  }
+});
+
+// POST /api/wallet/faucetpay-verify-order - Check status of crypto order on frontend return
+router.post('/faucetpay-verify-order', requireAuth, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { orderId } = req.body;
+    if (!orderId) {
+      res.status(400).json({ success: false, error: 'Order ID is required' });
+      return;
+    }
+
+    const transaction = await Transaction.findOne({
+      _id: orderId,
+      userId: req.user!._id,
+    });
+
+    if (!transaction) {
+      res.status(404).json({ success: false, error: 'Order not found' });
+      return;
+    }
+
+    const freshUser = await User.findById(req.user!._id);
+
+    res.json({
+      success: true,
+      data: {
+        status: transaction.status,
+        amount: transaction.amount,
+        balance: freshUser ? freshUser.creatorBalance : req.user!.creatorBalance,
+        isCompleted: transaction.status === 'completed',
+        referenceId: transaction.referenceId,
       },
     });
   } catch (error: any) {

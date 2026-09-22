@@ -63,7 +63,7 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
 
   // Deposit State
   const [depositAmount, setDepositAmount] = useState<string | number>('');
-  const [depositGateway, setDepositGateway] = useState<string>('faucetpay');
+  const [depositGateway, setDepositGateway] = useState<string>('crypto');
   const [depositLoading, setDepositLoading] = useState<boolean>(false);
   const [depositMethodsList, setDepositMethodsList] = useState<DepositMethod[]>([]);
   const [senderAccount, setSenderAccount] = useState<string>('');
@@ -72,6 +72,50 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
   const [copiedReceiver, setCopiedReceiver] = useState<boolean>(false);
   const [isDepositModalOpen, setIsDepositModalOpen] = useState<boolean>(false);
   const [depositModalError, setDepositModalError] = useState<string | null>(null);
+
+  // Listen for FaucetPay automated checkout return redirects (?status=success or ?status=cancelled)
+  useEffect(() => {
+    const statusParam = searchParams.get('status');
+    const orderIdParam = searchParams.get('orderId') || searchParams.get('txId');
+
+    if (statusParam === 'success') {
+      if (orderIdParam) {
+        apiRequest<{ isCompleted: boolean; amount: number; balance: number }>('/wallet/faucetpay-verify-order', {
+          method: 'POST',
+          body: JSON.stringify({ orderId: orderIdParam }),
+        }).then((res) => {
+          onRefreshUser();
+          fetchTransactions();
+          if (res.success && res.data?.isCompleted) {
+            setFeedback({
+              type: 'success',
+              message: `✓ Crypto deposit of $${Number(res.data.amount || 0).toFixed(2)} USD successfully credited to your Ad Budget!`,
+            });
+          } else {
+            setFeedback({
+              type: 'success',
+              message: '✓ Crypto deposit submitted via FaucetPay! Your balance will update automatically upon blockchain confirmation.',
+            });
+          }
+        }).catch(() => {
+          onRefreshUser();
+        });
+      } else {
+        setFeedback({
+          type: 'success',
+          message: '✓ Crypto deposit payment completed! Your ad budget balance is updated.',
+        });
+        onRefreshUser();
+      }
+      setSearchParams({ tab: 'deposit' }, { replace: true });
+    } else if (statusParam === 'cancelled') {
+      setFeedback({
+        type: 'error',
+        message: 'Crypto deposit was cancelled. No funds were deducted.',
+      });
+      setSearchParams({ tab: 'deposit' }, { replace: true });
+    }
+  }, [searchParams]);
 
   // Withdraw State
   const [withdrawMethod, setWithdrawMethod] = useState<string>('bkash');
@@ -513,6 +557,8 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
             depositLoading={depositLoading}
             depositModalError={depositModalError}
             handleDepositSubmit={handleDepositSubmit}
+            onRefreshUser={onRefreshUser}
+            onSuccessNotice={(msg) => setFeedback({ type: 'success', message: msg })}
           />
         </main>
       </div>

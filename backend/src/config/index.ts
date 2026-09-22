@@ -40,5 +40,10 @@ export const config = {
   // Resend Email Service Configuration
   resendApiKey: process.env.RESEND_API_KEY || '',
   resendFromEmail: process.env.RESEND_FROM_EMAIL || 'noreply@ytcash.pro',
+
+  // FaucetPay Automated Crypto Gateway Configuration
+  faucetpayApiKey: process.env.FAUCETPAY_API_KEY || '',
+  faucetpayMerchantUsername: process.env.FAUCETPAY_MERCHANT_USERNAME || '',
 };
+
 

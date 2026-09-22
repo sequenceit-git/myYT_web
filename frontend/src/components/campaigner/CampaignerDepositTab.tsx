@@ -47,9 +47,15 @@ export const CampaignerDepositTab: React.FC<CampaignerDepositTabProps> = ({
             Current Balance: <strong className="font-mono" style={{ color: 'var(--primary-neon)' }}>${creatorBal.toFixed(2)} USD</strong>
           </span>
         </div>
-        <span className="badge-pill badge-neon" style={{ fontSize: '0.74rem', padding: '4px 12px' }}>
-          Manual Deposit • Admin Approved
-        </span>
+        {selectedMethod.id === 'crypto' ? (
+          <span className="badge-pill" style={{ fontSize: '0.74rem', padding: '4px 12px', background: '#dcfce7', color: '#15803d', border: '1px solid #86efac', fontWeight: 800 }}>
+            ⚡ Automatic Deposit • FaucetPay Instant Credit
+          </span>
+        ) : (
+          <span className="badge-pill badge-neon" style={{ fontSize: '0.74rem', padding: '4px 12px' }}>
+            Manual Deposit • Admin Approved
+          </span>
+        )}
       </div>
 
       {/* INDIVIDUAL DEPOSIT METHOD CARDS */}
@@ -154,22 +160,39 @@ export const CampaignerDepositTab: React.FC<CampaignerDepositTabProps> = ({
                 </div>
 
                 {/* Min Limit Badge on Card */}
-                <span
-                  style={{
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    color: isSelected ? 'var(--primary-neon)' : '#64748b',
-                    background: isSelected ? '#e0f2fe' : '#f1f5f9',
-                    border: isSelected ? '1px solid rgba(14, 165, 233, 0.3)' : '1px solid #e2e8f0',
-                    padding: '2px 8px',
-                    borderRadius: 6,
-                    textAlign: 'center',
-                    whiteSpace: 'nowrap',
-                    marginTop: 4,
-                  }}
-                >
-                  {m.minLimitText}
-                </span>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, marginTop: 4 }}>
+                  {m.id === 'crypto' && (
+                    <span
+                      style={{
+                        fontSize: '0.60rem',
+                        fontWeight: 800,
+                        color: '#059669',
+                        background: '#dcfce7',
+                        border: '1px solid #86efac',
+                        padding: '1px 5px',
+                        borderRadius: 4,
+                        letterSpacing: '0.3px',
+                      }}
+                    >
+                      ⚡ AUTO
+                    </span>
+                  )}
+                  <span
+                    style={{
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      color: isSelected ? 'var(--primary-neon)' : '#64748b',
+                      background: isSelected ? '#e0f2fe' : '#f1f5f9',
+                      border: isSelected ? '1px solid rgba(14, 165, 233, 0.3)' : '1px solid #e2e8f0',
+                      padding: '2px 8px',
+                      borderRadius: 6,
+                      textAlign: 'center',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {m.minLimitText}
+                  </span>
+                </div>
               </div>
             );
           })}
@@ -318,7 +341,9 @@ export const CampaignerDepositTab: React.FC<CampaignerDepositTabProps> = ({
               ? 'Enter Deposit Amount'
               : isDepositBelowMin
                 ? `Minimum Deposit is $${minRequiredUsd.toFixed(2)} USD`
-                : `Proceed to Payment (${selectedMethod.isBDT ? `৳${Math.round(numDepositAmount * bdtRate).toLocaleString()} BDT` : `$${numDepositAmount.toFixed(2)} USD`})`}
+                : selectedMethod.id === 'crypto'
+                  ? `Proceed to Instant Crypto Checkout ($${numDepositAmount.toFixed(2)} USD)`
+                  : `Proceed to Payment (${selectedMethod.isBDT ? `৳${Math.round(numDepositAmount * bdtRate).toLocaleString()} BDT` : `$${numDepositAmount.toFixed(2)} USD`})`}
           </span>
           <ArrowRight size={18} />
         </button>

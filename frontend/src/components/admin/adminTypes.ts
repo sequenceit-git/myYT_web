@@ -71,23 +71,13 @@ export type AdminTab = 'overview' | 'payouts' | 'deposits' | 'campaigns' | 'user
 
 export const DEFAULT_ADMIN_DEPOSIT_METHODS: DepositMethod[] = [
   {
-    id: 'faucetpay',
-    name: 'FaucetPay',
-    type: 'faucetpay',
-    accountType: 'Email / Account',
-    accountNumber: 'admin@ytcash.com',
-    minDepositUsd: 5.0,
-    instructions: 'Send payment via FaucetPay to this email/address and enter your FaucetPay TrxID.',
-    enabled: true,
-  },
-  {
     id: 'crypto',
-    name: 'USDT (BEP-20)',
+    name: 'Crypto',
     type: 'crypto',
-    accountType: 'BEP-20 (BNB Smart Chain)',
-    accountNumber: '0x0000000000000000000000000000000000000000',
+    accountType: 'Automated Gateway (FaucetPay)',
+    accountNumber: 'Automated FaucetPay Merchant',
     minDepositUsd: 5.0,
-    instructions: 'Send USDT (BEP-20 network only) to this wallet address. Paste the transaction hash below.',
+    instructions: 'Automated crypto checkout powered by FaucetPay. Accepts Bitcoin (BTC), Ethereum (ETH), USDT, Litecoin (LTC), Tron (TRX), Dogecoin (DOGE) and more with instant balance credit.',
     enabled: true,
   },
   {
