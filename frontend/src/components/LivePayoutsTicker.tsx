@@ -123,7 +123,7 @@ export const LivePayoutsTicker: React.FC = () => {
         return '/payment-methods/nagad.svg';
       case 'crypto':
       case 'usdt':
-        return '/payment-methods/crypto.svg';
+        return '/payment-methods/crypto.png';
       case 'faucetpay':
         return '/payment-methods/faucetpay.svg';
       case 'webmoney':

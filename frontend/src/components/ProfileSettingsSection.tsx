@@ -62,7 +62,7 @@ const PAYMENT_OPTIONS = [
   {
     id: 'crypto',
     name: 'Binance Pay / USDT',
-    logo: '/payment-methods/crypto.svg',
+    logo: '/payment-methods/crypto.png',
     category: 'Binance Pay ID / USDT TRC20',
     placeholder: 'Binance Pay ID or USDT Address',
     formatHelper: 'Your Binance Pay ID or USDT TRC20/BEP20 address',

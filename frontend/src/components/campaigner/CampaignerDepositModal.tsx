@@ -177,7 +177,14 @@ export const CampaignerDepositModal: React.FC<CampaignerDepositModalProps> = ({
                 boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
               }}
             >
-              <img src={selectedMethod.logoUrl} alt={selectedMethod.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+              <img
+                src={selectedMethod.logoUrl}
+                alt={selectedMethod.name}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = '/payment-methods/crypto.png';
+                }}
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+              />
             </div>
             <div>
               <h4 className="font-display" style={{ fontSize: '1.15rem', color: '#0f172a', margin: 0 }}>

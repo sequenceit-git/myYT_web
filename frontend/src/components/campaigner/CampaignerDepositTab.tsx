@@ -147,6 +147,9 @@ export const CampaignerDepositTab: React.FC<CampaignerDepositTabProps> = ({
                     <img
                       src={m.logoUrl}
                       alt={m.name}
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = '/payment-methods/crypto.png';
+                      }}
                       style={{
                         width: '100%',
                         height: '100%',
@@ -302,6 +305,9 @@ export const CampaignerDepositTab: React.FC<CampaignerDepositTabProps> = ({
               <img
                 src={selectedMethod.logoUrl}
                 alt={selectedMethod.name}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = '/payment-methods/crypto.png';
+                }}
                 style={{ width: '100%', height: '100%', objectFit: 'contain' }}
               />
             </div>

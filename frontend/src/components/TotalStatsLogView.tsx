@@ -111,7 +111,7 @@ export const TotalStatsLogView: React.FC<{ type?: 'viewer' | 'creator' }> = () =
     if (g.includes('nagad')) return '/payment-methods/nagad.svg';
     if (g.includes('rocket')) return '/payment-methods/rocket.svg';
     if (g.includes('faucet')) return '/payment-methods/faucetpay.svg';
-    if (g.includes('usdt') || g.includes('crypto')) return '/payment-methods/crypto.svg';
+    if (g.includes('usdt') || g.includes('crypto')) return '/payment-methods/crypto.png';
     if (g.includes('payeer')) return '/payment-methods/payeer.png';
     if (g.includes('webmoney')) return '/payment-methods/webmoney.svg';
     return null;
@@ -119,8 +119,8 @@ export const TotalStatsLogView: React.FC<{ type?: 'viewer' | 'creator' }> = () =
 
   const getGatewayDisplayName = (gateway: string) => {
     const g = gateway.toLowerCase();
-    if (g.includes('faucet')) return 'FaucetPay USDT';
-    if (g.includes('crypto') || g.includes('usdt')) return 'USDT (BEP-20)';
+    if (g.includes('faucet')) return 'FaucetPay';
+    if (g.includes('crypto') || g.includes('usdt')) return 'Crypto';
     if (g.includes('bkash')) return 'bKash';
     if (g.includes('nagad')) return 'Nagad';
     if (g.includes('rocket')) return 'Rocket';

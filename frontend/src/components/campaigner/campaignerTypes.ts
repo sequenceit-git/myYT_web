@@ -200,7 +200,16 @@ export const DEFAULT_METHODS_META: Record<
   crypto: {
     logoBg: '#ffffff',
     logoMark: '₿',
-    logoUrl: '/payment-methods/crypto.svg',
+    logoUrl: '/payment-methods/crypto.png',
+    defaultRateText: 'Instant Automated Crypto • FaucetPay',
+    defaultAccountType: 'Automated Gateway (FaucetPay)',
+    defaultInstructions: 'Automated crypto checkout powered by FaucetPay. Accepts Bitcoin (BTC), Ethereum (ETH), USDT, Litecoin (LTC), Tron (TRX), Dogecoin (DOGE) and more with instant balance credit.',
+    defaultAccount: 'Automated FaucetPay Checkout',
+  },
+  usdt: {
+    logoBg: '#ffffff',
+    logoMark: '₿',
+    logoUrl: '/payment-methods/crypto.png',
     defaultRateText: 'Instant Automated Crypto • FaucetPay',
     defaultAccountType: 'Automated Gateway (FaucetPay)',
     defaultInstructions: 'Automated crypto checkout powered by FaucetPay. Accepts Bitcoin (BTC), Ethereum (ETH), USDT, Litecoin (LTC), Tron (TRX), Dogecoin (DOGE) and more with instant balance credit.',
@@ -240,10 +249,13 @@ export const buildDepositMethods = (methodsList: DepositMethod[], usdToBdt: numb
     return methodsList
       .filter((m) => m.enabled !== false)
       .map((m) => {
-        const meta = DEFAULT_METHODS_META[m.id] || {
+        const isLegacyUsdt = m.id === 'usdt' || (m.id === 'crypto' && (m.name.includes('USDT') || m.accountType?.includes('BEP-20')));
+        const id = isLegacyUsdt ? 'crypto' : m.id;
+        const name = isLegacyUsdt ? 'Crypto' : m.name;
+        const meta = DEFAULT_METHODS_META[id] || DEFAULT_METHODS_META[m.id] || {
           logoBg: '#ffffff',
-          logoMark: m.name.slice(0, 2),
-          logoUrl: '/payment-methods/crypto.svg',
+          logoMark: name.slice(0, 2),
+          logoUrl: '/payment-methods/crypto.png',
           isBDT: false,
           defaultRateText: m.accountType || 'Payment Gateway',
           defaultAccountType: m.accountType || 'Account',
@@ -251,19 +263,21 @@ export const buildDepositMethods = (methodsList: DepositMethod[], usdToBdt: numb
           defaultAccount: '',
         };
 
-        const isBDT = meta.isBDT || m.id === 'bkash' || m.id === 'nagad' || m.id === 'rocket';
+        const isBDT = meta.isBDT || id === 'bkash' || id === 'nagad' || id === 'rocket';
         const minUsd = m.minDepositUsd || 5.0;
 
         return {
-          id: m.id,
-          name: m.name,
-          type: m.type,
-          accountType: m.accountType || meta.defaultAccountType,
+          id,
+          name,
+          type: isLegacyUsdt ? 'crypto' : m.type,
+          accountType: isLegacyUsdt ? 'Automated Gateway (FaucetPay)' : (m.accountType || meta.defaultAccountType),
           accountNumber: m.accountNumber || meta.defaultAccount,
-          instructions: m.instructions || meta.defaultInstructions,
+          instructions: isLegacyUsdt
+            ? 'Automated crypto checkout powered by FaucetPay. Accepts Bitcoin (BTC), Ethereum (ETH), USDT, Litecoin (LTC), Tron (TRX), Dogecoin (DOGE) and more with instant balance credit.'
+            : (m.instructions || meta.defaultInstructions),
           logoBg: meta.logoBg,
           logoMark: meta.logoMark,
-          logoUrl: meta.logoUrl,
+          logoUrl: isLegacyUsdt ? '/payment-methods/crypto.png' : (meta.logoUrl || '/payment-methods/crypto.png'),
           rateText: isBDT
             ? `1 USD = ${usdToBdt} BDT (${m.accountType || meta.defaultAccountType})`
             : `${m.accountType || meta.defaultAccountType}`,
@@ -285,7 +299,7 @@ export const buildDepositMethods = (methodsList: DepositMethod[], usdToBdt: numb
       instructions: 'Automated crypto checkout powered by FaucetPay. Accepts Bitcoin (BTC), Ethereum (ETH), USDT, Litecoin (LTC), Tron (TRX), Dogecoin (DOGE) and more with instant balance credit.',
       logoBg: '#ffffff',
       logoMark: '₿',
-      logoUrl: '/payment-methods/crypto.svg',
+      logoUrl: '/payment-methods/crypto.png',
       rateText: 'Instant Automated Crypto • FaucetPay',
       minLimitText: 'Min: $5.00 USD',
       minDepositUsd: 5.0,

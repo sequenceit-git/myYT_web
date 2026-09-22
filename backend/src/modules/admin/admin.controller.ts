@@ -196,14 +196,16 @@ export const getSystemDepositMethods = async (): Promise<DepositMethodSetting[]>
   try {
     const setting = await Setting.findOne({ key: 'deposit_payment_methods' });
     if (setting && Array.isArray(setting.value) && setting.value.length > 0) {
-      // Migrate legacy 'usdt' id to 'crypto'
+      // Migrate legacy 'usdt' or stale 'USDT (BEP-20)' to 'Crypto'
       const sanitized = setting.value.map((m: any) => {
-        if (m.id === 'usdt') {
+        if (m.id === 'usdt' || (m.id === 'crypto' && (m.name?.includes('USDT') || m.accountType?.includes('BEP-20')))) {
           return {
             ...m,
             id: 'crypto',
             name: 'Crypto',
             accountType: 'Automated Gateway (FaucetPay)',
+            accountNumber: 'Automated Crypto Gateway',
+            instructions: 'Automated instant crypto deposit powered by FaucetPay. Accepts Bitcoin (BTC), Ethereum (ETH), USDT, Litecoin (LTC), Tron (TRX), Dogecoin (DOGE) and more with zero waiting.',
           };
         }
         return m;

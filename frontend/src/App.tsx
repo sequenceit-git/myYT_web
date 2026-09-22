@@ -467,7 +467,7 @@ export function App() {
                   { name: 'Nagad', src: '/payment-methods/nagad.svg' },
                   { name: 'Payeer', src: '/payment-methods/payeer.svg' },
                   { name: 'FaucetPay', src: '/payment-methods/faucetpay.svg' },
-                  { name: 'Crypto (USDT)', src: '/payment-methods/crypto.svg' },
+                  { name: 'Crypto', src: '/payment-methods/crypto.png' },
                   { name: 'WebMoney', src: '/payment-methods/webmoney.svg' },
                 ].map((pm) => (
                   <div

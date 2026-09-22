@@ -211,13 +211,13 @@ export const getPaymentLogo = (method: string): string => {
       return '/payment-methods/faucetpay.svg';
     case 'crypto':
     case 'usdt':
-      return '/payment-methods/crypto.svg';
+      return '/payment-methods/crypto.png';
     case 'webmoney':
       return '/payment-methods/webmoney.svg';
     case 'payeer':
       return '/payment-methods/payeer.png';
     default:
-      return '/payment-methods/crypto.svg';
+      return '/payment-methods/crypto.png';
   }
 };export const formatSecondsHuman = (sec: number): string => {
   if (sec === 0) return '0s (Immediate / No Cooldown)';

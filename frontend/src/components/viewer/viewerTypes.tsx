@@ -105,7 +105,7 @@ export const getPayoutMethods = (usdToBdt: number, dynamicMethods?: WithdrawMeth
       name: getName('crypto', 'USDT (BEP-20)'),
       logoBg: '#ffffff',
       logoMark: '₮',
-      logoUrl: '/payment-methods/crypto.svg',
+      logoUrl: '/payment-methods/crypto.png',
       inputLabel: 'USDT (BEP-20) Address',
       placeholder: '0x... (BNB Smart Chain BEP-20)',
       rateText: 'Only BEP-20 USDT Supported (BNB Smart Chain)',
