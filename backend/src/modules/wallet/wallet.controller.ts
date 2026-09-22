@@ -65,6 +65,25 @@ router.post('/deposit', requireAuth, async (req: AuthRequest, res: Response): Pr
 
     const { amount, gateway, senderAccount, transactionHash, notes, proofImage } = parsed.data;
 
+    // Verify method is enabled by administrator
+    const systemMethods = await getSystemDepositMethods();
+    const targetMethod = systemMethods.find((m) => m.id === gateway);
+    if (targetMethod && targetMethod.enabled === false) {
+      res.status(400).json({
+        success: false,
+        error: `${targetMethod.name} deposits are currently disabled by the administrator.`,
+      });
+      return;
+    }
+    const minRequired = targetMethod?.minDepositUsd || 1.0;
+    if (amount < minRequired) {
+      res.status(400).json({
+        success: false,
+        error: `Minimum deposit for ${targetMethod?.name || gateway} is $${minRequired.toFixed(2)} USD`,
+      });
+      return;
+    }
+
     // Check duplicate transaction hash to prevent duplicate manual deposits
     const existingTx = await Transaction.findOne({
       gateway: gateway as any,
@@ -115,8 +134,17 @@ router.post('/faucetpay-create-order', requireAuth, async (req: AuthRequest, res
     const { amount } = req.body;
     const numAmount = Number(amount);
 
-    if (isNaN(numAmount) || numAmount < 1.0) {
-      res.status(400).json({ success: false, error: 'Minimum crypto deposit amount is $1.00 USD' });
+    // Verify Crypto gateway is enabled by admin in system settings
+    const systemMethods = await getSystemDepositMethods();
+    const cryptoMethod = systemMethods.find((m) => m.id === 'crypto');
+    if (cryptoMethod && cryptoMethod.enabled === false) {
+      res.status(400).json({ success: false, error: 'Automatic crypto deposits are currently turned OFF by the administrator.' });
+      return;
+    }
+
+    const minRequired = cryptoMethod?.minDepositUsd || 1.0;
+    if (isNaN(numAmount) || numAmount < minRequired) {
+      res.status(400).json({ success: false, error: `Minimum crypto deposit amount is $${minRequired.toFixed(2)} USD` });
       return;
     }
 

@@ -55,6 +55,26 @@ export interface DepositMethodSetting {
 
 export const DEFAULT_DEPOSIT_METHODS: DepositMethodSetting[] = [
   {
+    id: 'crypto',
+    name: 'Crypto',
+    type: 'crypto',
+    accountType: 'Automated Gateway (FaucetPay)',
+    accountNumber: 'Automated Crypto Gateway',
+    minDepositUsd: 5.0,
+    instructions: 'Automated instant crypto deposit powered by FaucetPay. Accepts Bitcoin (BTC), Ethereum (ETH), USDT, Litecoin (LTC), Tron (TRX), Dogecoin (DOGE) and more with zero waiting.',
+    enabled: true,
+  },
+  {
+    id: 'faucetpay',
+    name: 'FaucetPay',
+    type: 'micropayment',
+    accountType: 'Email / Account',
+    accountNumber: 'admin@ytcash.pro',
+    minDepositUsd: 5.0,
+    instructions: 'Send payment via FaucetPay to this email/account and enter your FaucetPay Transaction ID below.',
+    enabled: true,
+  },
+  {
     id: 'bkash',
     name: 'bKash',
     type: 'mobile_banking',
@@ -72,16 +92,6 @@ export const DEFAULT_DEPOSIT_METHODS: DepositMethodSetting[] = [
     accountNumber: '01XXXXXXXXX',
     minDepositUsd: 5.0,
     instructions: 'Send Money (Personal) to this Nagad number. Copy the TrxID and enter below.',
-    enabled: true,
-  },
-  {
-    id: 'crypto',
-    name: 'Crypto',
-    type: 'crypto',
-    accountType: 'Automated Gateway (FaucetPay)',
-    accountNumber: 'Automated Crypto Gateway',
-    minDepositUsd: 5.0,
-    instructions: 'Automated instant crypto deposit powered by FaucetPay. Accepts Bitcoin (BTC), Ethereum (ETH), USDT, Litecoin (LTC), Tron (TRX), Dogecoin (DOGE) and more with zero waiting.',
     enabled: true,
   },
   {
@@ -186,12 +196,26 @@ export const getSystemDepositMethods = async (): Promise<DepositMethodSetting[]>
   try {
     const setting = await Setting.findOne({ key: 'deposit_payment_methods' });
     if (setting && Array.isArray(setting.value) && setting.value.length > 0) {
-      const existingIds = new Set(setting.value.map((m: any) => m.id));
-      const merged = setting.value.map((m: any) => {
+      // Migrate legacy 'usdt' id to 'crypto'
+      const sanitized = setting.value.map((m: any) => {
+        if (m.id === 'usdt') {
+          return {
+            ...m,
+            id: 'crypto',
+            name: 'Crypto',
+            accountType: 'Automated Gateway (FaucetPay)',
+          };
+        }
+        return m;
+      });
+
+      const existingIds = new Set(sanitized.map((m: any) => m.id));
+      const merged = sanitized.map((m: any) => {
         const def = DEFAULT_DEPOSIT_METHODS.find((d) => d.id === m.id) || m;
         return {
           ...def,
           ...m,
+          enabled: m.enabled !== false,
         };
       });
       for (const def of DEFAULT_DEPOSIT_METHODS) {

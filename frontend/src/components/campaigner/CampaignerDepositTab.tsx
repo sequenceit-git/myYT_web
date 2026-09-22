@@ -47,9 +47,13 @@ export const CampaignerDepositTab: React.FC<CampaignerDepositTabProps> = ({
             Current Balance: <strong className="font-mono" style={{ color: 'var(--primary-neon)' }}>${creatorBal.toFixed(2)} USD</strong>
           </span>
         </div>
-        {selectedMethod.id === 'crypto' ? (
+        {selectedMethod?.id === 'crypto' ? (
           <span className="badge-pill" style={{ fontSize: '0.74rem', padding: '4px 12px', background: '#dcfce7', color: '#15803d', border: '1px solid #86efac', fontWeight: 800 }}>
             ⚡ Automatic Deposit • FaucetPay Instant Credit
+          </span>
+        ) : selectedMethod?.id === 'faucetpay' ? (
+          <span className="badge-pill" style={{ fontSize: '0.74rem', padding: '4px 12px', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', fontWeight: 800 }}>
+            Manual Deposit • FaucetPay Transfer
           </span>
         ) : (
           <span className="badge-pill badge-neon" style={{ fontSize: '0.74rem', padding: '4px 12px' }}>
@@ -58,8 +62,18 @@ export const CampaignerDepositTab: React.FC<CampaignerDepositTabProps> = ({
         )}
       </div>
 
-      {/* INDIVIDUAL DEPOSIT METHOD CARDS */}
-      <div style={{ marginBottom: 20 }}>
+      {(!depositMethods || depositMethods.length === 0 || !selectedMethod) ? (
+        <div style={{ padding: '36px 20px', textAlign: 'center', background: '#f8fafc', borderRadius: 14, border: '1px dashed #cbd5e1', margin: '20px 0' }}>
+          <AlertCircle size={28} color="#64748b" style={{ margin: '0 auto 10px', display: 'block' }} />
+          <h4 style={{ margin: '0 0 6px', color: '#1e293b', fontSize: '1.05rem', fontWeight: 700 }}>Deposits Temporarily Paused</h4>
+          <p style={{ margin: 0, fontSize: '0.86rem', color: '#64748b' }}>
+            Deposit payment options are currently turned off by the platform administrator. Please check back shortly.
+          </p>
+        </div>
+      ) : (
+        <>
+          {/* INDIVIDUAL DEPOSIT METHOD CARDS */}
+          <div style={{ marginBottom: 20 }}>
         <label
           className="font-mono"
           style={{ fontSize: '0.82rem', color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: 10, fontWeight: 700 }}
@@ -343,11 +357,15 @@ export const CampaignerDepositTab: React.FC<CampaignerDepositTabProps> = ({
                 ? `Minimum Deposit is $${minRequiredUsd.toFixed(2)} USD`
                 : selectedMethod.id === 'crypto'
                   ? `Proceed to Instant Crypto Checkout ($${numDepositAmount.toFixed(2)} USD)`
-                  : `Proceed to Payment (${selectedMethod.isBDT ? `৳${Math.round(numDepositAmount * bdtRate).toLocaleString()} BDT` : `$${numDepositAmount.toFixed(2)} USD`})`}
+                  : selectedMethod.id === 'faucetpay'
+                    ? `Proceed to FaucetPay Manual Deposit ($${numDepositAmount.toFixed(2)} USD)`
+                    : `Proceed to Payment (${selectedMethod.isBDT ? `৳${Math.round(numDepositAmount * bdtRate).toLocaleString()} BDT` : `$${numDepositAmount.toFixed(2)} USD`})`}
           </span>
           <ArrowRight size={18} />
         </button>
       </form>
+      </>
+      )}
     </div>
   );
 };

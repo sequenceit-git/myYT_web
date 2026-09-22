@@ -141,67 +141,157 @@ export const AdminPaymentMethodsTab: React.FC<AdminPaymentMethodsTabProps> = ({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {depositMethodsConfig.map((m, idx) => {
             const logo = getPaymentLogo(m.id);
+            const isCrypto = m.id === 'crypto';
+            const isFaucetPayManual = m.id === 'faucetpay';
+            const isEnabled = m.enabled !== false;
+
             return (
               <div
                 key={m.id}
                 style={{
-                  padding: '16px 20px',
-                  background: m.enabled !== false ? '#ffffff' : '#f8fafc',
+                  padding: '18px 22px',
+                  background: isEnabled ? '#ffffff' : '#f8fafc',
                   borderRadius: 14,
-                  border: m.enabled !== false ? '1px solid #cbd5e1' : '1px dashed #cbd5e1',
-                  opacity: m.enabled !== false ? 1 : 0.7,
-                  transition: 'all 0.15s ease',
+                  border: isEnabled ? (isCrypto ? '1.5px solid #10b981' : '1px solid #cbd5e1') : '1px dashed #cbd5e1',
+                  opacity: isEnabled ? 1 : 0.65,
+                  transition: 'all 0.18s ease',
+                  boxShadow: isEnabled && isCrypto ? '0 4px 16px rgba(16, 185, 129, 0.08)' : 'none',
                 }}
               >
                 {/* Method Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div
                       style={{
-                        width: 36,
-                        height: 36,
-                        borderRadius: 8,
+                        width: 40,
+                        height: 40,
+                        borderRadius: 10,
                         background: '#ffffff',
                         border: '1px solid #e2e8f0',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        padding: 4,
+                        padding: 5,
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
                       }}
                     >
                       <img src={logo} alt={m.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                     </div>
                     <div>
-                      <span style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.96rem' }}>
-                        {m.name}
-                      </span>
-                      <span className="font-mono" style={{ fontSize: '0.74rem', color: '#64748b', marginLeft: 8 }}>
-                        ({m.id})
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <span style={{ fontWeight: 800, color: '#0f172a', fontSize: '1.02rem' }}>
+                          {m.name}
+                        </span>
+                        {isCrypto && (
+                          <span
+                            style={{
+                              fontSize: '0.72rem',
+                              fontWeight: 800,
+                              padding: '2px 8px',
+                              borderRadius: 6,
+                              background: '#ecfdf5',
+                              color: '#059669',
+                              border: '1px solid #a7f3d0',
+                            }}
+                          >
+                            ⚡ ONLY AUTOMATIC GATEWAY (FaucetPay Merchant API)
+                          </span>
+                        )}
+                        {isFaucetPayManual && (
+                          <span
+                            style={{
+                              fontSize: '0.72rem',
+                              fontWeight: 800,
+                              padding: '2px 8px',
+                              borderRadius: 6,
+                              background: '#eff6ff',
+                              color: '#2563eb',
+                              border: '1px solid #bfdbfe',
+                            }}
+                          >
+                            MANUAL FAUCETPAY TRANSFER
+                          </span>
+                        )}
+                        {!isCrypto && !isFaucetPayManual && (
+                          <span
+                            style={{
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              padding: '2px 8px',
+                              borderRadius: 6,
+                              background: '#f1f5f9',
+                              color: '#475569',
+                              border: '1px solid #e2e8f0',
+                            }}
+                          >
+                            MANUAL GATEWAY
+                          </span>
+                        )}
+                      </div>
+                      <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#64748b' }}>
+                        {isCrypto
+                          ? 'Automated instant checkout via FaucetPay. Users pay with BTC, ETH, USDT, LTC, DOGE, TRX, SOL.'
+                          : isFaucetPayManual
+                            ? 'Advertisers manually transfer to your FaucetPay account and enter TrxID for admin review.'
+                            : `Manual deposit gateway with transaction ID verification.`}
+                      </p>
                     </div>
                   </div>
 
-                  {/* Enable/Disable Toggle Switch */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const updated = [...depositMethodsConfig];
-                      updated[idx] = { ...m, enabled: m.enabled === false ? true : false };
-                      setDepositMethodsConfig(updated);
-                    }}
-                    className="btn btn-ghost"
-                    style={{
-                      padding: '5px 12px',
-                      fontSize: '0.78rem',
-                      borderRadius: 8,
-                      background: m.enabled !== false ? '#f0fdf4' : '#f1f5f9',
-                      color: m.enabled !== false ? '#15803d' : '#64748b',
-                      borderColor: m.enabled !== false ? '#86efac' : '#cbd5e1',
-                      fontWeight: 700,
-                    }}
-                  >
-                    {m.enabled !== false ? '● Method Enabled' : '○ Disabled'}
-                  </button>
+                  {/* Modern ON / OFF Switch Toggle */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ textAlign: 'right' }}>
+                      <span
+                        style={{
+                          fontSize: '0.8rem',
+                          fontWeight: 800,
+                          color: isEnabled ? '#15803d' : '#64748b',
+                          display: 'block',
+                          lineHeight: 1.1,
+                        }}
+                      >
+                        {isEnabled ? '● ACTIVE (ON)' : '○ DISABLED (OFF)'}
+                      </span>
+                      <span style={{ fontSize: '0.7rem', color: isEnabled ? '#16a34a' : '#94a3b8' }}>
+                        {isEnabled ? 'Visible to advertisers' : 'Hidden from advertisers'}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = [...depositMethodsConfig];
+                        updated[idx] = { ...m, enabled: !isEnabled };
+                        setDepositMethodsConfig(updated);
+                      }}
+                      title={isEnabled ? `Turn OFF ${m.name}` : `Turn ON ${m.name}`}
+                      style={{
+                        width: 50,
+                        height: 28,
+                        borderRadius: 14,
+                        background: isEnabled ? '#10b981' : '#cbd5e1',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: 3,
+                        display: 'flex',
+                        alignItems: 'center',
+                        transition: 'background 0.2s ease',
+                        outline: 'none',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 22,
+                          height: 22,
+                          borderRadius: '50%',
+                          background: '#ffffff',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.25)',
+                          transform: isEnabled ? 'translateX(22px)' : 'translateX(0px)',
+                          transition: 'transform 0.2s ease',
+                        }}
+                      />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Inputs: Receiver Account, Account Type, Min Deposit, Instructions */}
@@ -209,7 +299,11 @@ export const AdminPaymentMethodsTab: React.FC<AdminPaymentMethodsTabProps> = ({
                   {/* Account Number / Wallet Address */}
                   <div style={{ gridColumn: 'span 2' }}>
                     <label className="font-mono" style={{ fontSize: '0.76rem', color: '#475569', display: 'block', marginBottom: 4, fontWeight: 700 }}>
-                      ADMIN RECEIVER ACCOUNT NUMBER / WALLET ADDRESS:
+                      {isCrypto
+                        ? 'AUTOMATED CHECKOUT REFERENCE (Backend .env Active):'
+                        : isFaucetPayManual
+                          ? 'YOUR FAUCETPAY RECEIVER EMAIL / USERNAME:'
+                          : 'ADMIN RECEIVER ACCOUNT NUMBER / WALLET ADDRESS:'}
                     </label>
                     <input
                       type="text"
@@ -219,10 +313,21 @@ export const AdminPaymentMethodsTab: React.FC<AdminPaymentMethodsTabProps> = ({
                         updated[idx] = { ...m, accountNumber: e.target.value };
                         setDepositMethodsConfig(updated);
                       }}
-                      placeholder="e.g. 017XXXXXXXX or 0x0000000000000000000000000000000000000000"
+                      placeholder={
+                        isCrypto
+                          ? 'Automated FaucetPay Merchant (credentials set in backend .env)'
+                          : isFaucetPayManual
+                            ? 'e.g. admin@ytcash.pro or your FaucetPay username'
+                            : 'e.g. 017XXXXXXXX or 0x0000000000000000000000000000000000000000'
+                      }
                       className="input-field font-mono"
                       style={{ padding: '8px 12px', fontSize: '0.88rem', fontWeight: 600 }}
                     />
+                    {isCrypto && (
+                      <span style={{ fontSize: '0.73rem', color: '#059669', display: 'block', marginTop: 3 }}>
+                        ✓ Automated FaucetPay Merchant API handles user payments directly with instant balance credit.
+                      </span>
+                    )}
                   </div>
 
                   {/* Account Type */}
@@ -238,7 +343,7 @@ export const AdminPaymentMethodsTab: React.FC<AdminPaymentMethodsTabProps> = ({
                         updated[idx] = { ...m, accountType: e.target.value };
                         setDepositMethodsConfig(updated);
                       }}
-                      placeholder="e.g. Personal MFS, BEP-20 (BNB Chain), WMZ Purse"
+                      placeholder="e.g. Personal MFS, Automated Gateway, WMZ Purse"
                       className="input-field"
                       style={{ padding: '8px 12px', fontSize: '0.86rem' }}
                     />
@@ -435,27 +540,60 @@ export const AdminPaymentMethodsTab: React.FC<AdminPaymentMethodsTabProps> = ({
                     </div>
                   </div>
 
-                  {/* Enable/Disable Toggle Switch */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const updated = [...withdrawMethodsConfig];
-                      updated[idx] = { ...m, enabled: m.enabled === false ? true : false };
-                      setWithdrawMethodsConfig(updated);
-                    }}
-                    className="btn btn-ghost"
-                    style={{
-                      padding: '5px 12px',
-                      fontSize: '0.78rem',
-                      borderRadius: 8,
-                      background: m.enabled !== false ? '#f0fdf4' : '#f1f5f9',
-                      color: m.enabled !== false ? '#15803d' : '#64748b',
-                      borderColor: m.enabled !== false ? '#86efac' : '#cbd5e1',
-                      fontWeight: 700,
-                    }}
-                  >
-                    {m.enabled !== false ? '● Method Enabled' : '○ Disabled'}
-                  </button>
+                  {/* Modern ON / OFF Switch Toggle */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ textAlign: 'right' }}>
+                      <span
+                        style={{
+                          fontSize: '0.8rem',
+                          fontWeight: 800,
+                          color: m.enabled !== false ? '#15803d' : '#64748b',
+                          display: 'block',
+                          lineHeight: 1.1,
+                        }}
+                      >
+                        {m.enabled !== false ? '● ACTIVE (ON)' : '○ DISABLED (OFF)'}
+                      </span>
+                      <span style={{ fontSize: '0.7rem', color: m.enabled !== false ? '#16a34a' : '#94a3b8' }}>
+                        {m.enabled !== false ? 'Enabled for viewers' : 'Disabled for viewers'}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = [...withdrawMethodsConfig];
+                        updated[idx] = { ...m, enabled: m.enabled === false ? true : false };
+                        setWithdrawMethodsConfig(updated);
+                      }}
+                      title={m.enabled !== false ? `Turn OFF ${m.name}` : `Turn ON ${m.name}`}
+                      style={{
+                        width: 50,
+                        height: 28,
+                        borderRadius: 14,
+                        background: m.enabled !== false ? '#0284c7' : '#cbd5e1',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: 3,
+                        display: 'flex',
+                        alignItems: 'center',
+                        transition: 'background 0.2s ease',
+                        outline: 'none',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 22,
+                          height: 22,
+                          borderRadius: '50%',
+                          background: '#ffffff',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.25)',
+                          transform: m.enabled !== false ? 'translateX(22px)' : 'translateX(0px)',
+                          transition: 'transform 0.2s ease',
+                        }}
+                      />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Inputs: Min Withdraw USD, Method Name, Account Type, Instructions */}

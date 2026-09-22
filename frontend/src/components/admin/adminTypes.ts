@@ -81,6 +81,16 @@ export const DEFAULT_ADMIN_DEPOSIT_METHODS: DepositMethod[] = [
     enabled: true,
   },
   {
+    id: 'faucetpay',
+    name: 'FaucetPay',
+    type: 'faucetpay',
+    accountType: 'Email / Account',
+    accountNumber: 'admin@ytcash.pro',
+    minDepositUsd: 5.0,
+    instructions: 'Send payment via FaucetPay to this email/account and enter your FaucetPay Transaction ID below.',
+    enabled: true,
+  },
+  {
     id: 'bkash',
     name: 'bKash',
     type: 'bkash',

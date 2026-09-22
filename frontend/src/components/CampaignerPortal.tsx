@@ -151,6 +151,10 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
     const res = await apiRequest<DepositMethod[]>('/wallet/deposit-methods');
     if (res.success && res.data) {
       setDepositMethodsList(res.data);
+      const enabledList = res.data.filter((m) => m.enabled !== false);
+      if (enabledList.length > 0 && !enabledList.some((m) => m.id === depositGateway)) {
+        setDepositGateway(enabledList[0].id);
+      }
     }
   };
 
