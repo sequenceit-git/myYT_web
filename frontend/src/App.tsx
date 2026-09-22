@@ -14,6 +14,7 @@ import { DownloadPage } from './components/DownloadPage';
 import { AuthModal } from './components/AuthModal';
 import { TelegramSupportWidget } from './components/TelegramSupportWidget';
 import { TermsPage } from './components/TermsPage';
+import { LanguageTranslator } from './components/LanguageTranslator';
 import { User } from './types';
 import { apiRequest, clearAuthToken, setAuthToken } from './api';
 
@@ -79,15 +80,40 @@ export function App() {
     setAuthModalOpen(true);
   };
 
-  const handleAuthSuccess = (authenticatedUser: User, token: string) => {
+  const handleAuthSuccess = async (authenticatedUser: User, token: string) => {
     if (token) {
       setAuthToken(token);
     }
-    setUser(authenticatedUser);
     setAuthModalOpen(false);
-    if (authenticatedUser.role === 'campaigner') {
+
+    let finalUser = authenticatedUser;
+    // If auth was initiated for campaigner role (e.g. on /buy-views page or creator CTA),
+    // ensure active user profile is switched to campaigner
+    if (authRole === 'campaigner' && authenticatedUser.role !== 'admin' && authenticatedUser.role !== 'campaigner') {
+      try {
+        const switchRes = await apiRequest<{ user: User; token: string }>('/auth/switch-profile', {
+          method: 'POST',
+          body: JSON.stringify({ targetRole: 'campaigner' }),
+        });
+        if (switchRes.success && switchRes.data?.user) {
+          finalUser = switchRes.data.user;
+          if (switchRes.data.token) {
+            setAuthToken(switchRes.data.token);
+          }
+        }
+      } catch {}
+    }
+
+    setUser(finalUser);
+
+    // If on Buy Views page, stay on Buy Views with all filled form data preserved
+    if (location.pathname === '/buy-views') {
+      return;
+    }
+
+    if (finalUser.role === 'campaigner' || authRole === 'campaigner') {
       navigate('/creator');
-    } else if (authenticatedUser.role === 'admin') {
+    } else if (finalUser.role === 'admin') {
       navigate('/admin');
     } else {
       navigate('/viewer');
@@ -537,9 +563,12 @@ export function App() {
               </div>
             </div>
 
-            <span className="font-mono" style={{ fontSize: '0.72rem', color: '#0284c7', fontWeight: 700 }}>
-              BUILT FOR HIGH CONCURRENCY & ZERO BANDWIDTH WASTE.
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <LanguageTranslator align="right" />
+              <span className="font-mono" style={{ fontSize: '0.72rem', color: '#0284c7', fontWeight: 700 }}>
+                BUILT FOR HIGH CONCURRENCY & ZERO BANDWIDTH WASTE.
+              </span>
+            </div>
           </div>
         </footer>
       )}

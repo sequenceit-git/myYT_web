@@ -69,9 +69,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   isOpen,
   onClose,
   initialMode = 'signin',
+  initialRole = 'viewer',
   onAuthSuccess,
 }) => {
   const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>(initialMode);
+  const [role, setRole] = useState<'viewer' | 'campaigner'>(initialRole);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -87,6 +89,32 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  // Registration OTP States
+  const [signupStep, setSignupStep] = useState<'form' | 'otp'>('form');
+  const [registerOtp, setRegisterOtp] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  // Sync state when modal opens or props change
+  React.useEffect(() => {
+    if (isOpen) {
+      setMode(initialMode);
+      setRole(initialRole || 'viewer');
+      setSignupStep('form');
+      setRegisterOtp('');
+      setError(null);
+      setSuccessMsg(null);
+    }
+  }, [isOpen, initialMode, initialRole]);
+
+  // Resend cooldown timer
+  React.useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
 
   // Forgot Password Flow States
   const [forgotStep, setForgotStep] = useState<'request' | 'reset'>('request');
@@ -138,7 +166,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     avatar: profile.picture,
                     googleId: profile.sub,
                     accessToken: tokenResponse.access_token,
-                    role: 'viewer',
+                    role: role || initialRole || 'viewer',
                     referralCode: referralCode ? referralCode.trim().toUpperCase() : undefined,
                   }),
                 });
@@ -183,44 +211,150 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     performTokenAuth();
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Step 1 of Registration: Validate and send 6-digit OTP to user's email
+  const handleRequestSignupOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccessMsg(null);
 
-    if (mode === 'signup') {
-      if (password.length < 8) {
-        setError('Password must be at least 8 characters long.');
-        return;
-      }
-      if (!/[A-Za-z]/.test(password)) {
-        setError('Password must contain at least one letter (a-z or A-Z).');
-        return;
-      }
-      if (!/[0-9]/.test(password)) {
-        setError('Password must contain at least one number (0-9).');
-        return;
-      }
+    if (!name.trim() || name.trim().length < 2) {
+      setError('Please enter your full name (at least 2 characters).');
+      return;
+    }
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters long.');
+      return;
+    }
+    if (!/[A-Za-z]/.test(password)) {
+      setError('Password must contain at least one letter (a-z or A-Z).');
+      return;
+    }
+    if (!/[0-9]/.test(password)) {
+      setError('Password must contain at least one number (0-9).');
+      return;
     }
 
     setLoading(true);
 
-    const endpoint = mode === 'signup' ? '/auth/register' : '/auth/login';
-    const payload =
-      mode === 'signup'
-        ? {
-            email,
-            password,
-            name,
-            role: 'viewer',
-            referralCode: referralCode ? referralCode.trim().toUpperCase() : undefined,
-          }
-        : { email, password };
+    const activeRole = role || initialRole || 'viewer';
+    try {
+      const res = await apiRequest<{ message: string; otp?: string; emailSent?: boolean }>('/auth/register-otp', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: email.trim(),
+          name: name.trim(),
+          password,
+          role: activeRole,
+          referralCode: referralCode ? referralCode.trim().toUpperCase() : undefined,
+        }),
+      });
+
+      if (res.success) {
+        setSuccessMsg(
+          res.data?.emailSent
+            ? `A 6-digit verification code has been sent to ${email.trim()}!`
+            : res.data?.message || 'Verification code sent!'
+        );
+        if (res.data?.otp) {
+          setRegisterOtp(res.data.otp);
+        }
+        setSignupStep('otp');
+        setResendCooldown(45);
+      } else {
+        setError(res.error || 'Failed to send verification code. Please check your email.');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Error sending verification code. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Step 2 of Registration: Verify OTP code & complete account creation
+  const handleVerifySignupOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccessMsg(null);
+
+    if (!registerOtp || registerOtp.trim().length !== 6) {
+      setError('Please enter the 6-digit verification code.');
+      return;
+    }
+
+    setLoading(true);
 
     try {
-      const res = await apiRequest<{ token: string; user: User }>(endpoint, {
+      const res = await apiRequest<{ token: string; user: User }>('/auth/verify-register-otp', {
         method: 'POST',
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          email: email.trim(),
+          otp: registerOtp.trim(),
+        }),
+      });
+
+      if (res.success && res.data) {
+        if (res.data.token) {
+          setAuthToken(res.data.token);
+        }
+        if (onAuthSuccess) onAuthSuccess(res.data.user, res.data.token);
+        onClose();
+      } else {
+        setError(res.error || 'Invalid or expired verification code.');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Error verifying code. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Resend Registration OTP
+  const handleResendSignupOtp = async () => {
+    if (resendCooldown > 0) return;
+    setError(null);
+    setSuccessMsg(null);
+    setLoading(true);
+
+    try {
+      const res = await apiRequest<{ message: string; otp?: string; emailSent?: boolean }>('/auth/resend-register-otp', {
+        method: 'POST',
+        body: JSON.stringify({ email: email.trim() }),
+      });
+
+      if (res.success) {
+        setSuccessMsg('A new 6-digit verification code has been sent to your email.');
+        if (res.data?.otp) {
+          setRegisterOtp(res.data.otp);
+        }
+        setResendCooldown(45);
+      } else {
+        setError(res.error || 'Failed to resend code.');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Error resending verification code.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Sign In Handler
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccessMsg(null);
+    setLoading(true);
+
+    const activeRole = role || initialRole || 'viewer';
+
+    try {
+      const res = await apiRequest<{ token: string; user: User }>('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+          role: activeRole,
+        }),
       });
 
       if (res.success && res.data) {
@@ -780,205 +914,314 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 SIGN IN / SIGN UP FLOW
                 ========================================================================= */
             <>
-              {/* GOOGLE AUTH BUTTON */}
-              <button
-                type="button"
-                disabled={loading}
-                onClick={handleGoogleAuth}
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 12,
-                  padding: '13px 18px',
-                  background: '#ffffff',
-                  color: '#0f172a',
-                  borderRadius: 14,
-                  fontWeight: 650,
-                  fontSize: '0.9rem',
-                  cursor: 'pointer',
-                  border: '1px solid #cbd5e1',
-                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#ffffff')}
-              >
-                {/* Google official multi-color SVG icon */}
-                <svg width="18" height="18" viewBox="0 0 24 24">
-                  <path
-                    fill="#4285F4"
-                    d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.02h3.87c2.26-2.09 3.675-5.17 3.675-9.12z"
-                  />
-                  <path
-                    fill="#34A853"
-                    d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.87-3.02c-1.08.72-2.45 1.16-4.06 1.16-3.13 0-5.78-2.11-6.73-4.96H1.28v3.12C3.26 21.36 7.33 24 12 24z"
-                  />
-                  <path
-                    fill="#FBBC05"
-                    d="M5.27 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.61H1.28C.46 8.23 0 10.06 0 12s.46 3.77 1.28 5.39l3.99-3.12z"
-                  />
-                  <path
-                    fill="#EA4335"
-                    d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.28 6.61l3.99 3.12c.95-2.85 3.6-4.98 6.73-4.98z"
-                  />
-                </svg>
-                <span>{mode === 'signup' ? 'Sign up with Google' : 'Continue with Google'}</span>
-              </button>
+              {mode === 'signup' && signupStep === 'otp' ? (
+                /* OTP Verification Step for Registration */
+                <form onSubmit={handleVerifySignupOtp} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div style={{ textAlign: 'center', marginBottom: 2 }}>
+                    <div style={{ width: 44, height: 44, borderRadius: 14, background: '#e0f2fe', color: 'var(--primary-neon)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
+                      <ShieldCheck size={24} />
+                    </div>
+                    <h4 className="font-display" style={{ fontSize: '1.05rem', color: '#0f172a', margin: '0 0 4px' }}>
+                      Enter Verification Code
+                    </h4>
+                    <p style={{ fontSize: '0.78rem', color: 'var(--on-surface-variant)', lineHeight: 1.4, margin: 0 }}>
+                      We've sent a 6-digit code to <strong style={{ color: '#0f172a' }}>{email}</strong>. Enter it below to activate your account.
+                    </p>
+                  </div>
 
-              {/* Divider */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '20px 0' }}>
-                <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
-                <span className="font-mono" style={{ fontSize: '0.72rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase' }}>
-                  OR WITH EMAIL
-                </span>
-                <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
-              </div>
-
-              {/* Form */}
-              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                {mode === 'signup' && (
                   <div>
                     <label className="font-mono" style={{ fontSize: '0.76rem', color: 'var(--on-surface-variant)', display: 'block', marginBottom: 6 }}>
-                      Full Name
+                      6-Digit Account OTP
                     </label>
                     <div style={{ position: 'relative' }}>
                       <input
                         type="text"
                         required
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder="e.g. John Doe"
-                        className="input-field"
-                        style={{ padding: '11px 14px 11px 40px', fontSize: '0.85rem', borderRadius: 12 }}
+                        value={registerOtp}
+                        onChange={(e) => setRegisterOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="e.g. 583921"
+                        maxLength={6}
+                        autoFocus
+                        className="input-field font-mono"
+                        style={{
+                          padding: '12px 14px 12px 42px',
+                          fontSize: '1.15rem',
+                          borderRadius: 12,
+                          letterSpacing: '4px',
+                          fontWeight: 800,
+                          textAlign: 'center',
+                          color: '#0284c7',
+                          border: '1.5px solid rgba(14, 165, 233, 0.4)',
+                        }}
                       />
-                      <UserIcon size={16} color="var(--on-surface-variant)" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
+                      <KeyRound size={18} color="var(--primary-neon)" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
                     </div>
                   </div>
-                )}
 
-                <div>
-                  <label className="font-mono" style={{ fontSize: '0.76rem', color: 'var(--on-surface-variant)', display: 'block', marginBottom: 6 }}>
-                    Email Address
-                  </label>
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      type="email"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="name@example.com"
-                      className="input-field"
-                      style={{ padding: '11px 14px 11px 40px', fontSize: '0.85rem', borderRadius: 12 }}
-                    />
-                    <Mail size={16} color="var(--on-surface-variant)" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
-                  </div>
-                </div>
-
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                    <label className="font-mono" style={{ fontSize: '0.76rem', color: 'var(--on-surface-variant)' }}>
-                      Password
-                    </label>
-                    {mode === 'signin' && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setMode('forgot');
-                          setError(null);
-                          setSuccessMsg(null);
-                        }}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          padding: 0,
-                          fontSize: '0.74rem',
-                          color: 'var(--primary-neon)',
-                          cursor: 'pointer',
-                          fontWeight: 700,
-                        }}
-                      >
-                        Forgot Password?
-                      </button>
+                  <button
+                    type="submit"
+                    disabled={loading || registerOtp.trim().length !== 6}
+                    className="btn btn-neon glow-neon"
+                    style={{
+                      width: '100%',
+                      padding: '13px',
+                      marginTop: 6,
+                      fontSize: '0.85rem',
+                      borderRadius: 14,
+                      fontWeight: 750,
+                      letterSpacing: '0.5px',
+                    }}
+                  >
+                    {loading ? (
+                      <span>Verifying Code...</span>
+                    ) : (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
+                        <span>VERIFY & COMPLETE SIGNUP</span>
+                        <Check size={16} />
+                      </span>
                     )}
-                  </div>
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="input-field"
-                      style={{ padding: '11px 40px 11px 40px', fontSize: '0.85rem', borderRadius: 12 }}
-                    />
-                    <Lock size={16} color="var(--on-surface-variant)" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
+                  </button>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
                     <button
                       type="button"
-                      onClick={() => setShowPassword(!showPassword)}
+                      onClick={() => {
+                        setSignupStep('form');
+                        setError(null);
+                        setSuccessMsg(null);
+                      }}
                       style={{
-                        position: 'absolute',
-                        right: 14,
-                        top: '50%',
-                        transform: 'translateY(-50%)',
                         background: 'none',
                         border: 'none',
+                        color: '#64748b',
+                        fontSize: '0.78rem',
                         cursor: 'pointer',
-                        color: 'var(--on-surface-variant)',
                       }}
                     >
-                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      ← Edit Details
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={loading || resendCooldown > 0}
+                      onClick={handleResendSignupOtp}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: resendCooldown > 0 ? '#94a3b8' : 'var(--primary-neon)',
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
+                        cursor: resendCooldown > 0 ? 'default' : 'pointer',
+                      }}
+                    >
+                      {resendCooldown > 0 ? `Resend Code (${resendCooldown}s)` : 'Resend Code'}
                     </button>
                   </div>
-                  {mode === 'signup' && (
-                    <PasswordRequirementsChecklist value={password} />
-                  )}
-                </div>
-
-                {mode === 'signup' && (
-                  <div>
-                    <label className="font-mono" style={{ fontSize: '0.76rem', color: 'var(--on-surface-variant)', display: 'block', marginBottom: 6 }}>
-                      Referral Code (Optional)
-                    </label>
-                    <div style={{ position: 'relative' }}>
-                      <input
-                        type="text"
-                        value={referralCode}
-                        onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
-                        placeholder="e.g. MY82X9KL"
-                        className="input-field font-mono"
-                        style={{ padding: '11px 14px 11px 40px', fontSize: '0.85rem', borderRadius: 12, letterSpacing: '0.05em', textTransform: 'uppercase' }}
+                </form>
+              ) : (
+                /* Registration Step 1 / Login Form */
+                <>
+                  {/* GOOGLE AUTH BUTTON */}
+                  <button
+                    type="button"
+                    disabled={loading}
+                    onClick={handleGoogleAuth}
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 12,
+                      padding: '13px 18px',
+                      background: '#ffffff',
+                      color: '#0f172a',
+                      borderRadius: 14,
+                      fontWeight: 650,
+                      fontSize: '0.9rem',
+                      cursor: 'pointer',
+                      border: '1px solid #cbd5e1',
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+                      transition: 'all 0.2s ease',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#ffffff')}
+                  >
+                    {/* Google official multi-color SVG icon */}
+                    <svg width="18" height="18" viewBox="0 0 24 24">
+                      <path
+                        fill="#4285F4"
+                        d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.02h3.87c2.26-2.09 3.675-5.17 3.675-9.12z"
                       />
-                      <Gift size={16} color="var(--primary-neon)" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
-                    </div>
-                  </div>
-                )}
+                      <path
+                        fill="#34A853"
+                        d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.87-3.02c-1.08.72-2.45 1.16-4.06 1.16-3.13 0-5.78-2.11-6.73-4.96H1.28v3.12C3.26 21.36 7.33 24 12 24z"
+                      />
+                      <path
+                        fill="#FBBC05"
+                        d="M5.27 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.61H1.28C.46 8.23 0 10.06 0 12s.46 3.77 1.28 5.39l3.99-3.12z"
+                      />
+                      <path
+                        fill="#EA4335"
+                        d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.28 6.61l3.99 3.12c.95-2.85 3.6-4.98 6.73-4.98z"
+                      />
+                    </svg>
+                    <span>{mode === 'signup' ? 'Sign up with Google' : 'Continue with Google'}</span>
+                  </button>
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="btn btn-neon glow-neon"
-                  style={{
-                    width: '100%',
-                    padding: '13px',
-                    marginTop: 6,
-                    fontSize: '0.85rem',
-                    borderRadius: 14,
-                    fontWeight: 750,
-                    letterSpacing: '0.5px',
-                  }}
-                >
-                  {loading ? (
-                    <span>Processing...</span>
-                  ) : (
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
-                      {mode === 'signup' ? 'CREATE FREE ACCOUNT' : 'SIGN IN TO ACCOUNT'}
-                      <ArrowRight size={16} />
+                  {/* Divider */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '20px 0' }}>
+                    <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+                    <span className="font-mono" style={{ fontSize: '0.72rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase' }}>
+                      OR WITH EMAIL
                     </span>
-                  )}
-                </button>
-              </form>
+                    <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+                  </div>
+
+                  {/* Form */}
+                  <form onSubmit={mode === 'signup' ? handleRequestSignupOtp : handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    {mode === 'signup' && (
+                      <div>
+                        <label className="font-mono" style={{ fontSize: '0.76rem', color: 'var(--on-surface-variant)', display: 'block', marginBottom: 6 }}>
+                          Full Name
+                        </label>
+                        <div style={{ position: 'relative' }}>
+                          <input
+                            type="text"
+                            required
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            placeholder="e.g. John Doe"
+                            className="input-field"
+                            style={{ padding: '11px 14px 11px 40px', fontSize: '0.85rem', borderRadius: 12 }}
+                          />
+                          <UserIcon size={16} color="var(--on-surface-variant)" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="font-mono" style={{ fontSize: '0.76rem', color: 'var(--on-surface-variant)', display: 'block', marginBottom: 6 }}>
+                        Email Address
+                      </label>
+                      <div style={{ position: 'relative' }}>
+                        <input
+                          type="email"
+                          required
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="name@example.com"
+                          className="input-field"
+                          style={{ padding: '11px 14px 11px 40px', fontSize: '0.85rem', borderRadius: 12 }}
+                        />
+                        <Mail size={16} color="var(--on-surface-variant)" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
+                      </div>
+                    </div>
+
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <label className="font-mono" style={{ fontSize: '0.76rem', color: 'var(--on-surface-variant)' }}>
+                          Password
+                        </label>
+                        {mode === 'signin' && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMode('forgot');
+                              setError(null);
+                              setSuccessMsg(null);
+                            }}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              padding: 0,
+                              fontSize: '0.74rem',
+                              color: 'var(--primary-neon)',
+                              cursor: 'pointer',
+                              fontWeight: 700,
+                            }}
+                          >
+                            Forgot Password?
+                          </button>
+                        )}
+                      </div>
+                      <div style={{ position: 'relative' }}>
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          required
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="••••••••"
+                          className="input-field"
+                          style={{ padding: '11px 40px 11px 40px', fontSize: '0.85rem', borderRadius: 12 }}
+                        />
+                        <Lock size={16} color="var(--on-surface-variant)" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          style={{
+                            position: 'absolute',
+                            right: 14,
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: 'var(--on-surface-variant)',
+                          }}
+                        >
+                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                      {mode === 'signup' && (
+                        <PasswordRequirementsChecklist value={password} />
+                      )}
+                    </div>
+
+                    {mode === 'signup' && (
+                      <div>
+                        <label className="font-mono" style={{ fontSize: '0.76rem', color: 'var(--on-surface-variant)', display: 'block', marginBottom: 6 }}>
+                          Referral Code (Optional)
+                        </label>
+                        <div style={{ position: 'relative' }}>
+                          <input
+                            type="text"
+                            value={referralCode}
+                            onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                            placeholder="e.g. MY82X9KL"
+                            className="input-field font-mono"
+                            style={{ padding: '11px 14px 11px 40px', fontSize: '0.85rem', borderRadius: 12, letterSpacing: '0.05em', textTransform: 'uppercase' }}
+                          />
+                          <Gift size={16} color="var(--primary-neon)" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
+                        </div>
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="btn btn-neon glow-neon"
+                      style={{
+                        width: '100%',
+                        padding: '13px',
+                        marginTop: 6,
+                        fontSize: '0.85rem',
+                        borderRadius: 14,
+                        fontWeight: 750,
+                        letterSpacing: '0.5px',
+                      }}
+                    >
+                      {loading ? (
+                        <span>Processing...</span>
+                      ) : (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
+                          {mode === 'signup' ? 'CONTINUE & GET VERIFICATION CODE' : 'SIGN IN TO ACCOUNT'}
+                          <ArrowRight size={16} />
+                        </span>
+                      )}
+                    </button>
+                  </form>
+                </>
+              )}
             </>
           )}
 

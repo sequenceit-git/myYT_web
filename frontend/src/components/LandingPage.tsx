@@ -53,8 +53,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       a: 'No, absolutely not. All views are played directly inside the official YouTube embedded player by real active users. There are no headless bots or artificial proxies. Every view registers as genuine high-retention engagement on YouTube Studio.',
     },
     {
-      q: 'What is the 1-Hour Anti-Repeat Cooldown rule?',
-      a: 'To guarantee organic audience diversity and protect channel metrics, our server assigns each YouTube video to a specific viewer only once per hour. This guarantees creators receive unique views across different users.',
+      q: 'What is the Anti-Repeat Cooldown rule?',
+      a: 'To guarantee organic audience diversity and protect channel metrics, our server assigns each YouTube video to a specific viewer with cooldown protection. This guarantees creators receive unique views across different users.',
     },
     {
       q: 'Can I use both my mobile phone and computer?',
@@ -936,9 +936,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <div style={{ width: 38, height: 38, borderRadius: 10, background: '#e0f2fe', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary-neon)' }}>
               <Clock size={18} />
             </div>
-            <h3 style={{ fontSize: '0.98rem', color: '#0f172a', fontWeight: 600 }}>1-Hour Cooldown Protection</h3>
+            <h3 style={{ fontSize: '0.98rem', color: '#0f172a', fontWeight: 600 }}>Cooldown Protection</h3>
             <p style={{ color: 'var(--on-surface-variant)', fontSize: '0.8rem', lineHeight: 1.55 }}>
-              The system strictly enforces an automated 1-hour cooldown per video per user, guaranteeing that creators get fresh, unique viewers.
+              The system strictly enforces an automated cooldown per video per user, guaranteeing that creators get fresh, unique viewers.
             </p>
           </div>
 
@@ -949,16 +949,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <h3 style={{ fontSize: '0.98rem', color: '#0f172a', fontWeight: 600 }}>Server-Authoritative Validation</h3>
             <p style={{ color: 'var(--on-surface-variant)', fontSize: '0.8rem', lineHeight: 1.55 }}>
               View duration is strictly verified on the backend Redis queue. Fast-forwarding or client timer tampering is automatically rejected.
-            </p>
-          </div>
-
-          <div className="glass-card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 10, borderRadius: 16 }}>
-            <div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(2, 132, 199, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0284c7' }}>
-              <Zap size={18} />
-            </div>
-            <h3 style={{ fontSize: '0.98rem', color: '#0f172a', fontWeight: 600 }}>4,000–5,000 Concurrency Engine</h3>
-            <p style={{ color: 'var(--on-surface-variant)', fontSize: '0.8rem', lineHeight: 1.55 }}>
-              Engineered with distributed in-memory Redis queues and sub-millisecond task dispatching to handle thousands of concurrent watchers smoothly.
             </p>
           </div>
 

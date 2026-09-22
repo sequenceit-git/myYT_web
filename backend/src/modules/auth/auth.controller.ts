@@ -6,7 +6,8 @@ import { User } from '../../models/User.js';
 import { Transaction } from '../../models/Transaction.js';
 import { config } from '../../config/index.js';
 import { requireAuth, AuthRequest } from '../../middleware/auth.middleware.js';
-import { sendPasswordResetEmail } from '../../services/email.service.js';
+import { sendPasswordResetEmail, sendRegistrationOtpEmail } from '../../services/email.service.js';
+import { cacheService } from '../../services/cache.service.js';
 
 const router = Router();
 
@@ -167,6 +168,7 @@ const registerSchema = z.object({
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
+  role: z.enum(['campaigner', 'viewer']).optional(),
 });
 
 const generateTokens = (userId: string, role: string) => {
@@ -175,7 +177,202 @@ const generateTokens = (userId: string, role: string) => {
   return { token, refreshToken };
 };
 
-// Register
+// 1. Request Registration OTP (Step 1)
+router.post('/register-otp', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const parsed = registerSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ success: false, error: parsed.error.issues[0].message });
+      return;
+    }
+
+    const { email, name, password, role, referralCode } = parsed.data;
+    const normalizedEmail = email.toLowerCase().trim();
+
+    const existing = await User.findOne({ email: normalizedEmail });
+    if (existing) {
+      res.status(400).json({ success: false, error: 'This email is already registered. Please sign in instead.' });
+      return;
+    }
+
+    // Hash password before temporary caching (security best practice)
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+
+    // Generate 6-digit verification code
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Cache pending registration for 15 minutes (900 seconds)
+    const cacheKey = `reg_otp:${normalizedEmail}`;
+    const pendingData = JSON.stringify({
+      email: normalizedEmail,
+      name: name.trim(),
+      passwordHash,
+      role: role || 'viewer',
+      referralCode: referralCode ? referralCode.trim().toUpperCase() : undefined,
+      otp,
+      createdAt: Date.now(),
+    });
+
+    await cacheService.set(cacheKey, pendingData, 900);
+
+    // Send verification email via Resend
+    const emailResult = await sendRegistrationOtpEmail(normalizedEmail, otp, name);
+
+    res.json({
+      success: true,
+      message: emailResult.success
+        ? 'A 6-digit verification code has been sent to your email.'
+        : 'Verification code generated. If email delivery is delayed, use the code below.',
+      emailSent: emailResult.success,
+      email: normalizedEmail,
+      otp, // Provided for instant fallback/testing
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message || 'Error processing registration request' });
+  }
+});
+
+// 2. Verify Registration OTP & Complete Account Creation (Step 2)
+router.post('/verify-register-otp', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+      res.status(400).json({ success: false, error: 'Email and verification code are required' });
+      return;
+    }
+
+    const normalizedEmail = String(email).toLowerCase().trim();
+    const inputOtp = String(otp).trim();
+
+    const cacheKey = `reg_otp:${normalizedEmail}`;
+    const cachedJson = await cacheService.get(cacheKey);
+
+    if (!cachedJson) {
+      res.status(400).json({
+        success: false,
+        error: 'Verification session expired or not found. Please start registration again.',
+      });
+      return;
+    }
+
+    let pendingData: any;
+    try {
+      pendingData = JSON.parse(cachedJson);
+    } catch {
+      res.status(500).json({ success: false, error: 'Failed to read registration session data' });
+      return;
+    }
+
+    if (pendingData.otp !== inputOtp) {
+      res.status(400).json({ success: false, error: 'Invalid 6-digit verification code. Please check and try again.' });
+      return;
+    }
+
+    // Double check user doesn't already exist
+    const existing = await User.findOne({ email: normalizedEmail });
+    if (existing) {
+      await cacheService.del(cacheKey);
+      res.status(400).json({ success: false, error: 'This email is already registered. Please sign in.' });
+      return;
+    }
+
+    // Process referral code if provided
+    let referredBy = undefined;
+    if (pendingData.referralCode) {
+      const trimmedCode = pendingData.referralCode.trim().toUpperCase();
+      const referrer = await User.findOne({ referralCode: trimmedCode });
+      if (referrer) {
+        referredBy = referrer._id;
+        await User.findByIdAndUpdate(referrer._id, { $inc: { referralCount: 1 } });
+      }
+    }
+
+    // Generate unique referral code for user
+    let code = generateReferralCode();
+    while (await User.exists({ referralCode: code })) {
+      code = generateReferralCode();
+    }
+
+    const randomAvatar = `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(normalizedEmail)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`;
+
+    const user = await User.create({
+      email: normalizedEmail,
+      name: pendingData.name,
+      passwordHash: pendingData.passwordHash,
+      role: pendingData.role || 'viewer',
+      avatar: randomAvatar,
+      balance: 0,
+      creatorBalance: 0,
+      viewerBalance: 0,
+      referralCode: code,
+      referredBy,
+      referralEarnings: 0,
+      referralCount: 0,
+    });
+
+    // Clean up cached OTP
+    await cacheService.del(cacheKey);
+
+    const tokens = generateTokens(user._id.toString(), user.role);
+
+    res.status(201).json({
+      success: true,
+      message: 'Account verified and created successfully!',
+      data: {
+        user: formatUserResponse(user, 0, 0),
+        ...tokens,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message || 'Error completing account registration' });
+  }
+});
+
+// 3. Resend Registration OTP
+router.post('/resend-register-otp', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      res.status(400).json({ success: false, error: 'Email is required to resend code' });
+      return;
+    }
+
+    const normalizedEmail = String(email).toLowerCase().trim();
+    const cacheKey = `reg_otp:${normalizedEmail}`;
+    const cachedJson = await cacheService.get(cacheKey);
+
+    if (!cachedJson) {
+      res.status(400).json({
+        success: false,
+        error: 'Registration session expired. Please fill out the form and submit again.',
+      });
+      return;
+    }
+
+    let pendingData = JSON.parse(cachedJson);
+    const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    pendingData.otp = newOtp;
+    pendingData.createdAt = Date.now();
+
+    await cacheService.set(cacheKey, JSON.stringify(pendingData), 900);
+
+    const emailResult = await sendRegistrationOtpEmail(normalizedEmail, newOtp, pendingData.name);
+
+    res.json({
+      success: true,
+      message: emailResult.success
+        ? 'A fresh 6-digit verification code has been sent to your email.'
+        : 'New code generated. If email delivery is delayed, use the code below.',
+      emailSent: emailResult.success,
+      otp: newOtp,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message || 'Error resending verification code' });
+  }
+});
+
+// Register (Direct endpoint preserved for backward compatibility)
 router.post('/register', async (req: Request, res: Response): Promise<void> => {
   try {
     const parsed = registerSchema.safeParse(req.body);
@@ -248,7 +445,7 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const { email, password } = parsed.data;
+    const { email, password, role } = parsed.data;
     const user = await User.findOne({ email });
     if (!user || !user.passwordHash) {
       res.status(401).json({ success: false, error: 'Invalid email or password' });
@@ -264,6 +461,12 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
     if (user.status === 'banned') {
       res.status(403).json({ success: false, error: 'Account suspended' });
       return;
+    }
+
+    // Auto-switch profile to campaigner if logging in from a creator flow (e.g. Buy Views)
+    if (role === 'campaigner' && user.role !== 'admin' && user.role !== 'campaigner') {
+      user.role = 'campaigner';
+      await user.save();
     }
 
     // Enforce single mobile device login policy
@@ -412,6 +615,10 @@ router.post('/google', async (req: Request, res: Response): Promise<void> => {
           code = generateReferralCode();
         }
         user.referralCode = code;
+        updated = true;
+      }
+      if (role === 'campaigner' && user.role !== 'admin' && user.role !== 'campaigner') {
+        user.role = 'campaigner';
         updated = true;
       }
       if (updated) {

@@ -34,6 +34,50 @@
       } catch (e) {}
     })();
   </script>
+  <!-- Anti Google Translate Banner Shift -->
+  <style>
+    .goog-te-banner-frame,
+    .goog-te-banner-frame.skiptranslate,
+    iframe.goog-te-banner-frame,
+    iframe.skiptranslate,
+    .VIpgJd-ZVi9gl-ORHb-OEVmcd,
+    .VIpgJd-ZVi9gl-ORHb-OEVmcd.skiptranslate,
+    #goog-gt-tt,
+    .goog-te-balloon-frame {
+      display: none !important;
+      visibility: hidden !important;
+      height: 0px !important;
+      width: 0px !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+      z-index: -99999 !important;
+    }
+
+    body {
+      top: 0px !important;
+      position: static !important;
+      margin-top: 0px !important;
+    }
+
+    html {
+      top: 0px !important;
+      margin-top: 0px !important;
+    }
+
+    .goog-tooltip,
+    .goog-tooltip:hover {
+      display: none !important;
+    }
+
+    .goog-text-highlight {
+      background-color: transparent !important;
+      box-shadow: none !important;
+    }
+
+    #google_translate_element {
+      display: none !important;
+    }
+  </style>
 </head>
 
 <body class="bg-[#f8fafc] text-[#0f172a] antialiased">

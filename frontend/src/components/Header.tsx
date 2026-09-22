@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { User } from '../types';
 import { UserAvatar } from './UserAvatar';
+import { LanguageTranslator } from './LanguageTranslator';
 
 interface HeaderProps {
   user: User | null;
@@ -194,6 +195,9 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Right Actions (Desktop) */}
         <div className="desktop-only" style={{ alignItems: 'center', gap: 8 }}>
+          {/* Language Translator */}
+          <LanguageTranslator align="right" />
+
           {user ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               {/* If Admin: No Creator / Viewer profiles or balance */}
@@ -248,11 +252,11 @@ export const Header: React.FC<HeaderProps> = ({
                         border: 'none',
                         cursor: 'pointer',
                         background: isViewerMode ? '#0284c7' : 'transparent',
-                        color: isViewerMode ? '#ffffff' : 'var(--on-surface-variant)',
+                        color: isViewerMode ? '#ffffff' : '#0284c7',
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: 5,
-                        transition: 'all 0.2s',
+                        gap: 4,
+                        transition: 'all 0.15s ease',
                       }}
                       title="Switch to Viewer Profile"
                     >
@@ -270,11 +274,11 @@ export const Header: React.FC<HeaderProps> = ({
                         border: 'none',
                         cursor: 'pointer',
                         background: isCreatorMode ? '#0284c7' : 'transparent',
-                        color: isCreatorMode ? '#ffffff' : 'var(--on-surface-variant)',
+                        color: isCreatorMode ? '#ffffff' : '#0284c7',
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: 5,
-                        transition: 'all 0.2s',
+                        gap: 4,
+                        transition: 'all 0.15s ease',
                       }}
                       title="Switch to Creator Profile"
                     >
@@ -344,8 +348,11 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
 
-        {/* Mobile Header Right Controls: Balance / Admin + Hamburger Toggle */}
-        <div className="mobile-only" style={{ alignItems: 'center', gap: 8 }}>
+        {/* Mobile Header Right Controls: Balance / Admin + Language + Hamburger Toggle */}
+        <div className="mobile-only" style={{ alignItems: 'center', gap: 6 }}>
+          {/* Mobile Language Translator */}
+          <LanguageTranslator compact align="right" />
+
           {user && (
             user.role === 'admin' ? (
               <button
@@ -1074,6 +1081,12 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 <Smartphone size={15} color="var(--primary-neon)" /> Watch App
               </Link>
+              {/* Mobile Menu Language Selector */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', background: '#f0f9ff', borderRadius: 10, marginTop: 4 }}>
+                <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#0f172a' }}>Language:</span>
+                <LanguageTranslator compact align="right" />
+              </div>
+
               <div style={{ display: 'flex', gap: 6, marginTop: 4, paddingTop: 8, borderTop: '1px solid var(--glass-stroke)' }}>
                 <button
                   onClick={() => {
