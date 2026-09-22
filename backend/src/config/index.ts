@@ -39,5 +39,6 @@ export const config = {
 
   // Resend Email Service Configuration
   resendApiKey: process.env.RESEND_API_KEY || '',
-  resendFromEmail: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
+  resendFromEmail: process.env.RESEND_FROM_EMAIL || 'noreply@ytcash.pro',
 };
+

@@ -34,9 +34,12 @@ export async function sendPasswordResetEmail(
   userName?: string
 ): Promise<SendEmailResult> {
   try {
-    const fromAddress = config.resendFromEmail?.includes('<')
+    const senderEmail = (config.resendFromEmail && !config.resendFromEmail.includes('onboarding@resend.dev'))
       ? config.resendFromEmail
-      : `ytCash Security <${config.resendFromEmail || 'onboarding@resend.dev'}>`;
+      : 'noreply@ytcash.pro';
+    const fromAddress = senderEmail.includes('<')
+      ? senderEmail
+      : `ytCash Security <${senderEmail}>`;
 
     const htmlContent = `
 <!DOCTYPE html>
@@ -225,9 +228,12 @@ export async function sendRegistrationOtpEmail(
   userName?: string
 ): Promise<SendEmailResult> {
   try {
-    const fromAddress = config.resendFromEmail?.includes('<')
+    const senderEmail = (config.resendFromEmail && !config.resendFromEmail.includes('onboarding@resend.dev'))
       ? config.resendFromEmail
-      : `ytCash Security <${config.resendFromEmail || 'onboarding@resend.dev'}>`;
+      : 'noreply@ytcash.pro';
+    const fromAddress = senderEmail.includes('<')
+      ? senderEmail
+      : `ytCash Security <${senderEmail}>`;
 
     const htmlContent = `
 <!DOCTYPE html>
