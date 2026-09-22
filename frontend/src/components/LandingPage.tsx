@@ -1069,7 +1069,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           }}
         >
           <span className="badge-pill badge-neon" style={{ fontSize: '0.68rem', padding: '3px 10px' }}>
-            JOIN 4,800+ ACTIVE USERS TODAY
+            JOIN 4,881+ ACTIVE USERS TODAY
           </span>
 
           <h2
