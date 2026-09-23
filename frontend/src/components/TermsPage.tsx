@@ -32,6 +32,7 @@ export const TermsPage: React.FC = () => {
     { id: 'financial', label: '5. Deposits & Withdrawals', icon: DollarSign },
     { id: 'security', label: '6. Anti-Fraud & Single-Device Lock', icon: ShieldCheck },
     { id: 'disclaimer', label: '7. YouTube & Third-Party Disclaimer', icon: Scale },
+    { id: 'banpolicy', label: '8. Suspicious Activity & User Ban Policy', icon: Ban },
   ];
 
   return (
@@ -176,6 +177,52 @@ export const TermsPage: React.FC = () => {
             </strong>
             ytCash enforces an automated anti-cheat engine. Each user account is permitted on <strong>only ONE physical Android device</strong> at a time. The use of emulators, virtual spaces, auto-clickers, multi-instance cloners, or automated headless scripts is strictly prohibited and results in immediate automated account suspension and loss of accumulated balances.
           </div>
+        </div>
+
+        {/* Table of Contents Quick Nav */}
+        <div
+          style={{
+            display: 'flex',
+            gap: 8,
+            overflowX: 'auto',
+            paddingBottom: 8,
+            marginBottom: 28,
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
+          {sections.map((sec) => (
+            <a
+              key={sec.id}
+              href={`#${sec.id}`}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                background: '#ffffff',
+                border: '1px solid #e2e8f0',
+                padding: '7px 14px',
+                borderRadius: 9999,
+                fontSize: '0.74rem',
+                fontWeight: 600,
+                color: '#334155',
+                textDecoration: 'none',
+                whiteSpace: 'nowrap',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = '#0284c7';
+                e.currentTarget.style.color = '#0284c7';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = '#e2e8f0';
+                e.currentTarget.style.color = '#334155';
+              }}
+            >
+              <sec.icon size={13} color="#0284c7" />
+              <span>{sec.label}</span>
+            </a>
+          ))}
         </div>
 
         {/* Layout: Sidebar Nav + Content */}
@@ -518,6 +565,70 @@ export const TermsPage: React.FC = () => {
                     YouTube Terms of Service
                   </a>{' '}
                   and Google Privacy Policy.
+                </p>
+              </div>
+            </div>
+
+            {/* Section 8: Suspicious Activity & User Ban Policy */}
+            <div
+              id="banpolicy"
+              style={{
+                background: '#ffffff',
+                border: '1.5px solid #fecaca',
+                borderRadius: 20,
+                padding: '28px 26px',
+                boxShadow: '0 4px 14px rgba(239, 68, 68, 0.05)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 10,
+                    background: '#fef2f2',
+                    color: '#dc2626',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Ban size={20} />
+                </div>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: '#991b1b' }}>
+                  8. Suspicious Activity & User Ban Policy
+                </h2>
+              </div>
+
+              <div style={{ fontSize: '0.88rem', color: '#475569', lineHeight: 1.7, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div
+                  style={{
+                    background: '#fef2f2',
+                    border: '1px solid #fca5a5',
+                    borderRadius: 12,
+                    padding: '16px 18px',
+                    fontSize: '0.90rem',
+                    color: '#991b1b',
+                    lineHeight: 1.6,
+                    fontWeight: 600,
+                  }}
+                >
+                  The ytCash team reserves the right to suspend or permanently ban any user without prior notice if the user is found to be engaging in suspicious, fraudulent, abusive, or otherwise prohibited activities. The team may take such action whenever it reasonably believes that a user’s activity may compromise the platform’s security, integrity, or fair use.
+                </div>
+
+                <p>
+                  Activities that trigger automatic security flags, immediate suspension, or permanent account forfeiture include, but are not limited to:
+                </p>
+                <ul style={{ margin: '0 0 0 20px', padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <li>Simulating automated playback via headless scrapers, auto-clickers, macros, or bot scripts.</li>
+                  <li>Running ytCash on virtual Android instances, rooted emulators, or multi-space application cloners.</li>
+                  <li>Operating multiple cloned accounts on a single physical mobile device or coordinating fake referral rings.</li>
+                  <li>Submitting fabricated, duplicate, or falsified transaction receipts during deposit and withdrawal processing.</li>
+                  <li>Attempting to tamper with watch verification countdown timers or manipulating server-authoritative tokens.</li>
+                </ul>
+
+                <p style={{ fontSize: '0.82rem', color: '#64748b', marginTop: 4 }}>
+                  Any account suspended or terminated under this policy shall immediately forfeit all accumulated reward balances, pending cashouts, and platform privileges. Administrative decisions made under this policy are final.
                 </p>
               </div>
             </div>

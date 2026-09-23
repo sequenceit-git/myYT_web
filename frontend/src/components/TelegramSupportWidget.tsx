@@ -9,16 +9,19 @@ import {
   Smartphone,
   HelpCircle,
   Sparkles,
+  Users,
 } from 'lucide-react';
 
 interface TelegramSupportWidgetProps {
   supportUsername?: string;
   channelUsername?: string;
+  groupUsername?: string;
 }
 
 export const TelegramSupportWidget: React.FC<TelegramSupportWidgetProps> = ({
   supportUsername = 'ytcash_support',
   channelUsername = 'ytcash_official',
+  groupUsername = 'ytcash_group',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [customMsg, setCustomMsg] = useState('');
@@ -309,6 +312,41 @@ export const TelegramSupportWidget: React.FC<TelegramSupportWidgetProps> = ({
               <ExternalLink size={15} />
             </button>
 
+            {/* Community Telegram Group */}
+            <button
+              onClick={() => window.open(`https://t.me/${groupUsername}`, '_blank', 'noopener,noreferrer')}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
+                color: '#ffffff',
+                border: 'none',
+                padding: '10px 14px',
+                borderRadius: 11,
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                boxShadow: '0 2px 10px rgba(14, 165, 233, 0.22)',
+                transition: 'all 0.15s ease',
+                marginBottom: 8,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-1px)';
+                e.currentTarget.style.boxShadow = '0 4px 14px rgba(14, 165, 233, 0.35)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 2px 10px rgba(14, 165, 233, 0.22)';
+              }}
+            >
+              <Users size={15} />
+              <span>Join Telegram Group (@{groupUsername})</span>
+              <ExternalLink size={13} style={{ marginLeft: 'auto', opacity: 0.8 }} />
+            </button>
+
             {/* Secondary Action: Community Channel */}
             <button
               onClick={() => window.open(`https://t.me/${channelUsername}`, '_blank', 'noopener,noreferrer')}
@@ -321,7 +359,7 @@ export const TelegramSupportWidget: React.FC<TelegramSupportWidgetProps> = ({
                 background: '#f1f5f9',
                 color: '#334155',
                 border: '1px solid #e2e8f0',
-                padding: '9px 14px',
+                padding: '8px 14px',
                 borderRadius: 10,
                 fontSize: '0.78rem',
                 fontWeight: 600,
@@ -338,7 +376,8 @@ export const TelegramSupportWidget: React.FC<TelegramSupportWidgetProps> = ({
                 e.currentTarget.style.color = '#334155';
               }}
             >
-              <span>Join Official Telegram Channel (@{channelUsername})</span>
+              <span>Official Channel (@{channelUsername})</span>
+              <ExternalLink size={12} style={{ opacity: 0.6 }} />
             </button>
 
             {/* Quick Message Input Box (Direct Send to TG) */}

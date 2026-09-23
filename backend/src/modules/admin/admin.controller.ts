@@ -537,10 +537,10 @@ router.get('/active-phone-users', requireAdmin, async (_req: AuthRequest, res: R
   }
 });
 
-// GET /api/admin/users - User management list (Master Admin Only, excluding sub-admins)
+// GET /api/admin/users - User management list (Master Admin Only, excluding all admins and sub-admins)
 router.get('/users', requireMasterAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const users = await User.find({ adminRole: { $ne: 'sub_admin' } }).sort({ createdAt: -1 }).limit(200);
+    const users = await User.find({ role: { $ne: 'admin' } }).sort({ createdAt: -1 }).limit(200);
     res.json({ success: true, data: users });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
@@ -556,13 +556,26 @@ router.post('/users/:id/status', requireMasterAdmin, async (req: AuthRequest, re
       return;
     }
 
-    const user = await User.findByIdAndUpdate(req.params.id, { status }, { new: true });
-    if (!user) {
+    if (req.user && req.user._id.toString() === req.params.id && status !== 'active') {
+      res.status(400).json({ success: false, error: 'Safety Guard: You cannot ban or suspend your own admin account.' });
+      return;
+    }
+
+    const targetUser = await User.findById(req.params.id);
+    if (!targetUser) {
       res.status(404).json({ success: false, error: 'User not found' });
       return;
     }
 
-    res.json({ success: true, data: user });
+    if (targetUser.role === 'admin' && status !== 'active') {
+      res.status(400).json({ success: false, error: 'Safety Guard: Admin accounts cannot be banned or suspended.' });
+      return;
+    }
+
+    targetUser.status = status;
+    await targetUser.save();
+
+    res.json({ success: true, data: targetUser });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }

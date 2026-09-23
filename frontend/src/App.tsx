@@ -286,6 +286,10 @@ export function App() {
             element={<MobileSimulator user={user} onRefreshUser={fetchMe} />}
           />
           <Route
+            path="/simulation"
+            element={<MobileSimulator user={user} onRefreshUser={fetchMe} />}
+          />
+          <Route
             path="/watch"
             element={<MobileSimulator user={user} onRefreshUser={fetchMe} />}
           />

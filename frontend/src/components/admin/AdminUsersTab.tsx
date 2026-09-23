@@ -40,7 +40,10 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
     setUserPage(1);
   };
 
+  const nonAdminUsers = React.useMemo(() => usersList.filter((u) => u.role !== 'admin'), [usersList]);
+
   const getFilteredByStatus = (u: User, filter: UserFilterType): boolean => {
+    if (u.role === 'admin') return false;
     if (filter === 'all') return true;
     if (filter === 'active') return !u.status || u.status === 'active';
     if (filter === 'banned') return u.status === 'banned' || u.status === 'suspended';
@@ -49,7 +52,7 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
     return true;
   };
 
-  const filteredUsers = usersList.filter((u) => {
+  const filteredUsers = nonAdminUsers.filter((u) => {
     if (!getFilteredByStatus(u, activeFilter)) return false;
     if (!userSearch.trim()) return true;
     const q = userSearch.toLowerCase();
@@ -74,7 +77,7 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h2 className="font-display" style={{ fontSize: 'clamp(1.1rem, 4vw, 1.35rem)', color: '#0f172a', margin: 0 }}>
-            USER DIRECTORY ({usersList.length})
+            USER DIRECTORY ({nonAdminUsers.length})
           </h2>
           <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 2 }}>
             Manage registered viewers, creators, balances, and security status.
@@ -90,7 +93,7 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
           >
             {filterTabs.map((tab) => {
               const isSelected = activeFilter === tab.id;
-              const count = usersList.filter((u) => getFilteredByStatus(u, tab.id)).length;
+              const count = nonAdminUsers.filter((u) => getFilteredByStatus(u, tab.id)).length;
               return (
                 <button
                   key={tab.id}

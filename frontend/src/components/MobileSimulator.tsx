@@ -10,6 +10,7 @@ import {
   ChevronRight,
   BatteryCharging,
   Sliders,
+  ShieldAlert,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { User } from '../types';
@@ -26,7 +27,7 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = () => {
       ? `${window.location.origin}/downloads/ytcash.apk`
       : 'https://ytcash.pro/downloads/ytcash.apk';
 
-  const [activeTab, setActiveTab] = useState<'standard' | 'android13'>('standard');
+  const [activeTab, setActiveTab] = useState<'standard' | 'android13' | 'playprotect'>('standard');
 
   return (
     <div
@@ -229,6 +230,29 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = () => {
                 <div style={{ fontSize: '0.74rem', color: '#0f172a', fontWeight: 600 }}>Grant Permissions on the Right ➔</div>
               </div>
             </div>
+
+            {/* Play Protect Notice Callout */}
+            <div
+              style={{
+                marginTop: 10,
+                padding: '9px 11px',
+                background: '#fffbeb',
+                borderRadius: 10,
+                border: '1px solid #fde68a',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+              onClick={() => setActiveTab('playprotect')}
+              title="Click to view Play Protect instructions"
+            >
+              <ShieldAlert size={15} color="#d97706" style={{ flexShrink: 0 }} />
+              <div style={{ fontSize: '0.71rem', color: '#92400e', lineHeight: 1.35 }}>
+                Play Protect warning? Tap <strong>"More details" ➔ "Install anyway"</strong> or switch to the <span style={{ textDecoration: 'underline', fontWeight: 700 }}>Play Protect tab</span>.
+              </div>
+            </div>
           </div>
 
           {/* Key Mobile App Features */}
@@ -299,7 +323,7 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = () => {
             </div>
 
             {/* Guide Switcher Tabs */}
-            <div style={{ display: 'flex', background: '#e2e8f0', padding: 3, borderRadius: 10, gap: 2 }}>
+            <div style={{ display: 'flex', background: '#e2e8f0', padding: 3, borderRadius: 10, gap: 2, flexWrap: 'wrap' }}>
               <button
                 onClick={() => setActiveTab('standard')}
                 style={{
@@ -336,6 +360,26 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = () => {
                 }}
               >
                 <AlertTriangle size={12} color="#d97706" /> Android 13/14+ Fix
+              </button>
+              <button
+                onClick={() => setActiveTab('playprotect')}
+                style={{
+                  border: 'none',
+                  background: activeTab === 'playprotect' ? '#ffffff' : 'transparent',
+                  color: activeTab === 'playprotect' ? '#dc2626' : '#64748b',
+                  fontWeight: activeTab === 'playprotect' ? 700 : 500,
+                  fontSize: '0.72rem',
+                  padding: '5px 12px',
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                  boxShadow: activeTab === 'playprotect' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                  transition: 'all 0.15s ease',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+              >
+                <ShieldAlert size={12} color="#dc2626" /> Play Protect Off
               </button>
             </div>
           </div>
@@ -585,6 +629,119 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = () => {
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: '0.76rem', color: '#78350f' }}>
                   <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#f59e0b', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.68rem', fontWeight: 800, flexShrink: 0 }}>4</span>
                   <span>Now go back to <strong>Accessibility</strong> ➔ <strong>ytCash</strong> and switch it <strong>ON</strong>.</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Tab 3: Google Play Protect Turn Off & Bypass Guide */}
+          {activeTab === 'playprotect' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {/* Alert Header */}
+              <div
+                style={{
+                  padding: 16,
+                  background: '#fef2f2',
+                  borderRadius: 16,
+                  border: '1.5px solid #fecaca',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <ShieldAlert size={18} color="#dc2626" />
+                  <h4 style={{ fontSize: '0.90rem', fontWeight: 800, color: '#991b1b', margin: 0 }}>
+                    Google Play Protect Warning / Block Fix
+                  </h4>
+                </div>
+                <p style={{ fontSize: '0.78rem', color: '#7f1d1d', lineHeight: 1.5, margin: 0 }}>
+                  Because ytCash is downloaded directly outside Google Play Store and uses an Accessibility Service to count YouTube watch seconds, Google Play Protect may show a <em>"Blocked by Play Protect"</em> or <em>"Unsafe app blocked"</em> warning. Follow either method below:
+                </p>
+              </div>
+
+              {/* Method 1: Quick Install Anyway */}
+              <div
+                style={{
+                  padding: 16,
+                  background: '#ffffff',
+                  borderRadius: 16,
+                  border: '1.5px solid #e2e8f0',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ width: 22, height: 22, borderRadius: '50%', background: '#0284c7', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.72rem', fontWeight: 800 }}>A</span>
+                    <h5 style={{ fontSize: '0.84rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+                      Quick Bypass During Installation (Recommended)
+                    </h5>
+                  </div>
+                  <span style={{ fontSize: '0.62rem', fontWeight: 700, color: '#0284c7', background: '#e0f2fe', padding: '2px 8px', borderRadius: 6 }}>
+                    EASIEST
+                  </span>
+                </div>
+                <p style={{ fontSize: '0.76rem', color: '#475569', lineHeight: 1.45, marginBottom: 10 }}>
+                  When the Play Protect dialog pops up on your screen:
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: '0.76rem', color: '#334155' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <ChevronRight size={13} color="#0284c7" />
+                    <span>Tap <strong>"More details"</strong> (small dropdown link below the warning).</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <ChevronRight size={13} color="#0284c7" />
+                    <span>Tap <strong style={{ color: '#0284c7' }}>"Install anyway"</strong> to complete installation immediately.</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Method 2: Turn Off Play Protect in Play Store */}
+              <div
+                style={{
+                  padding: 16,
+                  background: '#ffffff',
+                  borderRadius: 16,
+                  border: '1.5px solid #e2e8f0',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ width: 22, height: 22, borderRadius: '50%', background: '#dc2626', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.72rem', fontWeight: 800 }}>B</span>
+                    <h5 style={{ fontSize: '0.84rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+                      How to Turn Off Play Protect (If Blocked or Deleted)
+                    </h5>
+                  </div>
+                  <span style={{ fontSize: '0.62rem', fontWeight: 700, color: '#dc2626', background: '#fee2e2', padding: '2px 8px', borderRadius: 6 }}>
+                    PLAY STORE SETTINGS
+                  </span>
+                </div>
+                <p style={{ fontSize: '0.76rem', color: '#475569', lineHeight: 1.45, marginBottom: 10 }}>
+                  If Android blocks the installation entirely, disable Play Protect scanning:
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: '0.76rem', color: '#334155' }}>
+                    <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#f1f5f9', color: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.68rem', fontWeight: 800, flexShrink: 0 }}>1</span>
+                    <span>Open the <strong>Google Play Store</strong> app on your Android phone.</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: '0.76rem', color: '#334155' }}>
+                    <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#f1f5f9', color: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.68rem', fontWeight: 800, flexShrink: 0 }}>2</span>
+                    <span>Tap your <strong>Profile picture / icon</strong> in the top-right corner.</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: '0.76rem', color: '#334155' }}>
+                    <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#f1f5f9', color: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.68rem', fontWeight: 800, flexShrink: 0 }}>3</span>
+                    <span>Select <strong>Play Protect</strong> from the menu.</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: '0.76rem', color: '#334155' }}>
+                    <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#f1f5f9', color: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.68rem', fontWeight: 800, flexShrink: 0 }}>4</span>
+                    <span>Tap the <strong>Settings (gear ⚙️) icon</strong> in the top-right corner.</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: '0.76rem', color: '#334155' }}>
+                    <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#f1f5f9', color: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.68rem', fontWeight: 800, flexShrink: 0 }}>5</span>
+                    <span>Toggle <strong>OFF</strong> <em>"Scan apps with Play Protect"</em> (and <em>"Improve harmful app detection"</em>).</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: '0.76rem', color: '#334155' }}>
+                    <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#f1f5f9', color: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.68rem', fontWeight: 800, flexShrink: 0 }}>6</span>
+                    <span>Tap <strong>"Turn off"</strong> to confirm. Now tap <strong>ytcash.apk</strong> from Downloads and install smoothly!</span>
+                  </div>
                 </div>
               </div>
             </div>
