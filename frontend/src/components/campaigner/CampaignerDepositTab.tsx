@@ -249,27 +249,17 @@ export const CampaignerDepositTab: React.FC<CampaignerDepositTabProps> = ({
           <input
             type="number"
             step="any"
-            placeholder={`Enter amount in USD (min $${minRequiredUsd.toFixed(2)})`}
+            min="0.01"
+            placeholder="Enter amount in USD (0 to max)"
             value={depositAmount}
             onChange={(e) => setDepositAmount(e.target.value)}
             className="input-field"
             style={{
               padding: '13px 16px',
               fontSize: '1.05rem',
-              borderColor: isDepositBelowMin ? '#ef4444' : undefined,
-              color: isDepositBelowMin ? '#dc2626' : undefined,
-              background: isDepositBelowMin ? '#fff1f2' : undefined,
             }}
             required
           />
-
-          {/* Warning Message */}
-          {isDepositBelowMin && (
-            <div style={{ color: '#ef4444', fontSize: '0.82rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5, marginTop: 6 }}>
-              <AlertCircle size={14} color="#ef4444" style={{ flexShrink: 0 }} />
-              <span>Minimum deposit is ${minRequiredUsd.toFixed(2)} USD for {selectedMethod.name}.</span>
-            </div>
-          )}
         </div>
 
         {/* Real-Time Conversion & Method Summary */}
@@ -340,7 +330,7 @@ export const CampaignerDepositTab: React.FC<CampaignerDepositTabProps> = ({
 
         <button
           type="submit"
-          disabled={!hasDepositInput || isDepositBelowMin}
+          disabled={!hasDepositInput || numDepositAmount <= 0}
           className="btn btn-neon glow-neon"
           style={{
             padding: '13px 20px',
@@ -352,20 +342,18 @@ export const CampaignerDepositTab: React.FC<CampaignerDepositTabProps> = ({
             justifyContent: 'center',
             gap: 8,
             fontWeight: 700,
-            opacity: (!hasDepositInput || isDepositBelowMin) ? 0.6 : 1,
-            cursor: (!hasDepositInput || isDepositBelowMin) ? 'not-allowed' : 'pointer',
+            opacity: (!hasDepositInput || numDepositAmount <= 0) ? 0.6 : 1,
+            cursor: (!hasDepositInput || numDepositAmount <= 0) ? 'not-allowed' : 'pointer',
           }}
         >
           <span>
-            {!hasDepositInput
+            {!hasDepositInput || numDepositAmount <= 0
               ? 'Enter Deposit Amount'
-              : isDepositBelowMin
-                ? `Minimum Deposit is $${minRequiredUsd.toFixed(2)} USD`
-                : selectedMethod.id === 'crypto'
-                  ? `Proceed to Instant Crypto Checkout ($${numDepositAmount.toFixed(2)} USD)`
-                  : selectedMethod.id === 'faucetpay'
-                    ? `Proceed to FaucetPay Manual Deposit ($${numDepositAmount.toFixed(2)} USD)`
-                    : `Proceed to Payment (${selectedMethod.isBDT ? `৳${Math.round(numDepositAmount * bdtRate).toLocaleString()} BDT` : `$${numDepositAmount.toFixed(2)} USD`})`}
+              : selectedMethod.id === 'crypto'
+                ? `Proceed to Instant Crypto Checkout ($${numDepositAmount.toFixed(2)} USD)`
+                : selectedMethod.id === 'faucetpay'
+                  ? `Proceed to FaucetPay Manual Deposit ($${numDepositAmount.toFixed(2)} USD)`
+                  : `Proceed to Payment (${selectedMethod.isBDT ? `৳${Math.round(numDepositAmount * bdtRate).toLocaleString()} BDT` : `$${numDepositAmount.toFixed(2)} USD`})`}
           </span>
           <ArrowRight size={18} />
         </button>

@@ -58,7 +58,7 @@ export const CampaignerWithdrawTab: React.FC<CampaignerWithdrawTabProps> = ({
           </span>
         </div>
         <span className="badge-pill badge-cyan" style={{ fontSize: '0.74rem', padding: '4px 12px' }}>
-          Min Payout: ${selectedMinWithdraw.toFixed(2)} USD {selectedWithdrawConfig?.isBDT ? `(≈ ৳${Math.round(selectedMinWithdraw * usdToBdt)} BDT)` : ''}
+          Flexible Cashout • Up to ${creatorBal.toFixed(2)} USD
         </span>
       </div>
 
@@ -203,31 +203,23 @@ export const CampaignerWithdrawTab: React.FC<CampaignerWithdrawTabProps> = ({
             <input
               type="number"
               step="any"
-              placeholder={`Enter amount (min $${selectedMinWithdraw.toFixed(2)})`}
+              min="0.01"
+              placeholder="Enter amount (USD)"
               value={withdrawAmount}
               onChange={(e) => setWithdrawAmount(e.target.value)}
               className="input-field"
               style={{
                 padding: '11px 14px',
                 fontSize: '0.98rem',
-                borderColor: (isWithdrawBelowMin || isWithdrawExceedsBal) ? '#ef4444' : undefined,
-                color: (isWithdrawBelowMin || isWithdrawExceedsBal) ? '#dc2626' : undefined,
-                background: (isWithdrawBelowMin || isWithdrawExceedsBal) ? '#fff1f2' : undefined,
+                borderColor: isWithdrawExceedsBal ? '#ef4444' : undefined,
+                color: isWithdrawExceedsBal ? '#dc2626' : undefined,
+                background: isWithdrawExceedsBal ? '#fff1f2' : undefined,
               }}
               required
             />
 
             {/* Warning Messages */}
-            {isWithdrawBelowMin && (
-              <div style={{ color: '#ef4444', fontSize: '0.82rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5, marginTop: 6 }}>
-                <AlertCircle size={14} color="#ef4444" style={{ flexShrink: 0 }} />
-                <span>
-                  Minimum withdrawal for {selectedWithdrawConfig?.name} is ${selectedMinWithdraw.toFixed(2)} USD
-                  {selectedWithdrawConfig?.isBDT ? ` (≈ ৳${Math.round(selectedMinWithdraw * usdToBdt)} BDT)` : ''}.
-                </span>
-              </div>
-            )}
-            {!isWithdrawBelowMin && isWithdrawExceedsBal && (
+            {isWithdrawExceedsBal && (
               <div style={{ color: '#ef4444', fontSize: '0.82rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5, marginTop: 6 }}>
                 <AlertCircle size={14} color="#ef4444" style={{ flexShrink: 0 }} />
                 <span>Amount exceeds available Ad Budget (${creatorBal.toFixed(2)} USD).</span>
@@ -236,7 +228,7 @@ export const CampaignerWithdrawTab: React.FC<CampaignerWithdrawTabProps> = ({
 
             {/* Quick Amount Pills */}
             <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-              {[5, 10, 25, 50, 100].map((preset) => (
+              {[1, 2, 5, 10, 25, 50, 100].map((preset) => (
                 <button
                   key={preset}
                   type="button"
@@ -431,14 +423,13 @@ export const CampaignerWithdrawTab: React.FC<CampaignerWithdrawTabProps> = ({
           )}
         </div>
 
-        {/* Submit Action Button */}
         <button
           type="submit"
           disabled={
             withdrawLoading ||
             !isWithdrawLinked ||
             !hasWithdrawInput ||
-            isWithdrawBelowMin ||
+            numWithdrawAmount <= 0 ||
             isWithdrawExceedsBal
           }
           className="btn btn-neon glow-neon"
@@ -452,8 +443,8 @@ export const CampaignerWithdrawTab: React.FC<CampaignerWithdrawTabProps> = ({
             alignItems: 'center',
             justifyContent: 'center',
             gap: 8,
-            opacity: (withdrawLoading || !isWithdrawLinked || !hasWithdrawInput || isWithdrawBelowMin || isWithdrawExceedsBal) ? 0.6 : 1,
-            cursor: (withdrawLoading || !isWithdrawLinked || !hasWithdrawInput || isWithdrawBelowMin || isWithdrawExceedsBal) ? 'not-allowed' : 'pointer',
+            opacity: (withdrawLoading || !isWithdrawLinked || !hasWithdrawInput || numWithdrawAmount <= 0 || isWithdrawExceedsBal) ? 0.6 : 1,
+            cursor: (withdrawLoading || !isWithdrawLinked || !hasWithdrawInput || numWithdrawAmount <= 0 || isWithdrawExceedsBal) ? 'not-allowed' : 'pointer',
           }}
         >
           {withdrawLoading ? (

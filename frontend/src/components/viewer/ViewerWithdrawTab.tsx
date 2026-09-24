@@ -64,7 +64,7 @@ export const ViewerWithdrawTab: React.FC<ViewerWithdrawTabProps> = ({
           </span>
         </div>
         <span className="badge-pill badge-cyan" style={{ fontSize: '0.74rem', padding: '4px 12px' }}>
-          Min Payout: ${selectedMinWithdraw.toFixed(2)} USD {selectedConfig.isBDT ? `(≈ ৳${Math.round(selectedMinWithdraw * bdtRate)} BDT)` : ''}
+          Flexible Cashout • Up to ${viewerBal.toFixed(4)} USD
         </span>
       </div>
 
@@ -208,37 +208,32 @@ export const ViewerWithdrawTab: React.FC<ViewerWithdrawTabProps> = ({
             <input
               type="number"
               step="any"
-              placeholder={`Enter amount (min $${selectedMinWithdraw.toFixed(2)})`}
+              min="0.01"
+              placeholder="Enter amount (USD)"
               value={withdrawAmount}
               onChange={(e) => setWithdrawAmount(e.target.value)}
               className="input-field"
               style={{
                 padding: '11px 14px',
                 fontSize: '0.98rem',
-                borderColor: (isWithdrawBelowMin || isWithdrawExceedsBal) ? '#ef4444' : undefined,
-                color: (isWithdrawBelowMin || isWithdrawExceedsBal) ? '#dc2626' : undefined,
-                background: (isWithdrawBelowMin || isWithdrawExceedsBal) ? '#fff1f2' : undefined,
+                borderColor: isWithdrawExceedsBal ? '#ef4444' : undefined,
+                color: isWithdrawExceedsBal ? '#dc2626' : undefined,
+                background: isWithdrawExceedsBal ? '#fff1f2' : undefined,
               }}
               required
             />
 
             {/* Warning Messages */}
-            {isWithdrawBelowMin && (
-              <div style={{ color: '#ef4444', fontSize: '0.82rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5, marginTop: 6 }}>
-                <AlertCircle size={14} color="#ef4444" style={{ flexShrink: 0 }} />
-                <span>Minimum cashout for {selectedConfig.name} is ${selectedMinWithdraw.toFixed(2)} USD{selectedConfig.isBDT ? ` (≈ ৳${Math.round(selectedMinWithdraw * bdtRate)} BDT)` : ''}.</span>
-              </div>
-            )}
-            {!isWithdrawBelowMin && isWithdrawExceedsBal && (
+            {isWithdrawExceedsBal && (
               <div style={{ color: '#ef4444', fontSize: '0.82rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5, marginTop: 6 }}>
                 <AlertCircle size={14} color="#ef4444" style={{ flexShrink: 0 }} />
                 <span>Amount exceeds available balance (${viewerBal.toFixed(4)} USD).</span>
               </div>
             )}
 
-            {/* Quick Amount Pills ($5 Minimum) */}
+            {/* Quick Amount Pills */}
             <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-              {[5, 10, 25, 50, 100].map((preset) => (
+              {[1, 2, 5, 10, 25, 50, 100].map((preset) => (
                 <button
                   key={preset}
                   type="button"
@@ -476,23 +471,23 @@ export const ViewerWithdrawTab: React.FC<ViewerWithdrawTabProps> = ({
         {isLinked ? (
           <button
             type="submit"
-            disabled={loading || viewerBal < 5.0 || !isWithdrawValid}
+            disabled={loading || viewerBal <= 0 || !isWithdrawValid}
             className="btn btn-neon glow-neon"
             style={{
               padding: '13px',
               fontSize: '0.96rem',
               borderRadius: 12,
               marginTop: 4,
-              opacity: (!isWithdrawValid || viewerBal < 5.0) ? 0.6 : 1,
-              cursor: (!isWithdrawValid || viewerBal < 5.0) ? 'not-allowed' : 'pointer',
+              opacity: (!isWithdrawValid || viewerBal <= 0) ? 0.6 : 1,
+              cursor: (!isWithdrawValid || viewerBal <= 0) ? 'not-allowed' : 'pointer',
             }}
           >
             {loading
               ? 'Submitting Request...'
               : !hasWithdrawInput
                 ? 'Enter Amount to Cashout'
-                : isWithdrawBelowMin
-                  ? 'Minimum Cashout is $5.00 USD'
+                : numWithdrawAmount <= 0
+                  ? 'Enter Amount Greater Than 0'
                   : isWithdrawExceedsBal
                     ? 'Insufficient Balance'
                     : `Withdraw $${numWithdrawAmount.toFixed(2)} USD via ${selectedConfig.name}`}

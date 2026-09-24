@@ -19,9 +19,9 @@ export interface PayoutMethodConfig {
 }
 
 export const getPayoutMethods = (usdToBdt: number, dynamicMethods?: WithdrawMethod[]): PayoutMethodConfig[] => {
-  const getMin = (id: string, defaultMin = 5.0): number => {
+  const getMin = (id: string, defaultMin = 0): number => {
     const found = dynamicMethods?.find((m) => m.id === id);
-    return typeof found?.minWithdrawUsd === 'number' && found.minWithdrawUsd > 0 ? found.minWithdrawUsd : defaultMin;
+    return typeof found?.minWithdrawUsd === 'number' && found.minWithdrawUsd >= 0 ? found.minWithdrawUsd : defaultMin;
   };
   const getEnabled = (id: string): boolean => {
     const found = dynamicMethods?.find((m) => m.id === id);
@@ -46,8 +46,8 @@ export const getPayoutMethods = (usdToBdt: number, dynamicMethods?: WithdrawMeth
       inputLabel: 'bKash Account Number',
       placeholder: '01XXXXXXXXX',
       rateText: `1 USD = ${usdToBdt} BDT`,
-      minLimitText: `Min: $${getMin('bkash').toFixed(2)} USD`,
-      minWithdrawUsd: getMin('bkash'),
+      minLimitText: 'Any Amount',
+      minWithdrawUsd: 0,
       instructions: getInstr('bkash'),
       enabled: getEnabled('bkash'),
       isBDT: true,
@@ -61,8 +61,8 @@ export const getPayoutMethods = (usdToBdt: number, dynamicMethods?: WithdrawMeth
       inputLabel: 'Nagad Account Number',
       placeholder: '01XXXXXXXXX',
       rateText: `1 USD = ${usdToBdt} BDT`,
-      minLimitText: `Min: $${getMin('nagad').toFixed(2)} USD`,
-      minWithdrawUsd: getMin('nagad'),
+      minLimitText: 'Any Amount',
+      minWithdrawUsd: 0,
       instructions: getInstr('nagad'),
       enabled: getEnabled('nagad'),
       isBDT: true,
@@ -76,8 +76,8 @@ export const getPayoutMethods = (usdToBdt: number, dynamicMethods?: WithdrawMeth
       inputLabel: 'Rocket Account Number',
       placeholder: '01XXXXXXXXX',
       rateText: `1 USD = ${usdToBdt} BDT`,
-      minLimitText: `Min: $${getMin('rocket').toFixed(2)} USD`,
-      minWithdrawUsd: getMin('rocket'),
+      minLimitText: 'Any Amount',
+      minWithdrawUsd: 0,
       instructions: getInstr('rocket'),
       enabled: getEnabled('rocket'),
       isBDT: true,
@@ -91,8 +91,8 @@ export const getPayoutMethods = (usdToBdt: number, dynamicMethods?: WithdrawMeth
       inputLabel: 'FaucetPay Email',
       placeholder: 'your-email@example.com',
       rateText: 'Instant Automated • Zero Fee',
-      minLimitText: `Min: $${getMin('faucetpay').toFixed(2)} USD`,
-      minWithdrawUsd: getMin('faucetpay'),
+      minLimitText: 'Any Amount',
+      minWithdrawUsd: 0,
       instructions: getInstr('faucetpay'),
       enabled: getEnabled('faucetpay'),
       isBDT: false,
@@ -106,8 +106,8 @@ export const getPayoutMethods = (usdToBdt: number, dynamicMethods?: WithdrawMeth
       inputLabel: 'USDT (BEP-20) Address',
       placeholder: '0x... (BNB Smart Chain BEP-20)',
       rateText: 'Only BEP-20 USDT Supported (BNB Smart Chain)',
-      minLimitText: `Min: $${getMin('crypto').toFixed(2)} USD`,
-      minWithdrawUsd: getMin('crypto'),
+      minLimitText: 'Any Amount',
+      minWithdrawUsd: 0,
       instructions: getInstr('crypto'),
       enabled: getEnabled('crypto'),
       isBDT: false,
@@ -121,8 +121,8 @@ export const getPayoutMethods = (usdToBdt: number, dynamicMethods?: WithdrawMeth
       inputLabel: 'WebMoney Purse ID',
       placeholder: 'Z123456789012',
       rateText: 'USD Purse (WMZ)',
-      minLimitText: `Min: $${getMin('webmoney').toFixed(2)} USD`,
-      minWithdrawUsd: getMin('webmoney'),
+      minLimitText: 'Any Amount',
+      minWithdrawUsd: 0,
       instructions: getInstr('webmoney'),
       enabled: getEnabled('webmoney'),
       isBDT: false,
@@ -136,8 +136,8 @@ export const getPayoutMethods = (usdToBdt: number, dynamicMethods?: WithdrawMeth
       inputLabel: 'Payeer Account (P...)',
       placeholder: 'P1000000000',
       rateText: 'USD Account Transfer',
-      minLimitText: `Min: $${getMin('payeer').toFixed(2)} USD`,
-      minWithdrawUsd: getMin('payeer'),
+      minLimitText: 'Any Amount',
+      minWithdrawUsd: 0,
       instructions: getInstr('payeer'),
       enabled: getEnabled('payeer'),
       isBDT: false,
@@ -264,7 +264,7 @@ export const buildDepositMethods = (methodsList: DepositMethod[], usdToBdt: numb
         };
 
         const isBDT = meta.isBDT || id === 'bkash' || id === 'nagad' || id === 'rocket';
-        const minUsd = m.minDepositUsd || 5.0;
+        const minUsd = 0;
 
         return {
           id,
@@ -281,8 +281,8 @@ export const buildDepositMethods = (methodsList: DepositMethod[], usdToBdt: numb
           rateText: isBDT
             ? `1 USD = ${usdToBdt} BDT (${m.accountType || meta.defaultAccountType})`
             : `${m.accountType || meta.defaultAccountType}`,
-          minLimitText: `Min: $${minUsd.toFixed(2)} USD`,
-          minDepositUsd: minUsd,
+          minLimitText: 'Any Amount',
+          minDepositUsd: 0,
           isBDT,
           enabled: m.enabled !== false,
         };
@@ -301,8 +301,8 @@ export const buildDepositMethods = (methodsList: DepositMethod[], usdToBdt: numb
       logoMark: '₿',
       logoUrl: '/payment-methods/crypto.png',
       rateText: 'Instant Automated Crypto • FaucetPay',
-      minLimitText: 'Min: $5.00 USD',
-      minDepositUsd: 5.0,
+      minLimitText: 'Any Amount',
+      minDepositUsd: 0,
     },
     {
       id: 'faucetpay',
@@ -314,8 +314,8 @@ export const buildDepositMethods = (methodsList: DepositMethod[], usdToBdt: numb
       logoMark: 'FP',
       logoUrl: '/payment-methods/faucetpay.svg',
       rateText: 'FaucetPay Transfer • Manual Review',
-      minLimitText: 'Min: $5.00 USD',
-      minDepositUsd: 5.0,
+      minLimitText: 'Any Amount',
+      minDepositUsd: 0,
     },
     {
       id: 'bkash',
@@ -327,8 +327,8 @@ export const buildDepositMethods = (methodsList: DepositMethod[], usdToBdt: numb
       logoMark: 'bK',
       logoUrl: '/payment-methods/bkash.svg',
       rateText: `1 USD = ${usdToBdt} BDT (Personal MFS)`,
-      minLimitText: 'Min: $5.00 USD',
-      minDepositUsd: 5.0,
+      minLimitText: 'Any Amount',
+      minDepositUsd: 0,
       isBDT: true,
     },
     {
@@ -341,8 +341,8 @@ export const buildDepositMethods = (methodsList: DepositMethod[], usdToBdt: numb
       logoMark: 'Nagad',
       logoUrl: '/payment-methods/nagad.svg',
       rateText: `1 USD = ${usdToBdt} BDT (Personal MFS)`,
-      minLimitText: 'Min: $5.00 USD',
-      minDepositUsd: 5.0,
+      minLimitText: 'Any Amount',
+      minDepositUsd: 0,
       isBDT: true,
     },
     {
@@ -355,8 +355,8 @@ export const buildDepositMethods = (methodsList: DepositMethod[], usdToBdt: numb
       logoMark: 'WM',
       logoUrl: '/payment-methods/webmoney.svg',
       rateText: 'USD Purse (WMZ) • Manual Deposit',
-      minLimitText: 'Min: $5.00 USD',
-      minDepositUsd: 5.0,
+      minLimitText: 'Any Amount',
+      minDepositUsd: 0,
     },
     {
       id: 'payeer',
@@ -368,8 +368,8 @@ export const buildDepositMethods = (methodsList: DepositMethod[], usdToBdt: numb
       logoMark: 'PAYEER',
       logoUrl: '/payment-methods/payeer.png',
       rateText: 'USD Account • Manual Deposit',
-      minLimitText: 'Min: $5.00 USD',
-      minDepositUsd: 5.0,
+      minLimitText: 'Any Amount',
+      minDepositUsd: 0,
     },
   ];
 };

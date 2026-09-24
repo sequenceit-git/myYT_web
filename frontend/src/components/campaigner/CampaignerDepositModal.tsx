@@ -539,19 +539,18 @@ export const CampaignerDepositModal: React.FC<CampaignerDepositModalProps> = ({
               {/* Transaction ID */}
               <div>
                 <label className="font-mono" style={{ fontSize: '0.82rem', color: '#475569', display: 'block', marginBottom: 5, fontWeight: 600 }}>
-                  Transaction ID (TrxID) / TxHash <span style={{ color: '#ef4444' }}>*</span>
+                  Transaction ID (TrxID) / TxHash <span style={{ color: '#64748b', fontWeight: 500 }}>(Optional)</span>
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. BL76AK9X9Z or 0x8a92f..."
+                  placeholder="e.g. BL76AK9X9Z or 0x8a92f... (optional)"
                   value={transactionHash}
                   onChange={(e) => setTransactionHash(e.target.value)}
                   className="input-field font-mono"
                   style={{ padding: '10px 12px', fontSize: '0.9rem' }}
-                  required
                 />
                 <span style={{ fontSize: '0.74rem', color: '#64748b', display: 'block', marginTop: 3 }}>
-                  Exact transaction identifier from your SMS, FaucetPay receipt, or blockchain explorer.
+                  Optional: Transaction identifier from your SMS, FaucetPay receipt, or blockchain explorer.
                 </span>
               </div>
 
@@ -582,15 +581,15 @@ export const CampaignerDepositModal: React.FC<CampaignerDepositModalProps> = ({
                 </button>
                 <button
                   type="submit"
-                  disabled={depositLoading || !senderAccount.trim() || !transactionHash.trim()}
+                  disabled={depositLoading || !senderAccount.trim()}
                   className="btn btn-neon glow-neon"
                   style={{
                     flex: 2,
                     padding: '11px',
                     borderRadius: 10,
                     fontWeight: 700,
-                    opacity: (!senderAccount.trim() || !transactionHash.trim() || depositLoading) ? 0.6 : 1,
-                    cursor: (!senderAccount.trim() || !transactionHash.trim() || depositLoading) ? 'not-allowed' : 'pointer',
+                    opacity: (!senderAccount.trim() || depositLoading) ? 0.6 : 1,
+                    cursor: (!senderAccount.trim() || depositLoading) ? 'not-allowed' : 'pointer',
                   }}
                 >
                   {depositLoading ? 'Submitting...' : `Submit Deposit ($${numDepositAmount.toFixed(2)} USD)`}

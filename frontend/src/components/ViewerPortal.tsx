@@ -180,7 +180,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
   const bdtRate = usdToBdt;
   const payoutMethods = getPayoutMethods(usdToBdt, serverWithdrawMethods);
   const selectedConfig = payoutMethods.find((m) => m.id === withdrawMethod) || payoutMethods[0];
-  const selectedMinWithdraw = selectedConfig?.minWithdrawUsd ?? 5.0;
+  const selectedMinWithdraw = 0;
 
   // Handle Withdrawal
   const handleWithdraw = async (e: React.FormEvent) => {
@@ -195,9 +195,8 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
     const currentViewerBal = user.viewerBalance !== undefined ? user.viewerBalance : Math.max(0, (user.totalEarned || 0) - (user.totalWithdrawn || 0));
     const numWithdrawAmount = typeof withdrawAmount === 'string' ? (parseFloat(withdrawAmount) || 0) : (withdrawAmount || 0);
 
-    if (numWithdrawAmount < selectedMinWithdraw) {
-      const bdtPart = selectedConfig.isBDT ? ` (≈ ৳${Math.round(selectedMinWithdraw * bdtRate)} BDT)` : '';
-      setMsg({ type: 'error', text: `Minimum withdrawal for ${selectedConfig.name} is $${selectedMinWithdraw.toFixed(2)} USD${bdtPart}.` });
+    if (!numWithdrawAmount || numWithdrawAmount <= 0) {
+      setMsg({ type: 'error', text: 'Please enter a valid withdrawal amount greater than 0.' });
       return;
     }
 
@@ -264,9 +263,9 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
     ? (parseFloat(withdrawAmount.toString()) || 0)
     : 0;
   const hasWithdrawInput = withdrawAmount !== '' && withdrawAmount !== null && withdrawAmount !== undefined && withdrawAmount.toString().trim() !== '';
-  const isWithdrawBelowMin = hasWithdrawInput && numWithdrawAmount < selectedMinWithdraw;
+  const isWithdrawBelowMin = false;
   const isWithdrawExceedsBal = hasWithdrawInput && numWithdrawAmount > viewerBal;
-  const isWithdrawValid = hasWithdrawInput && numWithdrawAmount >= selectedMinWithdraw && numWithdrawAmount <= viewerBal;
+  const isWithdrawValid = hasWithdrawInput && numWithdrawAmount > 0 && numWithdrawAmount <= viewerBal;
 
   // Daily Earning & Watch Count (strictly completed/verified watch tasks)
   const startOfDay = new Date();

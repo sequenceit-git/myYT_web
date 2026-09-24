@@ -26,10 +26,10 @@ const withdrawSchema = z.object({
 });
 
 const depositSchema = z.object({
-  amount: z.number().min(1, 'Minimum deposit is $1.00 USD'),
+  amount: z.number().positive('Deposit amount must be greater than 0'),
   gateway: z.enum(['faucetpay', 'crypto', 'bkash', 'nagad', 'rocket', 'webmoney', 'payeer']),
   senderAccount: z.string().min(2, 'Sender account / phone / wallet address is required'),
-  transactionHash: z.string().min(2, 'Transaction ID / Trx Hash is required'),
+  transactionHash: z.string().optional().nullable(),
   notes: z.string().optional(),
   proofImage: z.string().optional(),
 });
@@ -75,27 +75,22 @@ router.post('/deposit', requireAuth, async (req: AuthRequest, res: Response): Pr
       });
       return;
     }
-    const minRequired = targetMethod?.minDepositUsd || 1.0;
-    if (amount < minRequired) {
-      res.status(400).json({
-        success: false,
-        error: `Minimum deposit for ${targetMethod?.name || gateway} is $${minRequired.toFixed(2)} USD`,
-      });
-      return;
-    }
 
-    // Check duplicate transaction hash to prevent duplicate manual deposits
-    const existingTx = await Transaction.findOne({
-      gateway: gateway as any,
-      referenceId: transactionHash.trim(),
-    });
-
-    if (existingTx) {
-      res.status(400).json({
-        success: false,
-        error: 'This Transaction ID has already been submitted. If your balance is not updated, please contact support.',
+    // Check duplicate transaction hash to prevent duplicate manual deposits (only if transactionHash provided)
+    const cleanTxHash = transactionHash ? transactionHash.trim() : '';
+    if (cleanTxHash) {
+      const existingTx = await Transaction.findOne({
+        gateway: gateway as any,
+        referenceId: cleanTxHash,
       });
-      return;
+
+      if (existingTx) {
+        res.status(400).json({
+          success: false,
+          error: 'This Transaction ID has already been submitted. If your balance is not updated, please contact support.',
+        });
+        return;
+      }
     }
 
     const transaction = await Transaction.create({
@@ -107,7 +102,7 @@ router.post('/deposit', requireAuth, async (req: AuthRequest, res: Response): Pr
       status: 'pending',
       gateway: gateway as any,
       senderAccount: senderAccount.trim(),
-      referenceId: transactionHash.trim(),
+      referenceId: cleanTxHash || undefined,
       notes: notes?.trim() || `Manual deposit via ${gateway.toUpperCase()}`,
       proofImage,
     });
@@ -142,9 +137,8 @@ router.post('/faucetpay-create-order', requireAuth, async (req: AuthRequest, res
       return;
     }
 
-    const minRequired = cryptoMethod?.minDepositUsd || 1.0;
-    if (isNaN(numAmount) || numAmount < minRequired) {
-      res.status(400).json({ success: false, error: `Minimum crypto deposit amount is $${minRequired.toFixed(2)} USD` });
+    if (isNaN(numAmount) || numAmount <= 0) {
+      res.status(400).json({ success: false, error: 'Deposit amount must be greater than 0' });
       return;
     }
 
@@ -351,14 +345,7 @@ router.post('/withdraw', requireAuth, async (req: AuthRequest, res: Response): P
       return;
     }
 
-    const minWithdrawUsd = currentMethod?.minWithdrawUsd ?? 5.0;
-    if (amount < minWithdrawUsd) {
-      res.status(400).json({
-        success: false,
-        error: `Minimum withdrawal amount for ${currentMethod?.name || method.toUpperCase()} is $${minWithdrawUsd.toFixed(2)} USD.`,
-      });
-      return;
-    }
+
 
     // Strict Security Rule: Payment method must already be bound and saved in user profile settings
     const linkedMethod = req.user!.savedPaymentMethods?.find((p) => p.method === method);
