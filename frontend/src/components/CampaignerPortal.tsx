@@ -205,6 +205,11 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
       return;
     }
 
+    if (minRequiredUsd > 0 && numAmount < minRequiredUsd) {
+      setFeedback({ type: 'error', message: `Minimum deposit for ${selectedMethod?.name || depositGateway} is $${minRequiredUsd.toFixed(2)} USD.` });
+      return;
+    }
+
     setFeedback(null);
     setDepositModalError(null);
     setIsDepositModalOpen(true);
@@ -223,6 +228,11 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
 
     if (!hasInput || numAmount <= 0) {
       setDepositModalError('Please enter a valid deposit amount greater than 0.');
+      return;
+    }
+
+    if (minRequiredUsd > 0 && numAmount < minRequiredUsd) {
+      setDepositModalError(`Minimum deposit for ${selectedMethod?.name || depositGateway} is $${minRequiredUsd.toFixed(2)} USD.`);
       return;
     }
 
@@ -311,22 +321,22 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
   const depositMethods = buildDepositMethods(depositMethodsList, usdToBdt);
   const selectedMethod = depositMethods.find((m) => m.id === depositGateway) || depositMethods[0];
 
-  const minRequiredUsd = 0;
+  const minRequiredUsd = Number(selectedMethod?.minDepositUsd) || 0;
   const numDepositAmount = (depositAmount !== '' && depositAmount !== null && depositAmount !== undefined && depositAmount.toString().trim() !== '')
     ? (parseFloat(depositAmount.toString()) || 0)
     : 0;
   const hasDepositInput = depositAmount !== '' && depositAmount !== null && depositAmount !== undefined && depositAmount.toString().trim() !== '';
-  const isDepositBelowMin = false;
+  const isDepositBelowMin = minRequiredUsd > 0 && hasDepositInput && numDepositAmount < minRequiredUsd;
 
   // Creator Withdraw calculations & handler
   const payoutMethods = getPayoutMethods(usdToBdt, serverWithdrawMethods);
   const selectedWithdrawConfig = payoutMethods.find((m) => m.id === withdrawMethod) || payoutMethods[0];
-  const selectedMinWithdraw = 0;
+  const selectedMinWithdraw = Number(selectedWithdrawConfig?.minWithdrawUsd) || 0;
   const linkedPaymentMethod = user?.savedPaymentMethods?.find((p) => p.method === withdrawMethod);
   const isWithdrawLinked = Boolean(linkedPaymentMethod && linkedPaymentMethod.accountNumber && linkedPaymentMethod.accountNumber.trim());
   const hasWithdrawInput = withdrawAmount !== '' && withdrawAmount !== null && withdrawAmount !== undefined && withdrawAmount.toString().trim() !== '';
   const numWithdrawAmount = hasWithdrawInput ? (parseFloat(withdrawAmount.toString()) || 0) : 0;
-  const isWithdrawBelowMin = false;
+  const isWithdrawBelowMin = selectedMinWithdraw > 0 && hasWithdrawInput && numWithdrawAmount < selectedMinWithdraw;
   const isWithdrawExceedsBal = hasWithdrawInput && numWithdrawAmount > creatorBal;
 
   const handleWithdraw = async (e: React.FormEvent) => {
@@ -338,6 +348,11 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
 
     if (!hasWithdrawInput || numWithdrawAmount <= 0) {
       setFeedback({ type: 'error', message: 'Please enter a valid withdrawal amount greater than 0.' });
+      return;
+    }
+
+    if (selectedMinWithdraw > 0 && numWithdrawAmount < selectedMinWithdraw) {
+      setFeedback({ type: 'error', message: `Minimum withdrawal amount for ${selectedWithdrawConfig?.name || withdrawMethod.toUpperCase()} is $${selectedMinWithdraw.toFixed(2)} USD.` });
       return;
     }
 

@@ -24,7 +24,9 @@ export interface PayoutMethodConfig {
 export const getPayoutMethods = (usdToBdt: number, dynamicMethods?: WithdrawMethod[]): PayoutMethodConfig[] => {
   const getMin = (id: string, defaultMin = 0): number => {
     const found = dynamicMethods?.find((m) => m.id === id);
-    return typeof found?.minWithdrawUsd === 'number' && found.minWithdrawUsd >= 0 ? found.minWithdrawUsd : defaultMin;
+    if (!found) return defaultMin;
+    const val = typeof found.minWithdrawUsd === 'number' ? found.minWithdrawUsd : parseFloat(String(found.minWithdrawUsd));
+    return !isNaN(val) && val >= 0 ? val : defaultMin;
   };
   const getEnabled = (id: string): boolean => {
     const found = dynamicMethods?.find((m) => m.id === id);
@@ -39,6 +41,8 @@ export const getPayoutMethods = (usdToBdt: number, dynamicMethods?: WithdrawMeth
     return found?.name || defName;
   };
 
+  const formatMinText = (min: number) => (min > 0 ? `Min: $${min.toFixed(2)} USD` : 'Any Amount');
+
   const methods: PayoutMethodConfig[] = [
     {
       id: 'bkash',
@@ -49,8 +53,8 @@ export const getPayoutMethods = (usdToBdt: number, dynamicMethods?: WithdrawMeth
       inputLabel: 'bKash Account Number',
       placeholder: '01XXXXXXXXX',
       rateText: `1 USD = ${usdToBdt} BDT`,
-      minLimitText: 'Any Amount',
-      minWithdrawUsd: 0,
+      minLimitText: formatMinText(getMin('bkash')),
+      minWithdrawUsd: getMin('bkash'),
       instructions: getInstr('bkash'),
       enabled: getEnabled('bkash'),
       isBDT: true,
@@ -64,8 +68,8 @@ export const getPayoutMethods = (usdToBdt: number, dynamicMethods?: WithdrawMeth
       inputLabel: 'Nagad Account Number',
       placeholder: '01XXXXXXXXX',
       rateText: `1 USD = ${usdToBdt} BDT`,
-      minLimitText: 'Any Amount',
-      minWithdrawUsd: 0,
+      minLimitText: formatMinText(getMin('nagad')),
+      minWithdrawUsd: getMin('nagad'),
       instructions: getInstr('nagad'),
       enabled: getEnabled('nagad'),
       isBDT: true,
@@ -79,8 +83,8 @@ export const getPayoutMethods = (usdToBdt: number, dynamicMethods?: WithdrawMeth
       inputLabel: 'Rocket Account Number',
       placeholder: '01XXXXXXXXX',
       rateText: `1 USD = ${usdToBdt} BDT`,
-      minLimitText: 'Any Amount',
-      minWithdrawUsd: 0,
+      minLimitText: formatMinText(getMin('rocket')),
+      minWithdrawUsd: getMin('rocket'),
       instructions: getInstr('rocket'),
       enabled: getEnabled('rocket'),
       isBDT: true,
@@ -94,8 +98,8 @@ export const getPayoutMethods = (usdToBdt: number, dynamicMethods?: WithdrawMeth
       inputLabel: 'FaucetPay Email',
       placeholder: 'your-email@example.com',
       rateText: 'Instant Automated • Zero Fee',
-      minLimitText: 'Any Amount',
-      minWithdrawUsd: 0,
+      minLimitText: formatMinText(getMin('faucetpay')),
+      minWithdrawUsd: getMin('faucetpay'),
       instructions: getInstr('faucetpay'),
       enabled: getEnabled('faucetpay'),
       isBDT: false,
@@ -109,8 +113,8 @@ export const getPayoutMethods = (usdToBdt: number, dynamicMethods?: WithdrawMeth
       inputLabel: 'USDT (BEP-20) Address',
       placeholder: '0x... (BNB Smart Chain BEP-20)',
       rateText: 'Only BEP-20 USDT Supported (BNB Smart Chain)',
-      minLimitText: 'Any Amount',
-      minWithdrawUsd: 0,
+      minLimitText: formatMinText(getMin('crypto')),
+      minWithdrawUsd: getMin('crypto'),
       instructions: getInstr('crypto'),
       enabled: getEnabled('crypto'),
       isBDT: false,
@@ -124,8 +128,8 @@ export const getPayoutMethods = (usdToBdt: number, dynamicMethods?: WithdrawMeth
       inputLabel: 'WebMoney Purse ID',
       placeholder: 'Z123456789012',
       rateText: 'USD Purse (WMZ)',
-      minLimitText: 'Any Amount',
-      minWithdrawUsd: 0,
+      minLimitText: formatMinText(getMin('webmoney')),
+      minWithdrawUsd: getMin('webmoney'),
       instructions: getInstr('webmoney'),
       enabled: getEnabled('webmoney'),
       isBDT: false,
@@ -139,8 +143,8 @@ export const getPayoutMethods = (usdToBdt: number, dynamicMethods?: WithdrawMeth
       inputLabel: 'Payeer Account (P...)',
       placeholder: 'P1000000000',
       rateText: 'USD Account Transfer',
-      minLimitText: 'Any Amount',
-      minWithdrawUsd: 0,
+      minLimitText: formatMinText(getMin('payeer')),
+      minWithdrawUsd: getMin('payeer'),
       instructions: getInstr('payeer'),
       enabled: getEnabled('payeer'),
       isBDT: false,

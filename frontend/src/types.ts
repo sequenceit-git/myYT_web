@@ -120,7 +120,7 @@ export interface DepositMethod {
   type?: 'mobile_banking' | 'crypto' | 'micropayment' | 'e_wallet' | string;
   accountType?: string;
   accountNumber?: string;
-  minDepositUsd?: number;
+  minDepositUsd?: number | string;
   instructions?: string;
   enabled?: boolean;
 }
@@ -130,7 +130,7 @@ export interface WithdrawMethod {
   name: string;
   type?: 'mobile_banking' | 'crypto' | 'micropayment' | 'e_wallet' | string;
   accountType?: string;
-  minWithdrawUsd: number;
+  minWithdrawUsd: number | string;
   instructions?: string;
   enabled?: boolean;
 }

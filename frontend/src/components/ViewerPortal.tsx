@@ -180,7 +180,7 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
   const bdtRate = usdToBdt;
   const payoutMethods = getPayoutMethods(usdToBdt, serverWithdrawMethods);
   const selectedConfig = payoutMethods.find((m) => m.id === withdrawMethod) || payoutMethods[0];
-  const selectedMinWithdraw = 0;
+  const selectedMinWithdraw = Number(selectedConfig?.minWithdrawUsd) || 0;
 
   // Handle Withdrawal
   const handleWithdraw = async (e: React.FormEvent) => {
@@ -197,6 +197,11 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
 
     if (!numWithdrawAmount || numWithdrawAmount <= 0) {
       setMsg({ type: 'error', text: 'Please enter a valid withdrawal amount greater than 0.' });
+      return;
+    }
+
+    if (selectedMinWithdraw > 0 && numWithdrawAmount < selectedMinWithdraw) {
+      setMsg({ type: 'error', text: `Minimum withdrawal amount for ${selectedConfig.name} is $${selectedMinWithdraw.toFixed(2)} USD.` });
       return;
     }
 
@@ -263,9 +268,9 @@ export const ViewerPortal: React.FC<ViewerPortalProps> = ({
     ? (parseFloat(withdrawAmount.toString()) || 0)
     : 0;
   const hasWithdrawInput = withdrawAmount !== '' && withdrawAmount !== null && withdrawAmount !== undefined && withdrawAmount.toString().trim() !== '';
-  const isWithdrawBelowMin = false;
+  const isWithdrawBelowMin = selectedMinWithdraw > 0 && hasWithdrawInput && numWithdrawAmount < selectedMinWithdraw;
   const isWithdrawExceedsBal = hasWithdrawInput && numWithdrawAmount > viewerBal;
-  const isWithdrawValid = hasWithdrawInput && numWithdrawAmount > 0 && numWithdrawAmount <= viewerBal;
+  const isWithdrawValid = hasWithdrawInput && numWithdrawAmount > 0 && numWithdrawAmount <= viewerBal && !isWithdrawBelowMin;
 
   // Daily Earning & Watch Count (strictly completed/verified watch tasks)
   const startOfDay = new Date();

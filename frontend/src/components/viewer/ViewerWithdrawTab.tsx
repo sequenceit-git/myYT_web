@@ -64,7 +64,9 @@ export const ViewerWithdrawTab: React.FC<ViewerWithdrawTabProps> = ({
           </span>
         </div>
         <span className="badge-pill badge-cyan" style={{ fontSize: '0.74rem', padding: '4px 12px' }}>
-          Flexible Cashout • Up to ${viewerBal.toFixed(4)} USD
+          {selectedMinWithdraw > 0
+            ? `Min: $${selectedMinWithdraw.toFixed(2)} USD • Up to $${viewerBal.toFixed(4)} USD`
+            : `Flexible Cashout • Up to $${viewerBal.toFixed(4)} USD`}
         </span>
       </div>
 
@@ -209,21 +211,27 @@ export const ViewerWithdrawTab: React.FC<ViewerWithdrawTabProps> = ({
               type="number"
               step="any"
               min="0.01"
-              placeholder="Enter amount (USD)"
+              placeholder={selectedMinWithdraw > 0 ? `Enter amount (min $${selectedMinWithdraw.toFixed(2)})` : 'Enter amount (USD)'}
               value={withdrawAmount}
               onChange={(e) => setWithdrawAmount(e.target.value)}
               className="input-field"
               style={{
                 padding: '11px 14px',
                 fontSize: '0.98rem',
-                borderColor: isWithdrawExceedsBal ? '#ef4444' : undefined,
-                color: isWithdrawExceedsBal ? '#dc2626' : undefined,
-                background: isWithdrawExceedsBal ? '#fff1f2' : undefined,
+                borderColor: (isWithdrawExceedsBal || isWithdrawBelowMin) ? '#ef4444' : undefined,
+                color: (isWithdrawExceedsBal || isWithdrawBelowMin) ? '#dc2626' : undefined,
+                background: (isWithdrawExceedsBal || isWithdrawBelowMin) ? '#fff1f2' : undefined,
               }}
               required
             />
 
             {/* Warning Messages */}
+            {isWithdrawBelowMin && (
+              <div style={{ color: '#ef4444', fontSize: '0.82rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5, marginTop: 6 }}>
+                <AlertCircle size={14} color="#ef4444" style={{ flexShrink: 0 }} />
+                <span>Minimum withdrawal is ${selectedMinWithdraw.toFixed(2)} USD for {selectedConfig.name}.</span>
+              </div>
+            )}
             {isWithdrawExceedsBal && (
               <div style={{ color: '#ef4444', fontSize: '0.82rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5, marginTop: 6 }}>
                 <AlertCircle size={14} color="#ef4444" style={{ flexShrink: 0 }} />
@@ -485,12 +493,14 @@ export const ViewerWithdrawTab: React.FC<ViewerWithdrawTabProps> = ({
             {loading
               ? 'Submitting Request...'
               : !hasWithdrawInput
-                ? 'Enter Amount to Cashout'
+                ? (selectedMinWithdraw > 0 ? `Enter Amount (Min $${selectedMinWithdraw.toFixed(2)})` : 'Enter Amount to Cashout')
                 : numWithdrawAmount <= 0
                   ? 'Enter Amount Greater Than 0'
-                  : isWithdrawExceedsBal
-                    ? 'Insufficient Balance'
-                    : `Withdraw $${numWithdrawAmount.toFixed(2)} USD via ${selectedConfig.name}`}
+                  : isWithdrawBelowMin
+                    ? `Minimum Withdrawal is $${selectedMinWithdraw.toFixed(2)} USD`
+                    : isWithdrawExceedsBal
+                      ? 'Insufficient Balance'
+                      : `Withdraw $${numWithdrawAmount.toFixed(2)} USD via ${selectedConfig.name}`}
           </button>
         ) : (
           <button

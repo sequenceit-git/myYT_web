@@ -76,6 +76,15 @@ router.post('/deposit', requireAuth, async (req: AuthRequest, res: Response): Pr
       return;
     }
 
+    const minRequired = Number(targetMethod?.minDepositUsd) || 0;
+    if (minRequired > 0 && amount < minRequired) {
+      res.status(400).json({
+        success: false,
+        error: `Minimum deposit for ${targetMethod?.name || gateway} is $${minRequired.toFixed(2)} USD`,
+      });
+      return;
+    }
+
     // Check duplicate transaction hash to prevent duplicate manual deposits (only if transactionHash provided)
     const cleanTxHash = transactionHash ? transactionHash.trim() : '';
     if (cleanTxHash) {
@@ -139,6 +148,12 @@ router.post('/faucetpay-create-order', requireAuth, async (req: AuthRequest, res
 
     if (isNaN(numAmount) || numAmount <= 0) {
       res.status(400).json({ success: false, error: 'Deposit amount must be greater than 0' });
+      return;
+    }
+
+    const minRequired = Number(cryptoMethod?.minDepositUsd) || 0;
+    if (minRequired > 0 && numAmount < minRequired) {
+      res.status(400).json({ success: false, error: `Minimum crypto deposit amount is $${minRequired.toFixed(2)} USD` });
       return;
     }
 
@@ -341,6 +356,15 @@ router.post('/withdraw', requireAuth, async (req: AuthRequest, res: Response): P
       res.status(400).json({
         success: false,
         error: `Withdrawals via ${currentMethod.name || method.toUpperCase()} are currently disabled by administration.`,
+      });
+      return;
+    }
+
+    const minWithdrawUsd = Number(currentMethod?.minWithdrawUsd) || 0;
+    if (minWithdrawUsd > 0 && amount < minWithdrawUsd) {
+      res.status(400).json({
+        success: false,
+        error: `Minimum withdrawal amount for ${currentMethod?.name || method.toUpperCase()} is $${minWithdrawUsd.toFixed(2)} USD.`,
       });
       return;
     }

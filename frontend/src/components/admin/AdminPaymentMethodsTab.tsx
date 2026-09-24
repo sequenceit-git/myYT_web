@@ -358,11 +358,11 @@ export const AdminPaymentMethodsTab: React.FC<AdminPaymentMethodsTabProps> = ({
                       type="number"
                       step="any"
                       min="0"
-                      value={m.minDepositUsd !== undefined ? m.minDepositUsd : 0}
+                      placeholder="0"
+                      value={m.minDepositUsd === 0 ? '' : (m.minDepositUsd ?? '')}
                       onChange={(e) => {
                         const updated = [...depositMethodsConfig];
-                        const val = parseFloat(e.target.value);
-                        updated[idx] = { ...m, minDepositUsd: isNaN(val) ? 0 : Math.max(0, val) };
+                        updated[idx] = { ...m, minDepositUsd: e.target.value };
                         setDepositMethodsConfig(updated);
                       }}
                       className="input-field font-mono"
@@ -608,11 +608,11 @@ export const AdminPaymentMethodsTab: React.FC<AdminPaymentMethodsTabProps> = ({
                       type="number"
                       step="any"
                       min="0"
-                      value={m.minWithdrawUsd !== undefined ? m.minWithdrawUsd : 0}
+                      placeholder="0"
+                      value={m.minWithdrawUsd === 0 ? '' : (m.minWithdrawUsd ?? '')}
                       onChange={(e) => {
                         const updated = [...withdrawMethodsConfig];
-                        const val = parseFloat(e.target.value);
-                        updated[idx] = { ...m, minWithdrawUsd: isNaN(val) ? 0 : Math.max(0, val) };
+                        updated[idx] = { ...m, minWithdrawUsd: e.target.value };
                         setWithdrawMethodsConfig(updated);
                       }}
                       className="input-field font-mono"

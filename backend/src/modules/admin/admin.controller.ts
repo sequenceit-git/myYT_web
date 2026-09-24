@@ -1136,7 +1136,7 @@ router.post('/settings/deposit-methods', requireMasterAdmin, async (req: AuthReq
       type: m.type || 'mobile_banking',
       accountType: String(m.accountType || '').trim(),
       accountNumber: String(m.accountNumber || '').trim(),
-      minDepositUsd: typeof m.minDepositUsd === 'number' && m.minDepositUsd >= 0 ? m.minDepositUsd : 0,
+      minDepositUsd: !isNaN(Number(m.minDepositUsd)) && Number(m.minDepositUsd) >= 0 ? Number(m.minDepositUsd) : 0,
       instructions: String(m.instructions || '').trim(),
       enabled: Boolean(m.enabled !== false),
     })).filter((m) => m.id && m.name);
@@ -1187,7 +1187,7 @@ router.post('/settings/withdraw-methods', requireMasterAdmin, async (req: AuthRe
       name: String(m.name || '').trim(),
       type: m.type || 'mobile_banking',
       accountType: String(m.accountType || '').trim(),
-      minWithdrawUsd: typeof m.minWithdrawUsd === 'number' && m.minWithdrawUsd >= 0 ? m.minWithdrawUsd : 0,
+      minWithdrawUsd: !isNaN(Number(m.minWithdrawUsd)) && Number(m.minWithdrawUsd) >= 0 ? Number(m.minWithdrawUsd) : 0,
       instructions: String(m.instructions || '').trim(),
       enabled: Boolean(m.enabled !== false),
     })).filter((m) => m.id && m.name);

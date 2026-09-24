@@ -782,9 +782,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
   const handleSaveDepositMethods = async () => {
     setDepositMethodsSaving(true);
     try {
+      const sanitized = depositMethodsConfig.map((m) => ({
+        ...m,
+        minDepositUsd: m.minDepositUsd === '' || m.minDepositUsd === undefined ? 0 : Math.max(0, parseFloat(String(m.minDepositUsd)) || 0),
+      }));
       const res = await apiRequest<{ message?: string; methods: DepositMethod[] }>('/admin/settings/deposit-methods', {
         method: 'POST',
-        body: JSON.stringify({ methods: depositMethodsConfig }),
+        body: JSON.stringify({ methods: sanitized }),
       });
       if (res.success) {
         setActionNotice({ type: 'success', message: (res as any).message || res.data?.message || 'Deposit payment methods and account numbers updated!' });
@@ -805,9 +809,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ user, onRefreshUser })
   const handleSaveWithdrawMethods = async () => {
     setWithdrawMethodsSaving(true);
     try {
+      const sanitized = withdrawMethodsConfig.map((m) => ({
+        ...m,
+        minWithdrawUsd: m.minWithdrawUsd === '' || m.minWithdrawUsd === undefined ? 0 : Math.max(0, parseFloat(String(m.minWithdrawUsd)) || 0),
+      }));
       const res = await apiRequest<{ message?: string; methods: WithdrawMethod[] }>('/admin/settings/withdraw-methods', {
         method: 'POST',
-        body: JSON.stringify({ methods: withdrawMethodsConfig }),
+        body: JSON.stringify({ methods: sanitized }),
       });
       if (res.success) {
         setActionNotice({ type: 'success', message: (res as any).message || res.data?.message || 'Withdrawal payment methods & minimum limits updated!' });

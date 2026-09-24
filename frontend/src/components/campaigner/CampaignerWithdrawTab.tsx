@@ -58,7 +58,9 @@ export const CampaignerWithdrawTab: React.FC<CampaignerWithdrawTabProps> = ({
           </span>
         </div>
         <span className="badge-pill badge-cyan" style={{ fontSize: '0.74rem', padding: '4px 12px' }}>
-          Flexible Cashout • Up to ${creatorBal.toFixed(2)} USD
+          {selectedMinWithdraw > 0
+            ? `Min: $${selectedMinWithdraw.toFixed(2)} USD • Up to $${creatorBal.toFixed(2)} USD`
+            : `Flexible Cashout • Up to $${creatorBal.toFixed(2)} USD`}
         </span>
       </div>
 
@@ -204,21 +206,27 @@ export const CampaignerWithdrawTab: React.FC<CampaignerWithdrawTabProps> = ({
               type="number"
               step="any"
               min="0.01"
-              placeholder="Enter amount (USD)"
+              placeholder={selectedMinWithdraw > 0 ? `Enter amount (min $${selectedMinWithdraw.toFixed(2)})` : 'Enter amount (USD)'}
               value={withdrawAmount}
               onChange={(e) => setWithdrawAmount(e.target.value)}
               className="input-field"
               style={{
                 padding: '11px 14px',
                 fontSize: '0.98rem',
-                borderColor: isWithdrawExceedsBal ? '#ef4444' : undefined,
-                color: isWithdrawExceedsBal ? '#dc2626' : undefined,
-                background: isWithdrawExceedsBal ? '#fff1f2' : undefined,
+                borderColor: (isWithdrawExceedsBal || isWithdrawBelowMin) ? '#ef4444' : undefined,
+                color: (isWithdrawExceedsBal || isWithdrawBelowMin) ? '#dc2626' : undefined,
+                background: (isWithdrawExceedsBal || isWithdrawBelowMin) ? '#fff1f2' : undefined,
               }}
               required
             />
 
             {/* Warning Messages */}
+            {isWithdrawBelowMin && (
+              <div style={{ color: '#ef4444', fontSize: '0.82rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5, marginTop: 6 }}>
+                <AlertCircle size={14} color="#ef4444" style={{ flexShrink: 0 }} />
+                <span>Minimum withdrawal is ${selectedMinWithdraw.toFixed(2)} USD for {selectedWithdrawConfig?.name}.</span>
+              </div>
+            )}
             {isWithdrawExceedsBal && (
               <div style={{ color: '#ef4444', fontSize: '0.82rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5, marginTop: 6 }}>
                 <AlertCircle size={14} color="#ef4444" style={{ flexShrink: 0 }} />
@@ -430,7 +438,8 @@ export const CampaignerWithdrawTab: React.FC<CampaignerWithdrawTabProps> = ({
             !isWithdrawLinked ||
             !hasWithdrawInput ||
             numWithdrawAmount <= 0 ||
-            isWithdrawExceedsBal
+            isWithdrawExceedsBal ||
+            isWithdrawBelowMin
           }
           className="btn btn-neon glow-neon"
           style={{
@@ -443,17 +452,25 @@ export const CampaignerWithdrawTab: React.FC<CampaignerWithdrawTabProps> = ({
             alignItems: 'center',
             justifyContent: 'center',
             gap: 8,
-            opacity: (withdrawLoading || !isWithdrawLinked || !hasWithdrawInput || numWithdrawAmount <= 0 || isWithdrawExceedsBal) ? 0.6 : 1,
-            cursor: (withdrawLoading || !isWithdrawLinked || !hasWithdrawInput || numWithdrawAmount <= 0 || isWithdrawExceedsBal) ? 'not-allowed' : 'pointer',
+            opacity: (withdrawLoading || !isWithdrawLinked || !hasWithdrawInput || numWithdrawAmount <= 0 || isWithdrawExceedsBal || isWithdrawBelowMin) ? 0.6 : 1,
+            cursor: (withdrawLoading || !isWithdrawLinked || !hasWithdrawInput || numWithdrawAmount <= 0 || isWithdrawExceedsBal || isWithdrawBelowMin) ? 'not-allowed' : 'pointer',
           }}
         >
           {withdrawLoading ? (
             <>
               <RefreshCw size={16} className="spin-fast" /> Processing Withdrawal...
             </>
+          ) : !hasWithdrawInput ? (
+            <>
+              <ArrowDownLeft size={16} /> {selectedMinWithdraw > 0 ? `Enter Amount (Min $${selectedMinWithdraw.toFixed(2)})` : 'Enter Amount'}
+            </>
+          ) : isWithdrawBelowMin ? (
+            <>
+              <AlertCircle size={16} /> Minimum Withdrawal is ${selectedMinWithdraw.toFixed(2)} USD
+            </>
           ) : (
             <>
-              <ArrowDownLeft size={16} /> Request Withdrawal ({hasWithdrawInput && numWithdrawAmount > 0 ? `$${numWithdrawAmount.toFixed(2)} USD` : 'Enter Amount'})
+              <ArrowDownLeft size={16} /> Request Withdrawal (${numWithdrawAmount.toFixed(2)} USD)
             </>
           )}
         </button>
