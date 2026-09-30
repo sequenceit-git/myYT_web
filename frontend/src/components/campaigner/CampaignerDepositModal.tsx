@@ -66,16 +66,22 @@ export const CampaignerDepositModal: React.FC<CampaignerDepositModalProps> = ({
       });
 
       if (res.success && res.data) {
+        const params = res.data.formParams || {};
+        if (!params.merchant_username || !params.amount1 || !params.currency1 || !params.item_description) {
+          alert('FaucetPay checkout is missing required merchant details. Ask the admin to set FAUCETPAY_MERCHANT_USERNAME.');
+          return;
+        }
+
         setFaucetPayOrder(res.data);
 
         // Dynamically create and submit POST form to FaucetPay Merchant Checkout
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = res.data.formParams.action || 'https://faucetpay.io/merchant/webscr';
+        form.action = params.action || 'https://faucetpay.io/merchant/webscr';
         form.target = '_blank';
 
-        Object.entries(res.data.formParams).forEach(([key, val]) => {
-          if (key !== 'action') {
+        Object.entries(params).forEach(([key, val]) => {
+          if (key !== 'action' && val !== undefined && val !== null) {
             const input = document.createElement('input');
             input.type = 'hidden';
             input.name = key;

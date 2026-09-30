@@ -158,8 +158,17 @@ router.post('/faucetpay-create-order', requireAuth, async (req: AuthRequest, res
     }
 
     const user = req.user!;
+    // SECURITY: Merchant checkout is a public HTML POST. Fail closed if the
+    // receiving FaucetPay username is missing — never submit an empty form
+    // (FaucetPay then shows "This checkout link isn't valid").
     const merchantUsername = (config.faucetpayMerchantUsername || process.env.FAUCETPAY_MERCHANT_USERNAME || '').trim();
-    const hasApiKey = Boolean((config.faucetpayApiKey || process.env.FAUCETPAY_API_KEY || '').trim());
+    if (!merchantUsername) {
+      res.status(503).json({
+        success: false,
+        error: 'FaucetPay merchant checkout is not configured. Set FAUCETPAY_MERCHANT_USERNAME on the server (your FaucetPay username, approved at faucetpay.io/merchant).',
+      });
+      return;
+    }
 
     // Generate unique internal order reference ID
     const referenceId = `FP_${Date.now()}_${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
@@ -185,7 +194,9 @@ router.post('/faucetpay-create-order', requireAuth, async (req: AuthRequest, res
       merchant_username: merchantUsername,
       item_description: `ytCash Crypto Deposit ($${numAmount.toFixed(2)} USD)`,
       amount1: numAmount.toFixed(2),
-      currency1: 'USD',
+      // FaucetPay merchant docs require a coin ticker for currency1 (USDT, BTC, …),
+      // not fiat "USD". Pricing the checkout in USDT matches the USD deposit amount.
+      currency1: 'USDT',
       currency2: '', // Empty allows buyer to choose Bitcoin, Ethereum, USDT, Litecoin, Dogecoin, Tron, etc.
       custom: transaction._id.toString(),
       callback_url: `${publicOrigin}/api/wallet/faucetpay-callback`,
@@ -200,7 +211,7 @@ router.post('/faucetpay-create-order', requireAuth, async (req: AuthRequest, res
         referenceId,
         amount: numAmount,
         formParams,
-        isConfigured: Boolean(merchantUsername || hasApiKey),
+        isConfigured: true,
       },
     });
   } catch (error: any) {

@@ -52,6 +52,10 @@ services:
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - RESEND_API_KEY=${RESEND_API_KEY:-}
       - RESEND_FROM_EMAIL=${RESEND_FROM_EMAIL:-onboarding@resend.dev}
+      # Merchant checkout needs the FaucetPay username. Without it FaucetPay
+      # returns "This checkout link isn't valid / missing required details".
+      - FAUCETPAY_API_KEY=${FAUCETPAY_API_KEY:-}
+      - FAUCETPAY_MERCHANT_USERNAME=${FAUCETPAY_MERCHANT_USERNAME:-}
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:5000/api/health"]
       interval: 10s
