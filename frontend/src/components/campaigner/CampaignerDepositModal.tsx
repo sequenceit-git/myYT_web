@@ -44,8 +44,8 @@ export const CampaignerDepositModal: React.FC<CampaignerDepositModalProps> = ({
   onRefreshUser,
   onSuccessNotice,
 }) => {
-  const [faucetPayLoading, setFaucetPayLoading] = useState<boolean>(false);
-  const [faucetPayOrder, setFaucetPayOrder] = useState<any>(null);
+  const [cryptoCheckoutLoading, setCryptoCheckoutLoading] = useState<boolean>(false);
+  const [cryptoOrder, setCryptoOrder] = useState<{ transactionId: string; checkoutUrl?: string } | null>(null);
   const [checkingStatus, setCheckingStatus] = useState<boolean>(false);
   const [showManualFallback, setShowManualFallback] = useState<boolean>(false);
 
@@ -53,67 +53,42 @@ export const CampaignerDepositModal: React.FC<CampaignerDepositModalProps> = ({
 
   const isCryptoMethod = selectedMethod.id === 'crypto';
 
-  const handleFaucetPayCheckout = async () => {
-    setFaucetPayLoading(true);
+  const handleCryptomusCheckout = async () => {
+    setCryptoCheckoutLoading(true);
     try {
       const res = await apiRequest<{
         transactionId: string;
-        formParams: Record<string, any>;
+        checkoutUrl: string;
         isConfigured: boolean;
-      }>('/wallet/faucetpay-create-order', {
+      }>('/wallet/cryptomus-create-order', {
         method: 'POST',
         body: JSON.stringify({ amount: numDepositAmount }),
       });
 
-      if (res.success && res.data) {
-        const params = res.data.formParams || {};
-        if (!params.merchant_username || !params.amount1 || !params.currency1 || !params.item_description) {
-          alert('FaucetPay checkout is missing required merchant details. Ask the admin to set FAUCETPAY_MERCHANT_USERNAME.');
-          return;
-        }
-
-        setFaucetPayOrder(res.data);
-
-        // Dynamically create and submit POST form to FaucetPay Merchant Checkout
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = params.action || 'https://faucetpay.io/merchant/webscr';
-        form.target = '_blank';
-
-        Object.entries(params).forEach(([key, val]) => {
-          if (key !== 'action' && val !== undefined && val !== null) {
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = key;
-            input.value = String(val);
-            form.appendChild(input);
-          }
-        });
-
-        document.body.appendChild(form);
-        form.submit();
-        document.body.removeChild(form);
+      if (res.success && res.data?.checkoutUrl) {
+        setCryptoOrder(res.data);
+        window.open(res.data.checkoutUrl, '_blank', 'noopener,noreferrer');
       } else {
-        alert(res.error || 'Failed to initiate FaucetPay crypto checkout.');
+        alert(res.error || 'Failed to initiate Cryptomus crypto checkout.');
       }
     } catch (err: any) {
       alert(err.message || 'Error communicating with server.');
     } finally {
-      setFaucetPayLoading(false);
+      setCryptoCheckoutLoading(false);
     }
   };
 
   const handleCheckCryptoPaymentStatus = async () => {
-    if (!faucetPayOrder?.transactionId) return;
+    if (!cryptoOrder?.transactionId) return;
     setCheckingStatus(true);
     try {
       const res = await apiRequest<{
         status: string;
         amount: number;
         isCompleted: boolean;
-      }>('/wallet/faucetpay-verify-order', {
+      }>('/wallet/cryptomus-verify-order', {
         method: 'POST',
-        body: JSON.stringify({ orderId: faucetPayOrder.transactionId }),
+        body: JSON.stringify({ orderId: cryptoOrder.transactionId }),
       });
 
       if (res.success && res.data) {
@@ -124,7 +99,7 @@ export const CampaignerDepositModal: React.FC<CampaignerDepositModalProps> = ({
           }
           onClose();
         } else {
-          alert('Payment status: ' + res.data.status.toUpperCase() + '. Awaiting blockchain confirmation from FaucetPay.');
+          alert('Payment status: ' + res.data.status.toUpperCase() + '. Awaiting blockchain confirmation from Cryptomus.');
         }
       }
     } catch {
@@ -197,7 +172,7 @@ export const CampaignerDepositModal: React.FC<CampaignerDepositModalProps> = ({
                 {isCryptoMethod ? 'Instant Crypto Deposit' : 'Complete Deposit Payment'}
               </h4>
               <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
-                Gateway: <strong>{selectedMethod.name}</strong> {isCryptoMethod && '• Automated via FaucetPay'}
+                Gateway: <strong>{selectedMethod.name}</strong> {isCryptoMethod && '• Automated via Cryptomus'}
               </span>
             </div>
           </div>
@@ -250,11 +225,11 @@ export const CampaignerDepositModal: React.FC<CampaignerDepositModalProps> = ({
         </div>
 
         {/* ========================================================================= */}
-        {/* AUTOMATED CRYPTO (FAUCETPAY) CHECKOUT VIEW                                 */}
+        {/* AUTOMATED CRYPTO (CRYPTOMUS) CHECKOUT VIEW */}
         {/* ========================================================================= */}
         {isCryptoMethod && !showManualFallback ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {/* FaucetPay Explanatory Card */}
+            {/* Cryptomus Explanatory Card */}
             <div
               style={{
                 background: 'linear-gradient(135deg, #f8fafc 0%, #f0fdf4 100%)',
@@ -286,7 +261,7 @@ export const CampaignerDepositModal: React.FC<CampaignerDepositModalProps> = ({
               </div>
 
               <h5 style={{ fontSize: '0.94rem', fontWeight: 700, color: '#0f172a', margin: '0 0 6px' }}>
-                Pay with Any Crypto via FaucetPay
+                Pay with Any Crypto via Cryptomus
               </h5>
               <p style={{ fontSize: '0.80rem', color: '#475569', lineHeight: 1.45, margin: 0 }}>
                 Click below to launch secure crypto checkout. Pay seamlessly using <strong>Bitcoin (BTC), Ethereum (ETH), USDT (TRC-20, BEP-20, ERC-20), Litecoin (LTC), Tron (TRX), Dogecoin (DOGE), BNB</strong> and more.
@@ -299,11 +274,11 @@ export const CampaignerDepositModal: React.FC<CampaignerDepositModalProps> = ({
             </div>
 
             {/* Launch Checkout Button */}
-            {!faucetPayOrder ? (
+            {!cryptoOrder ? (
               <button
                 type="button"
-                onClick={handleFaucetPayCheckout}
-                disabled={faucetPayLoading}
+                onClick={handleCryptomusCheckout}
+                disabled={cryptoCheckoutLoading}
                 className="btn btn-neon glow-neon"
                 style={{
                   width: '100%',
@@ -316,18 +291,18 @@ export const CampaignerDepositModal: React.FC<CampaignerDepositModalProps> = ({
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: 10,
-                  cursor: faucetPayLoading ? 'wait' : 'pointer',
+                  cursor: cryptoCheckoutLoading ? 'wait' : 'pointer',
                   border: 'none',
                   color: '#ffffff',
                   boxShadow: '0 8px 24px rgba(2, 132, 199, 0.28)',
                 }}
               >
-                {faucetPayLoading ? (
+                {cryptoCheckoutLoading ? (
                   <span>Generating Secure Order...</span>
                 ) : (
                   <>
                     <Zap size={18} />
-                    <span>Pay ${numDepositAmount.toFixed(2)} USD via FaucetPay</span>
+                    <span>Pay ${numDepositAmount.toFixed(2)} USD via Cryptomus</span>
                     <ExternalLink size={16} />
                   </>
                 )}
@@ -340,14 +315,14 @@ export const CampaignerDepositModal: React.FC<CampaignerDepositModalProps> = ({
                     Checkout Window Opened!
                   </div>
                   <div style={{ fontSize: '0.78rem', color: '#3b82f6', lineHeight: 1.4 }}>
-                    Complete your payment on FaucetPay. Once done, click the button below to confirm your balance.
+                    Complete your payment on Cryptomus. Once done, click the button below to confirm your balance.
                   </div>
                 </div>
 
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button
                     type="button"
-                    onClick={handleFaucetPayCheckout}
+                    onClick={handleCryptomusCheckout}
                     className="btn btn-ghost"
                     style={{ flex: 1, padding: '10px', borderRadius: 10, fontSize: '0.82rem', border: '1px solid #cbd5e1' }}
                   >
@@ -407,7 +382,7 @@ export const CampaignerDepositModal: React.FC<CampaignerDepositModalProps> = ({
                     cursor: 'pointer',
                   }}
                 >
-                  ⚡ Switch to Automatic FaucetPay Checkout
+                  ⚡ Switch to Automatic Cryptomus Checkout
                 </button>
               </div>
             )}

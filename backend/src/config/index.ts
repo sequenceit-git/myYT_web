@@ -44,9 +44,10 @@ export const config = {
   resendApiKey: process.env.RESEND_API_KEY || '',
   resendFromEmail: process.env.RESEND_FROM_EMAIL || 'noreply@ytcash.pro',
 
-  // FaucetPay Automated Crypto Gateway Configuration
-  faucetpayApiKey: process.env.FAUCETPAY_API_KEY || '',
-  faucetpayMerchantUsername: process.env.FAUCETPAY_MERCHANT_USERNAME || '',
+  // Cryptomus Merchant API — keys are read from env only, never hard-coded
+  cryptomusMerchantUuid: process.env.CRYPTOMUS_MERCHANT_UUID || '',
+  cryptomusPaymentApiKey: process.env.CRYPTOMUS_PAYMENT_API_KEY || '',
+  cryptomusPayoutApiKey: process.env.CRYPTOMUS_PAYOUT_API_KEY || '',
 };
 
 

@@ -73,14 +73,14 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
   const [isDepositModalOpen, setIsDepositModalOpen] = useState<boolean>(false);
   const [depositModalError, setDepositModalError] = useState<string | null>(null);
 
-  // Listen for FaucetPay automated checkout return redirects (?status=success or ?status=cancelled)
+  // Listen for Cryptomus checkout return redirects (?status=success or ?status=cancelled)
   useEffect(() => {
     const statusParam = searchParams.get('status');
     const orderIdParam = searchParams.get('orderId') || searchParams.get('txId');
 
     if (statusParam === 'success') {
       if (orderIdParam) {
-        apiRequest<{ isCompleted: boolean; amount: number; balance: number }>('/wallet/faucetpay-verify-order', {
+        apiRequest<{ isCompleted: boolean; amount: number; balance: number }>('/wallet/cryptomus-verify-order', {
           method: 'POST',
           body: JSON.stringify({ orderId: orderIdParam }),
         }).then((res) => {
@@ -94,7 +94,7 @@ export const CampaignerPortal: React.FC<CampaignerPortalProps> = ({
           } else {
             setFeedback({
               type: 'success',
-              message: '✓ Crypto deposit submitted via FaucetPay! Your balance will update automatically upon blockchain confirmation.',
+              message: '✓ Crypto deposit submitted via Cryptomus! Your balance will update automatically upon blockchain confirmation.',
             });
           }
         }).catch(() => {

@@ -194,7 +194,7 @@ export const AdminPaymentMethodsTab: React.FC<AdminPaymentMethodsTabProps> = ({
                               border: '1px solid #a7f3d0',
                             }}
                           >
-                            ⚡ ONLY AUTOMATIC GATEWAY (FaucetPay Merchant API)
+                            ⚡ ONLY AUTOMATIC GATEWAY (Cryptomus Merchant API)
                           </span>
                         )}
                         {isFaucetPayManual && (
@@ -230,7 +230,7 @@ export const AdminPaymentMethodsTab: React.FC<AdminPaymentMethodsTabProps> = ({
                       </div>
                       <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#64748b' }}>
                         {isCrypto
-                          ? 'Automated instant checkout via FaucetPay. Users pay with BTC, ETH, USDT, LTC, DOGE, TRX, SOL.'
+                          ? 'Automated instant checkout via Cryptomus. Users pay with BTC, ETH, USDT, LTC, DOGE, TRX, SOL.'
                           : isFaucetPayManual
                             ? 'Advertisers manually transfer to your FaucetPay account and enter TrxID for admin review.'
                             : `Manual deposit gateway with transaction ID verification.`}
@@ -315,7 +315,7 @@ export const AdminPaymentMethodsTab: React.FC<AdminPaymentMethodsTabProps> = ({
                       }}
                       placeholder={
                         isCrypto
-                          ? 'Automated FaucetPay Merchant (credentials set in backend .env)'
+                          ? 'Automated Cryptomus Merchant (credentials set in backend .env)'
                           : isFaucetPayManual
                             ? 'e.g. admin@ytcash.pro or your FaucetPay username'
                             : 'e.g. 017XXXXXXXX or 0x0000000000000000000000000000000000000000'
@@ -325,7 +325,7 @@ export const AdminPaymentMethodsTab: React.FC<AdminPaymentMethodsTabProps> = ({
                     />
                     {isCrypto && (
                       <span style={{ fontSize: '0.73rem', color: '#059669', display: 'block', marginTop: 3 }}>
-                        ✓ Automated FaucetPay Merchant API handles user payments directly with instant balance credit.
+                        ✓ Automated Cryptomus Merchant API handles user payments directly with instant balance credit.
                       </span>
                     )}
                   </div>

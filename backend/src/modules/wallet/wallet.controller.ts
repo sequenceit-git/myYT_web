@@ -9,6 +9,14 @@ import { requireAuth, AuthRequest } from '../../middleware/auth.middleware.js';
 import { getSystemDepositMethods, getSystemWithdrawMethods } from '../admin/admin.controller.js';
 import { extractFullClientTelemetry } from '../../services/telemetry.service.js';
 import { config } from '../../config/index.js';
+import {
+  isCryptomusConfigured,
+  createCryptomusInvoice,
+  getCryptomusPaymentInfo,
+  verifyCryptomusWebhook,
+  invoiceStatus,
+  CRYPTOMUS_PAID_STATUSES,
+} from '../../services/cryptomus.service.js';
 
 const router = Router();
 
@@ -129,16 +137,58 @@ router.post('/deposit', requireAuth, async (req: AuthRequest, res: Response): Pr
 });
 
 // =============================================================================
-// FAUCETPAY AUTOMATED CRYPTO DEPOSIT SYSTEM
+// CRYPTOMUS AUTOMATED CRYPTO DEPOSIT SYSTEM
+// Docs: https://doc.cryptomus.com/merchant-api/payments/creating-invoice
+// Keys are read only from CRYPTOMUS_* env vars — never hard-coded or logged.
 // =============================================================================
 
-// POST /api/wallet/faucetpay-create-order - Create pending crypto order & get checkout params
-router.post('/faucetpay-create-order', requireAuth, async (req: AuthRequest, res: Response): Promise<void> => {
+const creditCryptomusDeposit = async (
+  transaction: any,
+  invoice: { uuid?: string; payment_amount_usd?: string | number | null; currency?: string; network?: string | null }
+): Promise<number> => {
+  const creditedAmount = Number(transaction.amount);
+  if (!Number.isFinite(creditedAmount) || creditedAmount <= 0) {
+    throw new Error('Uncertain deposit amount — refusing to credit');
+  }
+
+  const coin = invoice.currency || invoice.network || 'Crypto';
+  const claimed = await Transaction.findOneAndUpdate(
+    { _id: transaction._id, status: { $ne: 'completed' } },
+    {
+      $set: {
+        status: 'completed',
+        senderAccount: 'Cryptomus',
+        referenceId: String(invoice.uuid || transaction.referenceId || ''),
+        notes: `Automated Crypto Deposit Confirmed via Cryptomus (${coin})`,
+        processedAt: new Date(),
+      },
+    },
+    { new: true }
+  );
+
+  if (!claimed) {
+    return creditedAmount;
+  }
+
+  const user = await User.findByIdAndUpdate(
+    transaction.userId,
+    { $inc: { creatorBalance: creditedAmount, balance: creditedAmount } },
+    { new: true }
+  );
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  claimed.balanceAfter = user.creatorBalance;
+  await claimed.save();
+  return creditedAmount;
+};
+
+const createCryptomusDepositOrder = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { amount } = req.body;
     const numAmount = Number(amount);
 
-    // Verify Crypto gateway is enabled by admin in system settings
     const systemMethods = await getSystemDepositMethods();
     const cryptoMethod = systemMethods.find((m) => m.id === 'crypto');
     if (cryptoMethod && cryptoMethod.enabled === false) {
@@ -157,23 +207,16 @@ router.post('/faucetpay-create-order', requireAuth, async (req: AuthRequest, res
       return;
     }
 
-    const user = req.user!;
-    // SECURITY: Merchant checkout is a public HTML POST. Fail closed if the
-    // receiving FaucetPay username is missing — never submit an empty form
-    // (FaucetPay then shows "This checkout link isn't valid").
-    const merchantUsername = (config.faucetpayMerchantUsername || process.env.FAUCETPAY_MERCHANT_USERNAME || '').trim();
-    if (!merchantUsername) {
+    // SECURITY: Fail closed if merchant UUID or payment API key is missing.
+    if (!isCryptomusConfigured()) {
       res.status(503).json({
         success: false,
-        error: 'FaucetPay merchant checkout is not configured. Set FAUCETPAY_MERCHANT_USERNAME on the server (your FaucetPay username, approved at faucetpay.io/merchant).',
+        error: 'Cryptomus checkout is not configured. Set CRYPTOMUS_MERCHANT_UUID and CRYPTOMUS_PAYMENT_API_KEY on the server.',
       });
       return;
     }
 
-    // Generate unique internal order reference ID
-    const referenceId = `FP_${Date.now()}_${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-
-    // Create pending deposit transaction in DB
+    const user = req.user!;
     const transaction = await Transaction.create({
       userId: user._id,
       role: 'creator',
@@ -182,137 +225,87 @@ router.post('/faucetpay-create-order', requireAuth, async (req: AuthRequest, res
       balanceAfter: user.creatorBalance !== undefined ? user.creatorBalance : user.balance,
       status: 'pending',
       gateway: 'crypto',
-      referenceId,
-      notes: 'Automated Crypto Deposit via FaucetPay (Awaiting Payment)',
+      notes: 'Automated Crypto Deposit via Cryptomus (Awaiting Payment)',
     });
 
     const publicOrigin = (config.corsOrigin || 'https://ytcash.pro').split(',')[0].trim().replace(/\/$/, '');
+    const orderId = transaction._id.toString();
 
-    // Prepare parameters for FaucetPay Merchant Checkout
-    const formParams = {
-      action: 'https://faucetpay.io/merchant/webscr',
-      merchant_username: merchantUsername,
-      item_description: `ytCash Crypto Deposit ($${numAmount.toFixed(2)} USD)`,
-      amount1: numAmount.toFixed(2),
-      // FaucetPay merchant docs require a coin ticker for currency1 (USDT, BTC, …),
-      // not fiat "USD". Pricing the checkout in USDT matches the USD deposit amount.
-      currency1: 'USDT',
-      currency2: '', // Empty allows buyer to choose Bitcoin, Ethereum, USDT, Litecoin, Dogecoin, Tron, etc.
-      custom: transaction._id.toString(),
-      callback_url: `${publicOrigin}/api/wallet/faucetpay-callback`,
-      success_url: `${publicOrigin}/creator?tab=deposit&status=success&orderId=${transaction._id}`,
-      cancel_url: `${publicOrigin}/creator?tab=deposit&status=cancelled`,
-    };
+    const invoice = await createCryptomusInvoice({
+      amountUsd: numAmount,
+      orderId,
+      urlCallback: `${publicOrigin}/api/wallet/cryptomus-callback`,
+      urlReturn: `${publicOrigin}/creator?tab=deposit&status=cancelled`,
+      urlSuccess: `${publicOrigin}/creator?tab=deposit&status=success&orderId=${orderId}`,
+    });
+
+    transaction.referenceId = invoice.uuid;
+    await transaction.save();
 
     res.json({
       success: true,
       data: {
-        transactionId: transaction._id,
-        referenceId,
+        transactionId: orderId,
+        referenceId: invoice.uuid,
         amount: numAmount,
-        formParams,
+        checkoutUrl: invoice.url,
         isConfigured: true,
       },
     });
   } catch (error: any) {
-    console.error('[FaucetPay Create Order] Error:', error);
+    console.error('[Cryptomus Create Order] Error:', error.message);
     res.status(500).json({ success: false, error: error.message || 'Error generating crypto deposit order' });
   }
-});
+};
 
-// POST /api/wallet/faucetpay-callback - IPN Webhook callback from FaucetPay
-router.post('/faucetpay-callback', async (req, res: Response): Promise<void> => {
+router.post('/cryptomus-create-order', requireAuth, createCryptomusDepositOrder);
+// Keep the old path so existing clients still start automatic checkout.
+router.post('/faucetpay-create-order', requireAuth, createCryptomusDepositOrder);
+
+// POST /api/wallet/cryptomus-callback — Cryptomus payment webhook
+router.post('/cryptomus-callback', async (req, res: Response): Promise<void> => {
   try {
-    const token = req.body?.token;
-    if (!token) {
-      console.warn('[FaucetPay IPN] Received callback without token parameter');
-      res.status(400).send('Missing token');
+    const body = req.body || {};
+    // SECURITY: Fail closed if the webhook signature is missing or invalid.
+    if (!verifyCryptomusWebhook(body)) {
+      console.warn('[Cryptomus IPN] Invalid or missing signature — ignoring');
+      res.status(401).send('Invalid signature');
       return;
     }
 
-    console.log(`[FaucetPay IPN] Received payment token: ${token}. Verifying with FaucetPay...`);
+    const status = String(body.status || body.payment_status || '').toLowerCase();
+    const orderId = String(body.order_id || body.additional_data || '');
 
-    // Verify token with FaucetPay Merchant API
-    const verifyUrl = `https://faucetpay.io/merchant/get-payment/${encodeURIComponent(token)}`;
-    const verifyRes = await fetch(verifyUrl, {
-      method: 'GET',
-      headers: { 'User-Agent': 'ytCash-Merchant/1.0' },
-    });
-
-    if (!verifyRes.ok) {
-      console.warn(`[FaucetPay IPN] FaucetPay returned HTTP ${verifyRes.status}`);
-      res.status(502).send('Error communicating with FaucetPay');
+    if (!CRYPTOMUS_PAID_STATUSES.has(status)) {
+      res.status(200).send('ignored');
       return;
     }
 
-    const data: any = await verifyRes.json();
-    console.log('[FaucetPay IPN] Verification response:', data);
-
-    if (!data || !data.valid) {
-      console.warn('[FaucetPay IPN] Payment verification failed or invalid:', data);
-      res.status(400).send('Invalid payment token');
-      return;
-    }
-
-    // Match transaction by custom ID (our Transaction._id)
-    const customTxId = data.custom;
-    let transaction = null;
-
-    if (customTxId) {
-      transaction = await Transaction.findById(customTxId);
-    }
-
-    // Fallback: search by referenceId if custom was not ObjectId
-    if (!transaction && customTxId) {
-      transaction = await Transaction.findOne({ referenceId: customTxId, status: 'pending' });
+    let transaction = orderId ? await Transaction.findById(orderId) : null;
+    if (!transaction && body.uuid) {
+      transaction = await Transaction.findOne({ referenceId: String(body.uuid), gateway: 'crypto' });
     }
 
     if (!transaction) {
-      console.warn(`[FaucetPay IPN] No pending transaction found matching custom: ${customTxId}`);
+      console.warn('[Cryptomus IPN] No pending transaction for order', orderId);
       res.status(404).send('Transaction not found');
       return;
     }
 
     if (transaction.status === 'completed') {
-      console.log(`[FaucetPay IPN] Transaction ${transaction._id} already marked completed. Idempotent skip.`);
-      res.status(200).send('*ok*');
+      res.status(200).send('ok');
       return;
     }
 
-    // Credit user's balance
-    const user = await User.findById(transaction.userId);
-    if (!user) {
-      console.warn(`[FaucetPay IPN] User ${transaction.userId} not found`);
-      res.status(404).send('User not found');
-      return;
-    }
-
-    const creditedAmount = Number(data.amount1) || transaction.amount;
-    const cryptoCoin = data.currency2 || 'Crypto';
-
-    user.creatorBalance = (user.creatorBalance || 0) + creditedAmount;
-    user.balance = (user.balance || 0) + creditedAmount;
-    await user.save();
-
-    transaction.status = 'completed';
-    transaction.amount = creditedAmount;
-    transaction.balanceAfter = user.creatorBalance;
-    transaction.senderAccount = data.merchant_username || 'FaucetPay Merchant';
-    transaction.referenceId = String(data.transaction_id || token);
-    transaction.notes = `Automated Crypto Deposit Confirmed via FaucetPay (${cryptoCoin})`;
-    transaction.processedAt = new Date();
-    await transaction.save();
-
-    console.log(`[FaucetPay IPN] Successfully credited $${creditedAmount} USD to user ${user.email} (New Balance: $${user.creatorBalance})`);
-    res.status(200).send('*ok*');
+    await creditCryptomusDeposit(transaction, body);
+    res.status(200).send('ok');
   } catch (error: any) {
-    console.error('[FaucetPay IPN] Exception:', error);
+    console.error('[Cryptomus IPN] Exception:', error.message);
     res.status(500).send('Internal Server Error');
   }
 });
 
-// POST /api/wallet/faucetpay-verify-order - Check status of crypto order on frontend return
-router.post('/faucetpay-verify-order', requireAuth, async (req: AuthRequest, res: Response): Promise<void> => {
+const verifyCryptomusDepositOrder = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { orderId } = req.body;
     if (!orderId) {
@@ -330,22 +323,39 @@ router.post('/faucetpay-verify-order', requireAuth, async (req: AuthRequest, res
       return;
     }
 
+    if (transaction.status !== 'completed' && isCryptomusConfigured()) {
+      try {
+        const invoice = await getCryptomusPaymentInfo(transaction._id.toString());
+        const status = invoiceStatus(invoice);
+        if (CRYPTOMUS_PAID_STATUSES.has(status)) {
+          await creditCryptomusDeposit(transaction, invoice);
+        }
+      } catch (pollErr: any) {
+        console.warn('[Cryptomus Verify] Poll failed:', pollErr.message);
+      }
+    }
+
+    const fresh = await Transaction.findById(transaction._id);
     const freshUser = await User.findById(req.user!._id);
 
     res.json({
       success: true,
       data: {
-        status: transaction.status,
-        amount: transaction.amount,
+        status: fresh?.status || transaction.status,
+        amount: fresh?.amount ?? transaction.amount,
         balance: freshUser ? freshUser.creatorBalance : req.user!.creatorBalance,
-        isCompleted: transaction.status === 'completed',
-        referenceId: transaction.referenceId,
+        isCompleted: (fresh?.status || transaction.status) === 'completed',
+        referenceId: fresh?.referenceId || transaction.referenceId,
+        checkoutUrl: undefined,
       },
     });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
-});
+};
+
+router.post('/cryptomus-verify-order', requireAuth, verifyCryptomusDepositOrder);
+router.post('/faucetpay-verify-order', requireAuth, verifyCryptomusDepositOrder);
 
 // POST /api/wallet/withdraw - Request manual payout (bKash, Nagad, etc.)
 router.post('/withdraw', requireAuth, async (req: AuthRequest, res: Response): Promise<void> => {

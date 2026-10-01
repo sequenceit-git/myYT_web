@@ -74,10 +74,10 @@ export const DEFAULT_ADMIN_DEPOSIT_METHODS: DepositMethod[] = [
     id: 'crypto',
     name: 'Crypto',
     type: 'crypto',
-    accountType: 'Automated Gateway (FaucetPay)',
-    accountNumber: 'Automated FaucetPay Merchant',
+    accountType: 'Automated Gateway (Cryptomus)',
+    accountNumber: 'Automated Cryptomus Merchant',
     minDepositUsd: 0,
-    instructions: 'Automated crypto checkout powered by FaucetPay. Accepts Bitcoin (BTC), Ethereum (ETH), USDT, Litecoin (LTC), Tron (TRX), Dogecoin (DOGE) and more with instant balance credit.',
+    instructions: 'Automated crypto checkout powered by Cryptomus. Accepts Bitcoin (BTC), Ethereum (ETH), USDT, Litecoin (LTC), Tron (TRX), Dogecoin (DOGE) and more with instant balance credit.',
     enabled: true,
   },
   {

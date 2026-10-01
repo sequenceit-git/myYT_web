@@ -58,10 +58,10 @@ export const DEFAULT_DEPOSIT_METHODS: DepositMethodSetting[] = [
     id: 'crypto',
     name: 'Crypto',
     type: 'crypto',
-    accountType: 'Automated Gateway (FaucetPay)',
+    accountType: 'Automated Gateway (Cryptomus)',
     accountNumber: 'Automated Crypto Gateway',
     minDepositUsd: 0,
-    instructions: 'Automated instant crypto deposit powered by FaucetPay. Accepts Bitcoin (BTC), Ethereum (ETH), USDT, Litecoin (LTC), Tron (TRX), Dogecoin (DOGE) and more with zero waiting.',
+    instructions: 'Automated instant crypto deposit powered by Cryptomus. Accepts Bitcoin (BTC), Ethereum (ETH), USDT, Litecoin (LTC), Tron (TRX), Dogecoin (DOGE) and more with zero waiting.',
     enabled: true,
   },
   {
@@ -203,9 +203,9 @@ export const getSystemDepositMethods = async (): Promise<DepositMethodSetting[]>
             ...m,
             id: 'crypto',
             name: 'Crypto',
-            accountType: 'Automated Gateway (FaucetPay)',
+            accountType: 'Automated Gateway (Cryptomus)',
             accountNumber: 'Automated Crypto Gateway',
-            instructions: 'Automated instant crypto deposit powered by FaucetPay. Accepts Bitcoin (BTC), Ethereum (ETH), USDT, Litecoin (LTC), Tron (TRX), Dogecoin (DOGE) and more with zero waiting.',
+            instructions: 'Automated instant crypto deposit powered by Cryptomus. Accepts Bitcoin (BTC), Ethereum (ETH), USDT, Litecoin (LTC), Tron (TRX), Dogecoin (DOGE) and more with zero waiting.',
           };
         }
         return m;

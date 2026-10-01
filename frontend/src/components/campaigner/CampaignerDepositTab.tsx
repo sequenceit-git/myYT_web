@@ -49,7 +49,7 @@ export const CampaignerDepositTab: React.FC<CampaignerDepositTabProps> = ({
         </div>
         {selectedMethod?.id === 'crypto' ? (
           <span className="badge-pill" style={{ fontSize: '0.74rem', padding: '4px 12px', background: '#dcfce7', color: '#15803d', border: '1px solid #86efac', fontWeight: 800 }}>
-            ⚡ Automatic Deposit • FaucetPay Instant Credit
+            ⚡ Automatic Deposit • Cryptomus Instant Credit
           </span>
         ) : selectedMethod?.id === 'faucetpay' ? (
           <span className="badge-pill" style={{ fontSize: '0.74rem', padding: '4px 12px', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', fontWeight: 800 }}>
